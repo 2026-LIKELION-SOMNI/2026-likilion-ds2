@@ -25,3 +25,15 @@ Close #
 
 - [ ] 
 - [ ] 
+
+
+# 🚀 Pull Request(PR) 규칙
+
+## PR 생성 전 체크리스트
+
+- [ ]  현재 작업 브랜치에 최신 `develop` 내용 반영했는지
+- [ ]  PR의 base 브랜치가 develop인지 확인
+- [ ]  PR의 compare 브랜치가 현재 작업 브랜치인지 확인
+- [ ]  프로젝트가 정상적으로 동작하는지
+- [ ]  불필요한 코드 및 console.log를 제거했는지
+- [ ]  Issue를 연결했는지
