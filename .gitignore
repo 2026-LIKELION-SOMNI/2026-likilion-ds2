@@ -1,12 +1,30 @@
-# 가상환경 & 환경변수
-**/myvenv/
-**/.env
+# 가상환경
+/backend/myvenv/
+myvenv/
+venv/
+ENV/
 
-# 파이썬 캐시
+# 환경변수 (비밀번호, API 키 등 보안 필수!)
+.env
+*.env
+
+# 파이썬 캐시 & 빌드 파일
 **/__pycache__/
-*.pyc
+*.py
+*.pyo
+*.pyd
 .pytest_cache/
 
-# IDE 설정
+# SQLite DB (혹시나 생성될 경우 대비)
+*.sqlite3
+*.db
+
+# Django 미디어/스태틱 (사용자 업로드 파일)
+/media/
+/staticfiles/
+
+# IDE 및 OS 설정 파일
 .vscode/
 .idea/
+.DS_Store
+Thumbs.db
