@@ -1,8 +1,8 @@
 ---
 name: "♻️ Refactor - 기존 코드 개선"
 about: 기존 코드를 구조 개선 및 리팩토링할 때 작성합니다
-title: ''
-labels: ''
+title: 'refactor: '
+labels: 'refactor'
 assignees: ''
 
 ---

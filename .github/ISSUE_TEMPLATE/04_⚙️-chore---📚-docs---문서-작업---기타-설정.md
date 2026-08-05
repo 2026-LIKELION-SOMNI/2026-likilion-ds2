@@ -1,8 +1,8 @@
 ---
 name: "⚙️ Chore / \U0001F4DA Docs - 문서 작업 / 기타 설정"
 about: 환경 설정 변경이나 문서(README 등) 작성 시 사용합니다
-title: ''
-labels: ''
+title: 'chore: '
+labels: 'chore'
 assignees: ''
 
 ---

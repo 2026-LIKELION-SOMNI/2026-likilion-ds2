@@ -1,8 +1,8 @@
 ---
 name: "✨ FeatureRequest - 새로운 기능 추가"
 about: 개발해야 하는 기능을 단위별로 명세합니다!
-title: ''
-labels: ''
+title: 'feat: '
+labels: 'feat'
 assignees: ''
 
 ---
