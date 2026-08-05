@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  /* 추후 수정 예정 */
+  /* 추후 추가 예정 */
   --color-primary: #60cea7;
   --color-primary-hover: #63e0b2;
   --color-primary-light: #f1efff;
@@ -13,6 +13,7 @@
 
   --color-text-primary: #ecf3f2;
   --color-text-secondary: #9caaa8;
+  --color-text-tertiary: #87CBE6;
 
   --color-border: #253034;
   --color-danger: #e5484d;
