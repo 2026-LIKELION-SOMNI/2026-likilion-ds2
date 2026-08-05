@@ -1,8 +1,8 @@
 ---
 name: "\U0001F41B BugReport + Fix - 버그 수정"
 about: 버그가 발생했을 때 사용합니다
-title: ''
-labels: ''
+title: 'fix: '
+labels: 'fix'
 assignees: ''
 
 ---
