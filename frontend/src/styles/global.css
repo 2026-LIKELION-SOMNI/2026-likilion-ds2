@@ -74,7 +74,8 @@
 
 @layer components {
   .app-container {
-    @apply mx-auto overflow-hidden bg-app-background text-text-primary md:my-4 md:border md:border-gray-800 md:shadow-[0_0_80px_rgba(255,255,255,0.4)];
+    @apply mx-auto grid w-full max-w-[480px] grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-app-background text-text-primary md:my-4 md:border md:border-gray-600 md:shadow-[0_0_80px_rgba(255,255,255,0.4)];
+    aspect-ratio: 9 / 20;
   }
 }
 
