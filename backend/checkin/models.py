@@ -4,7 +4,6 @@ from django.db import models
 from accounts.models import AnonymousUser
 
 
-# 야간 체크인 
 class CheckinRecord(models.Model):
     user = models.ForeignKey(
         AnonymousUser,
@@ -12,7 +11,6 @@ class CheckinRecord(models.Model):
         related_name="checkins",
     )
 
-    # 필수로 입력 받아야 하는 항목 
     discomfort = models.IntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(5)],
         help_text="이명 불편도 (1: 편안함 ~ 5: 매우 불편함)",
@@ -22,8 +20,12 @@ class CheckinRecord(models.Model):
         help_text="긴장도 (1: 안정됨 ~ 5: 매우 불안함)",
     )
 
-    # 선택할 수 있는 항목
-    sleep_hours = models.FloatField(null=True, blank=True, help_text="어젯밤 수면시간(시간)")
+    sleep_hours = models.FloatField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],  # 추가: 음수 수면시간 방지
+        help_text="어젯밤 수면시간(시간)",
+    )
     fatigue = models.IntegerField(
         null=True, blank=True,
         validators=[MinValueValidator(1), MaxValueValidator(5)],
