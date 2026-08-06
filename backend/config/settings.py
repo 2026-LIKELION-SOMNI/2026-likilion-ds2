@@ -27,8 +27,11 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    'rest_framework',
+
     # 🚨 여기에 생성할 앱 이름을 추가해 주시면 됩니다! (예: 'users', 'posts')
     'accounts',
+    'onboarding',
 ]
 
 MIDDLEWARE = [
@@ -40,6 +43,13 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# 🚨 익명 이용 서비스라 로그인 세션이 없음 -> DRF 기본 인증(SessionAuthentication)을 끄고
+#    CSRF 체크 없이 API 호출 가능하게 설정 (accounts/onboarding csrf_exempt 데코레이터와 함께 적용)
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [],
+    'DEFAULT_PERMISSION_CLASSES': [],
+}
 
 ROOT_URLCONF = 'config.urls'
 
