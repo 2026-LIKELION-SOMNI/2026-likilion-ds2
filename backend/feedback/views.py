@@ -3,6 +3,9 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
+from datetime import timedelta
+
+from django.utils import timezone
 
 from .models import InterventionEvaluation, InterventionType
 from .serializers import InterventionEvaluationSerializer, PendingEvaluationSerializer
@@ -32,32 +35,45 @@ class InterventionEvaluationCreateView(generics.GenericAPIView):
         serializer.save(evaluated_at=timezone.now(), skipped=bool(skipped))
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-# 다음 접속 시 보여줄 미평가 개입 목록
+# 다음 접속 시 보여줄 미평가 개입 목록(24시간이 지나지 않은 것들만)
 class PendingEvaluationListView(generics.ListAPIView):
     serializer_class = PendingEvaluationSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        cutoff = timezone.now() - timedelta(hours=24)
+
         return (
             InterventionEvaluation.objects.filter(
                 user=self.request.user,
                 evaluated_at__isnull=True,
                 skipped=False,
+                created_at__gte=cutoff,
             )
             .order_by("-created_at")
         )
 
-#다음 날 지연 평가 제출/수정
+#다음 날 지연 평가 제출/수정(24시간 지난 것은 불가능)
 class DelayedEvaluationSubmitView(generics.UpdateAPIView):
     serializer_class = InterventionEvaluationSerializer
     permission_classes = [permissions.IsAuthenticated]
     queryset = InterventionEvaluation.objects.all()
 
     def get_queryset(self):
-        return super().get_queryset().filter(user=self.request.user)
+        cutoff = timezone.now() - timedelta(hours=24)
+
+        return super().get_queryset().filter(
+            user=self.request.user,
+            created_at__gte=cutoff,
+            evaluated_at__isnull=True,
+            skipped=False,
+        )
 
     def perform_update(self, serializer):
-        serializer.save(is_delayed=True, evaluated_at=timezone.now())
+        serializer.save(
+            is_delayed=True,
+            evaluated_at=timezone.now(),
+        )
 
 # 사용자가 평가 안하기를 누를 때 호출, 
 class SkipEvaluationView(APIView):
