@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>체크인 API 테스트</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; }
+        section { border: 1px solid #ccc; padding: 16px; margin-bottom: 16px; border-radius: 8px; }
+        input, button { padding: 6px 10px; margin: 4px 0; }
+        button { cursor: pointer; }
+        pre { background: #f4f4f4; padding: 10px; border-radius: 4px; white-space: pre-wrap; }
+        label { display: block; margin: 6px 0; }
+        input[type="text"], input[type="number"] { width: 200px; }
+    </style>
+</head>
+<body>
+    <h1>체크인 API 테스트 페이지</h1>
+
+    <section>
+        <h3>0. 익명 유저 생성 (accounts)</h3>
+        <button onclick="registerUser()">유저 생성</button>
+        <p>현재 UUID: <b id="currentUuid">없음</b></p>
+        <p>UUID 직접 입력해서 쓰고 싶으면:</p>
+        <input type="text" id="manualUuid" placeholder="uuid 붙여넣기">
+        <button onclick="setManualUuid()">이 UUID 사용</button>
+    </section>
+
+    <section>
+        <h3>1. 야간 체크인 제출 (F-405~409, F-213~216)</h3>
+        <label>이명 불편도 (1~5, 필수) <input type="number" id="discomfort" min="1" max="5" value="3"></label>
+        <label>긴장도 (1~5, 필수) <input type="number" id="tension" min="1" max="5" value="2"></label>
+        <label>수면시간 (선택) <input type="number" id="sleep_hours" step="0.5" value="6.5"></label>
+        <label>피로도 (1~5, 선택) <input type="number" id="fatigue" min="1" max="5" value="3"></label>
+        <label>스트레스 (1~5, 선택) <input type="number" id="stress" min="1" max="5" value="3"></label>
+        <label><input type="checkbox" id="caffeine"> 늦은 카페인 섭취</label>
+        <label>메모 (선택) <input type="text" id="note" placeholder="예: 커피를 늦게 마셨어요"></label>
+        <button onclick="submitCheckin()">체크인 제출</button>
+    </section>
+
+    <section>
+        <h3>2. 최근 체크인 조회</h3>
+        <button onclick="getLatest()">최근 체크인 조회</button>
+    </section>
+
+    <section>
+        <h3>3. 체크인 목록 조회</h3>
+        <button onclick="getList()">전체 목록 조회</button>
+    </section>
+
+    <h3>결과</h3>
+    <pre id="result">여기에 응답이 표시됩니다.</pre>
+
+    <script>
+        let uuid = null;
+
+        function show(data) {
+            document.getElementById("result").textContent = JSON.stringify(data, null, 2);
+        }
+
+        function setManualUuid() {
+            uuid = document.getElementById("manualUuid").value.trim();
+            document.getElementById("currentUuid").textContent = uuid;
+        }
+
+        async function registerUser() {
+            const res = await fetch("/api/accounts/register/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({}),
+            });
+            const data = await res.json();
+            uuid = data.uuid;
+            document.getElementById("currentUuid").textContent = uuid;
+            show(data);
+        }
+
+        async function submitCheckin() {
+            if (!uuid) return alert("먼저 유저를 생성하거나 UUID를 입력하세요");
+            const body = {
+                discomfort: Number(document.getElementById("discomfort").value),
+                tension: Number(document.getElementById("tension").value),
+                sleep_hours: document.getElementById("sleep_hours").value
+                    ? Number(document.getElementById("sleep_hours").value) : null,
+                fatigue: document.getElementById("fatigue").value
+                    ? Number(document.getElementById("fatigue").value) : null,
+                stress: document.getElementById("stress").value
+                    ? Number(document.getElementById("stress").value) : null,
+                caffeine: document.getElementById("caffeine").checked,
+                note: document.getElementById("note").value,
+            };
+            const res = await fetch(`/api/checkin/${uuid}/`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+            show(await res.json());
+        }
+
+        async function getLatest() {
+            if (!uuid) return alert("먼저 유저를 생성하거나 UUID를 입력하세요");
+            const res = await fetch(`/api/checkin/${uuid}/latest/`);
+            show(await res.json());
+        }
+
+        async function getList() {
+            if (!uuid) return alert("먼저 유저를 생성하거나 UUID를 입력하세요");
+            const res = await fetch(`/api/checkin/${uuid}/list/`);
+            show(await res.json());
+        }
+    </script>
+</body>
+</html>
