@@ -22,7 +22,7 @@ class InterventionEvaluationSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id", "intervention_type", "session_id",
-            "is_delayed", "created_at", "evaluated_at",
+            "is_delayed", "created_at", "evaluated_at", "skipped",
         ]
 
 # 다음 접속 시 전날 미평가 개입 보여줄 정보
