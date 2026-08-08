@@ -29,4 +29,6 @@ urlpatterns = [
         views.SkipEvaluationView.as_view(),
         name="evaluation-skip",
     ),
+
+
 ]

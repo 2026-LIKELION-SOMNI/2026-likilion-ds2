@@ -5,12 +5,15 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from datetime import timedelta
 
-from django.utils import timezone
+#html 테스트 위한 import
+from django.shortcuts import render
 
 from .models import InterventionEvaluation, InterventionType
 from .serializers import InterventionEvaluationSerializer, PendingEvaluationSerializer
 
-#개입 직후 평가 저장 api
+EVALUATION_WINDOW = timedelta(hours=24)  # 세 뷰가 공유하는 컷오프 시간(24시간)
+
+#개입 직후 평가 저장 
 class InterventionEvaluationCreateView(generics.GenericAPIView):
     serializer_class = InterventionEvaluationSerializer
     permission_classes = [permissions.IsAuthenticated] #로그인된 사용자만 접근 가능
@@ -22,17 +25,25 @@ class InterventionEvaluationCreateView(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        evaluation, _ = InterventionEvaluation.objects.get_or_create(
+        evaluation, created = InterventionEvaluation.objects.get_or_create(
             user = request.user,
             intervention_type=intervention_type,
             session_id=session_id,
-            defaults={"user": request.user},
         )
 
-        skipped = request.data.get("skipped", False) #기본 false
+        #이미 평가나 수정이 끝난 개입은 해당 엔드포인트로 수정 불가
+        if not created and evaluation.evaluated_at is not None:
+            return Response(
+                {"detail": "이미 평가가 완료된 항목입니다."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
         serializer = self.get_serializer(evaluation, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save(evaluated_at=timezone.now(), skipped=bool(skipped))
+        serializer.save(
+            evaluated_at=timezone.now(),
+            skipped=serializer.validated_data.get("skipped", evaluation.skipped),
+        )
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 # 다음 접속 시 보여줄 미평가 개입 목록(24시간이 지나지 않은 것들만)
@@ -41,7 +52,7 @@ class PendingEvaluationListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        cutoff = timezone.now() - timedelta(hours=24)
+        cutoff = timezone.now() - EVALUATION_WINDOW
 
         return (
             InterventionEvaluation.objects.filter(
@@ -60,7 +71,7 @@ class DelayedEvaluationSubmitView(generics.UpdateAPIView):
     queryset = InterventionEvaluation.objects.all()
 
     def get_queryset(self):
-        cutoff = timezone.now() - timedelta(hours=24)
+        cutoff = timezone.now() - EVALUATION_WINDOW
 
         return super().get_queryset().filter(
             user=self.request.user,
@@ -75,15 +86,27 @@ class DelayedEvaluationSubmitView(generics.UpdateAPIView):
             evaluated_at=timezone.now(),
         )
 
-# 사용자가 평가 안하기를 누를 때 호출, 
+# 사용자가 평가 안하기를 누를 때 호출
 class SkipEvaluationView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
+        cutoff = timezone.now() - EVALUATION_WINDOW
         evaluation = get_object_or_404(
-            InterventionEvaluation, pk=pk, user=request.user
+            InterventionEvaluation,
+            pk=pk,
+            user=request.user,
+            evaluated_at__isnull=True,
+            skipped=False,
+            created_at__gte=cutoff,
         )
         evaluation.skipped = True
         evaluation.evaluated_at = timezone.now()
         evaluation.save(update_fields=["skipped", "evaluated_at"])
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+
+
+
+
