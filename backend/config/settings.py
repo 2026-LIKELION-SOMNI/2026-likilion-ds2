@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     # 🚨 여기에 생성할 앱 이름을 추가해 주시면 됩니다! (예: 'users', 'posts')
     'accounts',
     'onboarding',
+    'checkin',
 ]
 
 MIDDLEWARE = [
