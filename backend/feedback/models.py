@@ -3,18 +3,29 @@ from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
-#sound/realxtion 앱 미확정으로 인해 우선 소프트 참조로 개입. 추후 FK 구조로 개선 필요
+
+# sound/relaxation 앱 미확정으로 인해 우선 소프트 참조로 개입. 추후 FK 구조로 개선 필요
 class InterventionType(models.TextChoices):
     SOUND = "sound", "사운드"
     RELAXATION = "relaxation", "이완 활동"
 
-#사운드 도움 여부 평가
+
+# 사운드 도움 여부 평가
 class SoundHelpfulness(models.TextChoices):
     HELPFUL = "helpful", "도움됨"
     NO_CHANGE = "no_change", "변화 없음"
     UNCOMFORTABLE = "uncomfortable", "불편함"
 
-#개입 후 효과 평가(평가 강제하지 않음)
+
+# 평가 진행 상태.
+class EvaluationStatus(models.TextChoices):
+    PENDING = "pending", "대기 중"                # 아직 평가/스킵 안 됨, 24시간 이내
+    EVALUATED = "evaluated", "평가 완료"
+    SKIPPED = "skipped", "건너뜀"                  # 사용자가 명시적으로 "평가 안 하기"
+    EXPIRED = "expired", "미응답(24시간 경과)"       # 24시간 지나도록 응답 없음
+
+
+# 개입 후 효과 평가(평가 강제하지 않음)
 class InterventionEvaluation(models.Model):
 
     user = models.ForeignKey(
@@ -51,19 +62,17 @@ class InterventionEvaluation(models.Model):
     # 불편 요소 추가 피드백 (자유 텍스트, 선택 입력)
     discomfort_feedback = models.TextField(null=True, blank=True)
 
-    # 피드백이  지연 평가로 입력되었는지 여부
-    is_delayed = models.BooleanField(default=False)
+    status = models.CharField(
+        max_length=20,
+        choices=EvaluationStatus.choices,
+        default=EvaluationStatus.PENDING,
+    )
 
-    # 평가를 강제하지 않으므로, 사용자가 명시적으로 건너뛴 경우를 별도 기록
-    skipped = models.BooleanField(default=False)
-
-    created_at = models.DateTimeField(auto_now_add=True) #평가 객체 생성 ㅅ ㅣ간
-    # 실제로 사용자가 입력(또는 스킵)을 완료한 시각. null이면 '미평가' 상태
-    evaluated_at = models.DateTimeField(null=True, blank=True)
-
+    created_at = models.DateTimeField(auto_now_add=True)  # 평가 대상(=개입) row 생성 시각
+    evaluated_at = models.DateTimeField(null=True, blank=True) #실제로 사용자가 입력(스킵 포함) 완료한 시각 
 
     class Meta:
-        #하나의 개입에 하나의 평가만 가능
+        # 하나의 개입에 하나의 평가만 가능
         constraints = [
             models.UniqueConstraint(
                 fields=["user", "intervention_type", "session_id"],
@@ -71,17 +80,19 @@ class InterventionEvaluation(models.Model):
             )
         ]
         indexes = [
-            models.Index(fields=["user", "evaluated_at"]),
+            models.Index(fields=["user", "status"]),
         ]
         verbose_name = "개입 후 피드백"
         verbose_name_plural = "개입 후 피드백"
 
     def __str__(self):
-        return f"Evaluation({self.intervention_type}#{self.session_id}, user={self.user_id})"
+        return (
+            f"Evaluation({self.intervention_type}#{self.session_id}, "
+            f"user={self.user_id}, status={self.status})"
+        )
 
-    #소프트 참조 위해 작성_추후 삭제 예정
+    # 소프트 참조 위해 작성_추후 삭제 예정
     def get_session(self):
-
         model_label = {
             InterventionType.SOUND: "sound.SoundSession",
             InterventionType.RELAXATION: "relaxation.RelaxationSession",
