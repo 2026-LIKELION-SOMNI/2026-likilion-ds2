@@ -23,25 +23,25 @@ function FrequencyCard({
   onSelect,
   onPlay,
 }: FrequencyCardProps) {
-  const cardActive = selected || playing;
-
   return (
     <article
       className={`
         min-w-0 flex-1 rounded-[1rem] border p-3
+        bg-[#111d21]
         ${
-          cardActive
-            ? "border-[#60CEA7] bg-[#111d21]"
-            : "border-border bg-[#111d21]"
+          selected
+            ? "border-[#60CEA7]"
+            : "border-border"
         }
       `}
     >
+      {/* A/B + 주파수 */}
       <div className="flex items-center justify-between">
         <span
           className="
-            flex h-7 w-7 items-center justify-center
-            rounded-full bg-[#18282d]
-            text-[0.6875rem] text-text-secondary
+            flex h-8 w-8 items-center justify-center
+            rounded-full bg-[#16252a]
+            text-[0.75rem] font-semibold text-text-secondary
           "
         >
           {label}
@@ -52,11 +52,17 @@ function FrequencyCard({
         </span>
       </div>
 
+      {/* 파형 영역 */}
       <div
-        className="
-          mt-4 flex h-[6.5rem] items-center justify-center gap-[0.1875rem]
-          rounded-[0.75rem] bg-[#16252a] px-3
-        "
+        className={`
+          mt-4 flex h-[6.5rem] items-center justify-center
+          gap-[0.1875rem] rounded-[0.75rem] px-3
+          ${
+            playing
+              ? "bg-[#173A34]"
+              : "bg-[#16252a]"
+          }
+        `}
         aria-hidden="true"
       >
         {WAVE_HEIGHTS.map((height, index) => (
@@ -68,12 +74,13 @@ function FrequencyCard({
         ))}
       </div>
 
+      {/* 재생 버튼 */}
       <button
         type="button"
         onClick={onPlay}
         className={`
-          mt-2 flex w-full items-center justify-center gap-1
-          py-1 text-[0.6875rem]
+          mt-2 flex w-full items-center justify-center
+          gap-1 py-1 text-[0.6875rem]
           ${
             playing
               ? "text-[#60CEA7]"
@@ -81,24 +88,22 @@ function FrequencyCard({
           }
         `}
       >
-        <span aria-hidden="true">
-          {playing ? "▶" : "▶"}
-        </span>
-
+        <span aria-hidden="true">▶</span>
         <span>{playing ? "재생중" : "들어보기"}</span>
       </button>
 
+      {/* 선택 버튼 */}
       <button
         type="button"
         onClick={onSelect}
         className={`
-          mt-2 h-10 w-full rounded-[0.625rem] border
-          text-[0.75rem] font-medium
+          mt-2 h-10 w-full rounded-[0.625rem]
+          border text-[0.75rem] font-medium
           ${
             selected
-            ? "border-[#2D4548] bg-[#173A34] text-[#60CEA7]"
+              ? "border-[#2D4548] bg-[#173A34] text-[#60CEA7]"
               : showError
-                ? "border-[##F09292] bg-transparent text-[#F09292]"
+                ? "border-[#F09292] bg-transparent text-[#F09292]"
                 : "border-border bg-transparent text-text-primary"
           }
         `}

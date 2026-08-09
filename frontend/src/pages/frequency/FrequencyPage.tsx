@@ -1,5 +1,5 @@
 import { useState } from "react";
-
+import { useNavigate } from "react-router-dom";
 import FrequencyCard from "../../components/frequency/FrequencyCard";
 import {
   frequencyQuestions,
@@ -14,6 +14,7 @@ interface FrequencyAnswer {
 }
 
 function FrequencyPage() {
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
 
   const [selectedOptionId, setSelectedOptionId] =
@@ -34,7 +35,6 @@ function FrequencyPage() {
 
   const handleSelect = (optionId: FrequencyOptionId) => {
     setSelectedOptionId(optionId);
-    setPlayingOptionId(null);
     setErrorMessage("");
   };
 
@@ -144,6 +144,7 @@ function FrequencyPage() {
         <div className="mt-auto pt-10">
           <button
             type="button"
+            onClick={() => navigate("/nature-sound")}
             className="
               h-14 w-full rounded-[0.75rem]
               bg-[#60CEA7]

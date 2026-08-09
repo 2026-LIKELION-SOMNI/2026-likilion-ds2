@@ -7,6 +7,7 @@ import StartPage from "../pages/onboarding/StartPage";
 import HomePage from "../pages/home/HomePage";
 import CheckInPage from "../pages/check-in/CheckInPage";
 import FrequencyPage from "../pages/frequency/FrequencyPage";
+import NatureSoundPage from "../pages/nature-sound/NatureSoundPage";
 
 const router = createBrowserRouter([
   {
@@ -33,6 +34,10 @@ const router = createBrowserRouter([
       {
         path: "/frequency",
         element: <FrequencyPage />,
+      },
+      {
+        path: "/nature-sound",
+        element: <NatureSoundPage />,
       },
     ],
   },
