@@ -8,6 +8,8 @@ import HomePage from "../pages/home/HomePage";
 import CheckInPage from "../pages/check-in/CheckInPage";
 import FrequencyPage from "../pages/frequency/FrequencyPage";
 import NatureSoundPage from "../pages/nature-sound/NatureSoundPage";
+import SoundSetupPage from "../pages/sound-setup/SoundSetupPage";
+
 
 const router = createBrowserRouter([
   {
@@ -38,6 +40,10 @@ const router = createBrowserRouter([
       {
         path: "/nature-sound",
         element: <NatureSoundPage />,
+      },
+      {
+        path: "/sound-setup",
+        element: <SoundSetupPage />,
       },
     ],
   },

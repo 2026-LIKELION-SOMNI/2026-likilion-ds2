@@ -89,3 +89,14 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
+
+/* 스크롤은 가능하지만 스크롤바는 숨김 */
+/* 실제로 스크롤되는 요소는 속성에 scrollbar-hide 붙이면 됨  */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

@@ -32,6 +32,10 @@ const HEADER_INFO: Record<string, HeaderInfo> = {
     title: "맞춤 수면 사운드",
     showBackButton: true,
   },
+  "/sound-setup": {
+    title: "음역 매칭",
+    showBackButton: true,
+  },
 };
 
 function BackIcon() {
@@ -41,12 +45,13 @@ function BackIcon() {
       height="24"
       viewBox="0 0 24 24"
       fill="none"
+      xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
       <path
         d="M15 18L9 12L15 6"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -63,19 +68,54 @@ function Header() {
     showBackButton: true,
   };
 
+  const handleBack = () => {
+    // 음역 매칭 내부 단계 뒤로가기
+    if (location.pathname === "/frequency") {
+      window.dispatchEvent(new Event("frequency-back"));
+      return;
+    }
+
+    // 자연음 선택 → 음역 매칭 결과(100%) 화면
+    if (location.pathname === "/nature-sound") {
+      navigate("/frequency", {
+        state: { screen: "result" },
+      });
+      return;
+    }
+
+    // 사운드 준비 / 혼합점 내부 단계 뒤로가기
+    if (location.pathname === "/sound-setup") {
+      window.dispatchEvent(new Event("sound-setup-back"));
+      return;
+    }
+
+    // 그 외 페이지
+    navigate(-1);
+  };
+
   const handleLater = () => {
-    // TODO: 다음 화면 경로 확정 후 연결
-    // navigate("/...");
+    if (location.pathname === "/nature-sound") {
+      navigate("/sound-setup");
+    }
   };
 
   return (
-    <header>
-      <div className="relative flex h-16 items-center px-3">
+    <header className="safe-area-top shrink-0">
+      <div
+        className="
+          relative
+          flex
+          h-16
+          items-center
+          justify-center
+          px-3
+        "
+      >
         {headerInfo.showBackButton && (
           <button
             type="button"
             aria-label="이전 화면으로 이동"
-            onClick={() => navigate(-1)}
+            onClick={handleBack}
             className="
               absolute
               left-3

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import NatureSoundCard from "../../components/nature-sound/NatureSoundCard";
 import {
@@ -8,6 +9,7 @@ import {
 } from "../../mock/natureSoundData";
 
 function NatureSoundPage() {
+  const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] =
     useState<NatureSoundCategory>("추천");
 
@@ -59,7 +61,8 @@ function NatureSoundPage() {
       return;
     }
 
-    // TODO: 다음 기능 연결 시 선택한 자연음 전달
+    // TODO: 선택한 자연음 서버 저장
+    navigate("/sound-setup");
   };
 
 
