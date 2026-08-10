@@ -30,6 +30,9 @@ const [selectedOptionId, setSelectedOptionId] =
 const [playingOptionId, setPlayingOptionId] =
   useState<FrequencyOptionId | null>(null);
 
+const [selectedOctave, setSelectedOctave] = useState<number | null>(null);
+const [playingOctave, setPlayingOctave] = useState<number | null>(null);
+
 const [, setAnswers] = useState<FrequencyAnswer[]>([]);
 
 const [errorMessage, setErrorMessage] = useState("");
@@ -110,8 +113,21 @@ const handleConfirm = () => {
 };
 
 const handleOctaveConfirm = () => {
-  setPlayingOptionId(null);
+  if (selectedOctave === null) {
+    return;
+  }
+
+  setPlayingOctave(null);
   setScreen("result");
+};
+
+const handleOctavePlay = (frequency: number) => {
+  // TODO: 실제 음원 재생 연결
+  console.log(`${frequency}Hz 재생`);
+
+  setPlayingOctave((previous) =>
+    previous === frequency ? null : frequency,
+  );
 };
 
 const handleRestart = () => {
@@ -128,7 +144,7 @@ const handleResultNext = () => {
 };
 
 const handlePreviousStep = useCallback(() => {
-  // 음역 선택 2/7 ~ 7/7
+  // 2/7 ~ 7/7 → 이전 단계
   if (screen === "matching" && currentStep > 0) {
     setCurrentStep((previous) => previous - 1);
     setSelectedOptionId(null);
@@ -137,7 +153,7 @@ const handlePreviousStep = useCallback(() => {
     return;
   }
 
-  // 음역 선택 1/7
+  // 1/7 → 이전 페이지
   if (screen === "matching" && currentStep === 0) {
     navigate(-1);
     return;
@@ -147,17 +163,17 @@ const handlePreviousStep = useCallback(() => {
   if (screen === "octave") {
     setScreen("matching");
     setCurrentStep(totalSteps - 1);
-    setSelectedOptionId(null);
-    setPlayingOptionId(null);
-    setErrorMessage("");
+    setSelectedOctave(null);
+    setPlayingOctave(null);
     return;
   }
 
-  // 결과 → 옥타브 확인
+  // 결과 화면 → 옥타브 확인
   if (screen === "result") {
     setScreen("octave");
   }
 }, [screen, currentStep, totalSteps, navigate]);
+
 
 useEffect(() => {
   window.addEventListener("frequency-back", handlePreviousStep);
@@ -171,8 +187,27 @@ useEffect(() => {
   옥타브 확인 화면
 */
 if (screen === "octave") {
+  const octaveOptions = [
+    {
+      frequency: 426,
+      description: "한 옥타브 낮은 소리",
+      waveHeights: [22, 32, 38, 28, 34, 24, 30],
+    },
+    {
+      frequency: 853,
+      description: "지금까지 찾은 중심 소리",
+      waveHeights: [28, 38, 34, 30, 24, 32, 26],
+    },
+    {
+      frequency: 1706,
+      description: "한 옥타브 높은 소리",
+      waveHeights: [18, 24, 30, 36, 40, 38, 34, 30, 24, 20],
+    },
+  ];
+
   return (
     <div className="flex min-h-full flex-col px-5 pb-6">
+      {/* 기존 진행바 그대로 */}
       <ProgressSection width={progressWidth} />
 
       <section className="pt-12">
@@ -184,57 +219,153 @@ if (screen === "octave") {
             text-text-primary
           "
         >
-          마지막으로 한 번만
-          <br />
-          확인할게요.
+          마지막으로 확인할게요.
         </h1>
 
-        <p className="mt-3 text-[0.75rem] leading-5 text-text-secondary">
-          비슷하게 느껴지는 높이 중
-          평소 들리는 소리와 가장 가까운 것을
-          골라주세요.
-        </p>
-
-        <div
+        <p
           className="
-            mt-6 flex h-14 items-center justify-center
-            rounded-[0.75rem]
-            border border-[#236653]
-            bg-[#103329]
-            text-[0.75rem] font-semibold
-            text-[#60CEA7]
+            mt-2
+            text-[0.75rem]
+            leading-5
+            text-text-secondary
           "
         >
-          7번 비교 결과 · 약 853 Hz 부근
+          비슷하게 느껴지는 높이 중
+          <br />
+          평소 들리는 소리와 가장 가까운 것을 골라주세요.
+        </p>
+
+        <div className="mt-10 flex flex-col gap-3">
+          {octaveOptions.map((option) => {
+            const selected =
+              selectedOctave === option.frequency;
+
+            const playing =
+              playingOctave === option.frequency;
+
+            return (
+              <div
+                key={option.frequency}
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  setSelectedOctave(option.frequency);
+                }}
+                onKeyDown={(event) => {
+                  if (
+                    event.key === "Enter" ||
+                    event.key === " "
+                  ) {
+                    setSelectedOctave(option.frequency);
+                  }
+                }}
+                className={`
+                  flex min-h-[76px] w-full
+                  cursor-pointer items-center
+                  rounded-[12px]
+                  border px-3
+                  transition-colors
+                  ${
+                    selected
+                      ? "border-[#38A887] bg-[#173A34]"
+                      : "border-[#24464A] bg-[#102126]"
+                  }
+                `}
+              >
+                {/* 파형 박스 */}
+                <div
+                  className="
+                    flex h-[58px] w-[58px]
+                    shrink-0 items-center justify-center
+                    rounded-[10px]
+                    bg-[#07191D]
+                  "
+                >
+                  <div className="flex items-center gap-[3px]">
+                    {option.waveHeights.map(
+                      (height, index) => (
+                        <span
+                          key={index}
+                          className="
+                            w-[3px]
+                            rounded-full
+                            bg-[#60CEA7]
+                          "
+                          style={{
+                            height: `${height}px`,
+                          }}
+                        />
+                      ),
+                    )}
+                  </div>
+                </div>
+
+                {/* 주파수 / 설명 */}
+                <div className="ml-4">
+                  <p
+                    className="
+                      text-[14px]
+                      font-bold
+                      text-text-primary
+                    "
+                  >
+                    {option.frequency.toLocaleString()} Hz
+                  </p>
+
+                  <p
+                    className="
+                      mt-1
+                      text-[11px]
+                      text-text-secondary
+                    "
+                  >
+                    {option.description}
+                  </p>
+                </div>
+
+                {/* 재생 버튼 */}
+                <button
+                  type="button"
+                  aria-label={
+                    playing
+                      ? `${option.frequency}Hz 일시정지`
+                      : `${option.frequency}Hz 재생`
+                  }
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleOctavePlay(option.frequency);
+                  }}
+                  className={`
+                    ml-auto
+                    flex h-8 w-8
+                    shrink-0
+                    items-center justify-center
+                    rounded-full
+                    ${
+                      playing
+                        ? "bg-[#60CEA7] text-[#07100D]"
+                        : "bg-[#0A4939] text-[#071B16]"
+                    }
+                  `}
+                >
+                  {playing ? (
+                    <span className="text-[12px] font-bold">
+                      Ⅱ
+                    </span>
+                  ) : (
+                    <span className="ml-[2px] text-[12px]">
+                      ▶
+                    </span>
+                  )}
+                </button>
+              </div>
+            );
+          })}
         </div>
 
-        <div className="mt-5 flex flex-col gap-3">
-          <OctaveOption
-            label="A"
-            frequency={426}
-            description="한 옥타브 낮은 소리"
-          />
-
-          <OctaveOption
-            label="B"
-            frequency={853}
-            description="지금까지 찾은 중심 소리"
-            selected
-          />
-
-          <OctaveOption
-            label="C"
-            frequency={1706}
-            description="한 옥타브 높은 소리"
-          />
-        </div>
-
-        <div
+        <p
           className="
-            mt-5 rounded-[0.75rem]
-            border border-[#24464A]
-            bg-[#102126]
-            p-4
+            mt-8
             text-[0.6875rem]
             leading-5
             text-text-secondary
@@ -243,20 +374,25 @@ if (screen === "octave") {
           지원 범위를 벗어나는 후보는 자동으로 제외해요.
           <br />
           선택한 결과에 따라 저장할 대표 음역을 마지막으로 보정합니다.
-        </div>
+        </p>
       </section>
 
       <div className="mt-auto pt-10">
         <button
           type="button"
           onClick={handleOctaveConfirm}
-          className="
-            h-14 w-full rounded-[0.75rem]
-            bg-[#60CEA7]
+          disabled={selectedOctave === null}
+          className={`
+            h-14 w-full
+            rounded-[0.75rem]
             text-[0.875rem]
             font-bold
-            text-[#07100d]
-          "
+            ${
+              selectedOctave !== null
+                ? "bg-[#60CEA7] text-[#07100D]"
+                : "bg-[#214750] text-[#0D1719]"
+            }
+          `}
         >
           확인
         </button>
@@ -463,76 +599,5 @@ function ProgressSection({
   );
 }
 
-interface OctaveOptionProps {
-  label: string;
-  frequency: number;
-  description: string;
-  selected?: boolean;
-}
-
-function OctaveOption({
-  label,
-  frequency,
-  description,
-  selected = false,
-}: OctaveOptionProps) {
-  return (
-    <div
-      className={`
-        flex min-h-[76px] items-center
-        rounded-[0.75rem] border px-3
-        ${
-          selected
-            ? "border-[#60CEA7] bg-[#173A34]"
-            : "border-[#24464A] bg-[#102126]"
-        }
-      `}
-    >
-      <div
-        className={`
-          flex size-8 shrink-0
-          items-center justify-center
-          rounded-full
-          text-[0.75rem] font-semibold
-          ${
-            selected
-              ? "bg-[#60CEA7] text-[#07100d]"
-              : "border border-[#315259] text-text-secondary"
-          }
-        `}
-      >
-        {label}
-      </div>
-
-      <div className="ml-3">
-        <p className="text-[0.8125rem] font-semibold text-text-primary">
-          {frequency.toLocaleString()} Hz
-        </p>
-
-        <p className="mt-1 text-[0.6875rem] text-text-secondary">
-          {description}
-        </p>
-
-        {selected && (
-          <p className="mt-1 text-[0.6875rem] font-medium text-[#60CEA7]">
-            ✓ 가장 비슷해요
-          </p>
-        )}
-      </div>
-
-      <button
-        type="button"
-        className="
-          ml-auto
-          text-[0.6875rem]
-          font-medium
-          text-[#60CEA7]
-        "
-      >
-        ▶ 듣기
-      </button>
-    </div>
-  );
-}
 
 export default FrequencyPage;
