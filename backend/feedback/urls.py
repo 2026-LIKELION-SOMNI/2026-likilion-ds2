@@ -20,7 +20,7 @@ urlpatterns = [
     # F-905: 지연 평가 제출
     path(
         "<int:pk>/",
-        views.DelayedEvaluationSubmitView.as_view(),
+        views.EvaluationSubmitView.as_view(),
         name="evaluation-update",
     ),
     # 명시적 건너뛰기

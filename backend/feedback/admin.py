@@ -5,7 +5,7 @@ from .models import InterventionEvaluation
 
 @admin.register(InterventionEvaluation)
 class InterventionEvaluationAdmin(admin.ModelAdmin):
-    list_display = (
+    list_display = [
         "id",
         "user",
         "intervention_type",
@@ -13,9 +13,19 @@ class InterventionEvaluationAdmin(admin.ModelAdmin):
         "discomfort_after",
         "tension_after",
         "helpfulness",
-        "is_delayed",
-        "skipped",
+        "status",
+        "created_at",
         "evaluated_at",
-    )
-    list_filter = ("intervention_type", "helpfulness", "is_delayed", "skipped")
-    search_fields = ("user__username",)
+    ]
+
+    list_filter = [
+        "intervention_type",
+        "helpfulness",
+        "status",
+    ]
+
+    search_fields = [
+        "user__id",
+    ]
+
+    ordering = ["-created_at"]
