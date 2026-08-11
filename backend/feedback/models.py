@@ -2,6 +2,7 @@ from django.apps import apps
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from accounts.models import AnonymousUser
 
 
 # sound/relaxation 앱 미확정으로 인해 우선 소프트 참조로 개입. 추후 FK 구조로 개선 필요
@@ -27,12 +28,11 @@ class EvaluationStatus(models.TextChoices):
 
 # 개입 후 효과 평가(평가 강제하지 않음)
 class InterventionEvaluation(models.Model):
-
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="intervention_evaluations",
-    )
+    AnonymousUser,
+    on_delete=models.CASCADE,
+    related_name="intervention_evaluations",
+)
 
     # 소프트 참조: sound.SoundSession 또는 relaxation.RelaxationSession의 PK
     intervention_type = models.CharField(max_length=20, choices=InterventionType.choices)
