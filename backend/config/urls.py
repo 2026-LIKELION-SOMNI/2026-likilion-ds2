@@ -10,6 +10,7 @@ urlpatterns = [
     path("api/checkin/", include("checkin.urls")),
     path("api/feedback/", include("feedback.urls")),
     path("api/tinnitus/", include("tinnitus.urls")),
+    path("api/records/", include("records.urls")),
 ]
 
 if settings.DEBUG:
