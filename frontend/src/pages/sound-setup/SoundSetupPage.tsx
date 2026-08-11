@@ -72,7 +72,7 @@ function SoundSetupPage() {
   if (screen === "ready") {
     return (
       <div className="flex min-h-full flex-col px-5 pb-6">
-        <section className="pt-16">
+        <section className="pt-8">
           <h1
             className="
               text-[1.25rem]
@@ -149,7 +149,7 @@ function SoundSetupPage() {
               </span>
 
               <span className="text-[0.75rem] font-semibold text-text-primary">
-                잔잔한 빗소리 · 75%
+                잔잔한 빗소리
               </span>
             </div>
 
@@ -159,7 +159,7 @@ function SoundSetupPage() {
               </span>
 
               <span className="text-[0.75rem] font-semibold text-text-primary">
-                핑크노이즈 · 25%
+                핑크노이즈
               </span>
             </div>
           </div>

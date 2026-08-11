@@ -68,24 +68,20 @@ function NatureSoundPage() {
 
   return (
     <div className="flex min-h-full flex-col px-4 pb-6">
-      {/* 상단 진행선 */}
-      <div className="mt-5 h-[3px] w-full rounded-full bg-[#28484B]">
-        <div className="h-full w-full rounded-full bg-[#60CEA7]" />
-      </div>
 
       {/* 질문 */}
-      <section className="pt-10">
+      <section className="pt-8">
         <h1
-        className="
-            text-[20px]
+          className="
+            text-[24px]
             leading-[30px]
             font-bold
             text-text-primary
-        "
+          "
         >
-        어떤 배경 소리가
-        <br />
-        가장 편안한가요?
+          어떤 배경 소리가
+          <br />
+          가장 편안한가요?
         </h1>
 
         {/* 검색 */}

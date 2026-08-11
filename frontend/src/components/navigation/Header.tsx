@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 interface HeaderInfo {
@@ -63,19 +64,45 @@ function Header() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const [frequencyTitle, setFrequencyTitle] =
+    useState("음역 매칭");
+
   const headerInfo = HEADER_INFO[location.pathname] ?? {
     title: "Somni",
     showBackButton: true,
   };
 
+  // FrequencyPage가 보내는 헤더 제목 받기
+  useEffect(() => {
+    const handleFrequencyTitle = (event: Event) => {
+      const customEvent = event as CustomEvent<string>;
+
+      setFrequencyTitle(customEvent.detail);
+    };
+
+    window.addEventListener(
+      "frequency-title",
+      handleFrequencyTitle,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "frequency-title",
+        handleFrequencyTitle,
+      );
+    };
+  }, []);
+
   const handleBack = () => {
-    // 음역 매칭 내부 단계 뒤로가기
+    // 음역 매칭 내부 단계
     if (location.pathname === "/frequency") {
-      window.dispatchEvent(new Event("frequency-back"));
+      window.dispatchEvent(
+        new Event("frequency-back"),
+      );
       return;
     }
 
-    // 자연음 선택 → 음역 매칭 결과(100%) 화면
+    // 자연음 선택 → 음역 매칭 결과 화면
     if (location.pathname === "/nature-sound") {
       navigate("/frequency", {
         state: { screen: "result" },
@@ -83,13 +110,14 @@ function Header() {
       return;
     }
 
-    // 사운드 준비 / 혼합점 내부 단계 뒤로가기
+    // 사운드 준비 / 혼합점 내부 단계
     if (location.pathname === "/sound-setup") {
-      window.dispatchEvent(new Event("sound-setup-back"));
+      window.dispatchEvent(
+        new Event("sound-setup-back"),
+      );
       return;
     }
 
-    // 그 외 페이지
     navigate(-1);
   };
 
@@ -98,6 +126,11 @@ function Header() {
       navigate("/sound-setup");
     }
   };
+
+  const title =
+    location.pathname === "/frequency"
+      ? frequencyTitle
+      : headerInfo.title;
 
   return (
     <header className="safe-area-top shrink-0">
@@ -148,7 +181,7 @@ function Header() {
               not-italic
             "
           >
-            {headerInfo.title}
+            {title}
           </h1>
         ) : (
           <h1
