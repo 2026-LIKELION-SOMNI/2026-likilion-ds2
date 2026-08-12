@@ -1,14 +1,33 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import plusIcon from "../../assets/icons/Plus.svg";
+import minusIcon from "../../assets/icons/Minus.svg";
 
 type SoundSetupScreen = "ready" | "mixing";
 
-const WAVE_HEIGHTS = [
-  36, 42, 44, 46, 44, 40, 36, 32,
-  30, 34, 40, 44, 48, 50, 46, 42,
-  38, 36, 40, 44, 48, 52, 50, 46,
-  42, 40, 44, 48, 50,
+const READY_WAVE_HEIGHTS = [
+  40, 42, 44, 46, 46, 44, 42, 40, 38, 36,
+  34, 32, 30, 28, 28, 30, 32, 34, 36, 38,
+  40, 42, 44, 46,
+
+  // 가운데 notch
+  12, 12, 12, 12,
+
+  38, 40, 42, 44, 46, 48, 46, 44, 42, 40,
+  38, 36, 34, 32, 30, 30, 32, 34, 36, 38,
+  40, 42, 44, 44,
 ];
+
+const MIXING_WAVE_HEIGHTS = [
+  48, 42, 34, 28, 24, 22, 24, 28, 34, 42,
+  48, 52, 48, 42, 34, 28, 24, 22, 24, 28,
+  36, 44, 50, 52, 48, 42, 34, 28, 24, 22,
+  24, 28, 36, 44, 50, 52, 48, 42, 34, 28,
+  24, 22, 24, 30, 38, 46, 52,
+];
+
+const NOTCH_START = 24;
+const NOTCH_END = 27;
 
 function SoundSetupPage() {
   const navigate = useNavigate();
@@ -94,21 +113,25 @@ function SoundSetupPage() {
               px-4 py-7
             "
           >
-            <div className="flex h-[72px] items-center justify-center gap-[3px]">
-              {WAVE_HEIGHTS.map((height, index) => (
-                <span
-                  key={index}
-                  className={`
-                    w-[3px] rounded-full
-                    ${
-                      index >= 13 && index <= 16
-                        ? "bg-[#A58D51]"
-                        : "bg-[#60CEA7]"
+            <div className="flex h-[72px] w-full items-center justify-center gap-[2px]">
+              {READY_WAVE_HEIGHTS.map((height, index) => {
+                const isNotch =
+                  index >= NOTCH_START && index <= NOTCH_END;
+
+                return (
+                  <span
+                    key={index}
+                    className={
+                      isNotch
+                        ? "w-[4px] shrink-0 rounded-[2px] bg-[rgba(243,197,106,0.55)]"
+                        : "min-w-[3px] flex-1 rounded-full bg-[#60CEA7]"
                     }
-                  `}
-                  style={{ height: `${height}px` }}
-                />
-              ))}
+                    style={{
+                      height: isNotch ? "12px" : `${height}px`,
+                    }}
+                  />
+                );
+              })}
             </div>
 
             <div
@@ -237,32 +260,42 @@ function SoundSetupPage() {
             {volume}%
           </p>
 
-          <div className="mt-3 flex h-[64px] items-center gap-[3px]">
-            {WAVE_HEIGHTS.map((height, index) => (
-              <span
-                key={index}
-                className="flex-1 rounded-full bg-[#60CEA7]"
-                style={{ height: `${height}px` }}
-              />
-            ))}
-          </div>
+        <div className="mt-3 flex h-[72px] w-full items-center gap-[2px]">
+          {MIXING_WAVE_HEIGHTS.map((height, index) => (
+            <span
+              key={index}
+              className="
+                min-w-[3px]
+                flex-1
+                rounded-full
+                bg-[#60CEA7]
+              "
+              style={{
+                height: `${height}px`,
+              }}
+            />
+          ))}
         </div>
 
-        <div className="mt-7 flex items-center gap-4">
+        </div>
+
+        <div className="mt-7 flex w-full items-center justify-between">
           <button
             type="button"
             onClick={handleVolumeDown}
             aria-label="볼륨 낮추기"
             className="
-              flex size-10 shrink-0
+              flex h-[35px] w-[35px] shrink-0
               items-center justify-center
               rounded-full
-              border border-[#38A887]
-              text-[1.5rem]
-              text-text-primary
+              border border-[#2B8E78]
             "
           >
-            −
+            <img
+              src={minusIcon}
+              alt=""
+              className="h-5 w-5"
+            />
           </button>
 
           <input
@@ -275,7 +308,7 @@ function SoundSetupPage() {
             }
             aria-label="볼륨 조절"
             className="
-              min-w-0 flex-1
+              mx-5 min-w-0 flex-1
               accent-[#60CEA7]
             "
           />
@@ -285,15 +318,17 @@ function SoundSetupPage() {
             onClick={handleVolumeUp}
             aria-label="볼륨 높이기"
             className="
-              flex size-10 shrink-0
+              flex h-[35px] w-[35px] shrink-0
               items-center justify-center
               rounded-full
-              border border-[#38A887]
-              text-[1.5rem]
-              text-text-primary
+              border border-[#2B8E78]
             "
           >
-            +
+            <img
+              src={plusIcon}
+              alt=""
+              className="h-5 w-5"
+            />
           </button>
         </div>
 
