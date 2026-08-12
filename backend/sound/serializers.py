@@ -45,9 +45,6 @@ class SoundSessionResultSerializer(serializers.ModelSerializer):
             "initial_volume",
             "max_volume_applied",
 
-            # 혼합점 탐색 결과
-            "mixing_point_gain",
-
             "created_at",
         ]
 
@@ -135,9 +132,3 @@ class SoundDiscomfortReportSerializer(serializers.ModelSerializer):
 
         return value
 
-# 혼합점 탐색 중 사용자가 선택한 gain 값 저장
-class SoundMixingPointUpdateSerializer(serializers.Serializer):
-    mixing_point_gain = serializers.FloatField(
-        min_value=0.0,
-        max_value=0.6,
-    )

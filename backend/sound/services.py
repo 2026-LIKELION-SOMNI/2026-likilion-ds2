@@ -51,6 +51,7 @@ class GenerationInput:
     tinnitus_center_hz: float
     tinnitus_freq_min_hz: float
     tinnitus_freq_max_hz: float
+    mixing_point_gain: float
 
     # 사용자 사운드 선호
     sound_preferences: list[str]
@@ -172,15 +173,11 @@ def build_mixing_point_ramp_spec(
 def decide_parameters(
     gi: GenerationInput,
 ) -> dict:
-
-
     frequency_bands = [
         build_notch_filter_spec(
             gi.tinnitus_center_hz
         )
     ]
-
-
     avoided = set()
 
     if "too_similar" in gi.past_discomfort_reasons:
@@ -284,6 +281,11 @@ def decide_parameters(
         ),
     )
 
+    target_volume = min(
+    gi.mixing_point_gain,
+    SAFE_MAX_VOLUME,
+)
+
 
     # 프론트로 전달할 최종 사운드 설계 파라미터
 
@@ -297,10 +299,10 @@ def decide_parameters(
         "initial_volume": SAFE_INITIAL_VOLUME,
         "max_volume": SAFE_MAX_VOLUME,
 
-        # 혼합점 탐색용
+        # 혼합점 탐색용(사용자가 저장한 gain까지만 증가)
         "mixing_point_ramp": (
             build_mixing_point_ramp_spec(
-                target_volume=SAFE_MAX_VOLUME
+                target_volume=target_volume
             )
         ),
     }

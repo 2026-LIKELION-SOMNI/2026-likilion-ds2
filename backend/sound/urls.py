@@ -40,9 +40,4 @@ urlpatterns = [
         views.SoundDiscomfortReportView.as_view(),
         name="session-discomfort-report",
     ),
-    path(
-        "<uuid:uuid>/sessions/<uuid:session_id>/mixing-point/",
-        views.SoundMixingPointView.as_view(),
-        name="session-mixing-point",
-    ),
 ]

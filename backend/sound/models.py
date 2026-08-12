@@ -126,14 +126,6 @@ class SoundSession(models.Model):
         blank=True,
     )
 
-    # 혼합점 탐색 결과
-    # 프론트가 dB 램프를 재생하다 사용자가 선택한 순간의 gain
-    mixing_point_gain = models.FloatField(
-        null=True,
-        blank=True,
-        help_text="혼합점 탐색 중 사용자가 선택한 gain 값",
-    )
-
     # 불편 신고 후 다시 생성한 경우 새 SoundSession이 어떤 기존 세션에서 재생성되었는지 기록
     regenerated_from = models.ForeignKey(
         "self",

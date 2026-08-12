@@ -12,6 +12,7 @@ from .serializers import (
     OctaveCheckSerializer,
     PitchMatchSessionSerializer,
     TinnitusProfileSerializer,
+    MixingPointGainSerializer,
 )
 from .services import pitch_matching as pm
 
@@ -141,8 +142,6 @@ class OctaveCheckView(APIView):
         session.lower_bound = result["lower_bound"]
         session.upper_bound = result["upper_bound"]
         session.octave_corrected = result["octave_corrected"]
-        session.done = True
-        session.completed_at = timezone.now()
         session.save()
 
         return Response(PitchMatchSessionSerializer(session).data, status=status.HTTP_200_OK)
@@ -186,4 +185,45 @@ class MatchingAbandonView(APIView):
         session.save(update_fields=["abandoned", "abandoned_at"])
         return Response(
             {"id": session.id, "abandoned": True, "abandoned_at": session.abandoned_at}
+        )
+
+
+# 혼합점 저장 view
+class MatchingMixingPointView(APIView):
+
+    def post(self, request, session_id):
+        session = get_object_or_404(
+            PitchMatchSession,
+            pk=session_id,
+            done=False,
+            abandoned=False,
+            octave_selection__isnull=False,
+        )
+
+        serializer = MixingPointGainSerializer(
+            data=request.data
+        )
+        serializer.is_valid(
+            raise_exception=True
+        )
+
+        session.mixing_point_gain = (
+            serializer.validated_data["mixing_point_gain"]
+        )
+
+        # 혼합점까지 입력돼야 최종 완료
+        session.done = True
+        session.completed_at = timezone.now()
+
+        session.save(
+            update_fields=[
+                "mixing_point_gain",
+                "done",
+                "completed_at",
+            ]
+        )
+
+        return Response(
+            PitchMatchSessionSerializer(session).data,
+            status=status.HTTP_200_OK,
         )

@@ -16,7 +16,6 @@ from .models import SoundDiscomfortReport, SoundSession
 from .serializers import (
     GenerateTodaySoundRequestSerializer,
     SoundDiscomfortReportSerializer,
-    SoundMixingPointUpdateSerializer,
     SoundPlaybackUpdateSerializer,
     SoundSessionResultSerializer,
     SoundVolumeUpdateSerializer,
@@ -49,9 +48,12 @@ def _gather_generation_input(
     # 음역 매칭을 완료하지 않은 사용자
     if matching_session is None:
         raise services.MatchingNotCompletedError(
-            "완료된 음역 매칭 결과가 없어 "
-            "사운드를 생성할 수 없습니다."
+            "완료된 음역 매칭 결과가 없어 사운드를 생성할 수 없습니다."
         )
+    if matching_session.mixing_point_gain is None:
+        raise services.MatchingNotCompletedError(
+        "혼합점 측정이 완료되지 않아 사운드를 생성할 수 없습니다."
+    )
 
     # 최근 checkin
     latest_checkin = (
@@ -114,6 +116,7 @@ def _gather_generation_input(
         tinnitus_freq_max_hz=(
             matching_session.upper_bound
         ),
+        mixing_point_gain=matching_session.mixing_point_gain,
 
         sound_preferences=getattr(
             personalization,
@@ -807,54 +810,4 @@ class SoundDiscomfortReportView(APIView):
         return Response(
             response_data,
             status=status.HTTP_201_CREATED,
-        )
-# 혼합점 저장
-class SoundMixingPointView(APIView):
-    def patch(
-        self,
-        request,
-        uuid,
-        session_id,
-    ):
-        user = get_object_or_404(
-            AnonymousUser,
-            uuid=uuid,
-        )
-
-        session = get_object_or_404(
-            SoundSession,
-            session_id=session_id,
-            user=user,
-        )
-
-        body = (
-            SoundMixingPointUpdateSerializer(
-                data=request.data
-            )
-        )
-
-        body.is_valid(
-            raise_exception=True
-        )
-
-        session.mixing_point_gain = (
-            body.validated_data[
-                "mixing_point_gain"
-            ]
-        )
-
-        session.save(
-            update_fields=[
-                "mixing_point_gain",
-                "updated_at",
-            ]
-        )
-
-        return Response(
-            {
-                "mixing_point_gain": (
-                    session.mixing_point_gain
-                )
-            },
-            status=status.HTTP_200_OK,
         )
