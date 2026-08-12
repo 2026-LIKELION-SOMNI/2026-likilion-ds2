@@ -72,6 +72,7 @@ class PitchMatchSessionSerializer(serializers.ModelSerializer):
             "upper_bound",
             "octave_corrected",
             "octave_check_limited",
+            "mixing_point_gain", #혼합점 필드 추가
             "created_at",
             "completed_at",
         ]
@@ -82,3 +83,10 @@ class PitchMatchSessionSerializer(serializers.ModelSerializer):
             from .services.pitch_matching import octave_test_candidates
             return octave_test_candidates(obj.provisional_center)
         return None
+
+#혼합점 입력
+class MixingPointGainSerializer(serializers.Serializer):
+    mixing_point_gain = serializers.FloatField(
+        min_value=0.0,
+        max_value=0.6,
+    )

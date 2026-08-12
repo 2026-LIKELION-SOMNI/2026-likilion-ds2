@@ -12,4 +12,5 @@ urlpatterns = [
     path("matching/result/<uuid:uuid>/", views.MatchingResultView.as_view(), name="matching-result"),
     path("matching/volume-config/", views.MatchingVolumeConfigView.as_view(), name="matching-volume-config"),
     path("matching/abandon/<int:session_id>/", views.MatchingAbandonView.as_view(), name="matching-abandon"),
+    path("matching/<int:session_id>/mixing-point/",views.MatchingMixingPointView.as_view(),name="matching-mixing-point",),
 ]

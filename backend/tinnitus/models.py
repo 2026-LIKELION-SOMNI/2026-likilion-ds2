@@ -148,6 +148,13 @@ class PitchMatchSession(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 
+    # 혼합점(사용자가 이명이 덮인다고 느낀 볼륨 지점)
+    mixing_point_gain = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="음역 매칭 중 사용자가 이명이 덮인다고 느낀 지점의 gain 값",
+    )
+
     class Meta:
         verbose_name = "음역 매칭 세션"
         verbose_name_plural = "음역 매칭 세션"
