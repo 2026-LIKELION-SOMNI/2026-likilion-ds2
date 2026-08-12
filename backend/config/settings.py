@@ -33,6 +33,8 @@ INSTALLED_APPS = [
     'accounts',
     'onboarding',
     'checkin',
+    'feedback',
+    'tinnitus',
 ]
 
 MIDDLEWARE = [

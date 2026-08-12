@@ -8,6 +8,8 @@ urlpatterns = [
     path("api/accounts/", include("accounts.urls")),
     path("api/onboarding/", include("onboarding.urls")),
     path("api/checkin/", include("checkin.urls")),
+    path("api/feedback/", include("feedback.urls")),
+    path("api/tinnitus/", include("tinnitus.urls")),
 ]
 
 if settings.DEBUG:
