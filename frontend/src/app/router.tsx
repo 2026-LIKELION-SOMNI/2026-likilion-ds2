@@ -9,6 +9,7 @@ import CheckInPage from "../pages/check-in/CheckInPage";
 import FrequencyPage from "../pages/frequency/FrequencyPage";
 import NatureSoundPage from "../pages/nature-sound/NatureSoundPage";
 import SoundSetupPage from "../pages/sound-setup/SoundSetupPage";
+import RecoverySessionPage from "../pages/recovery-session/RecoverySessionPage";
 
 
 const router = createBrowserRouter([
@@ -44,6 +45,10 @@ const router = createBrowserRouter([
       {
         path: "/sound-setup",
         element: <SoundSetupPage />,
+      },
+      {
+        path: "/recovery-session",
+        element: <RecoverySessionPage />,
       },
     ],
   },
