@@ -33,6 +33,14 @@ const HEADER_INFO: Record<string, HeaderInfo> = {
     title: "맞춤 수면 사운드",
     showBackButton: true,
   },
+    "/sound/my-sound": {
+    title: "나만의 사운드",
+    showBackButton: true,
+  },
+  "/sound/change-nature": {
+    title: "자연음 선택",
+    showBackButton: true,
+  },
   "/sound-setup": {
     title: "음역 매칭",
     showBackButton: true,

@@ -24,6 +24,7 @@ const FEEDBACK_REASONS = [
   "이명과 너무 비슷해요",
   "변화가 너무 많아요",
   "배경음이 불편해요",
+  "기타",
 ];
 
 function RecoverySessionPage() {
@@ -37,8 +38,16 @@ function RecoverySessionPage() {
   const [selectedSymptoms, setSelectedSymptoms] =
     useState<string[]>([]);
 
-  const [selectedFeedback, setSelectedFeedback] =
-    useState<string | null>(null);
+    const [selectedFeedback, setSelectedFeedback] =
+        useState<string[]>([]);
+
+    const toggleFeedback = (reason: string) => {
+        setSelectedFeedback((previous) =>
+            previous.includes(reason)
+            ? previous.filter((item) => item !== reason)
+            : [...previous, reason],
+        );
+        };
 
   const toggleSymptom = (symptom: string) => {
     setSelectedSymptoms((previous) =>
@@ -62,7 +71,7 @@ function RecoverySessionPage() {
     navigate(-1);
   };
   const handleChangeSound = () => {
-    if (!selectedFeedback) {
+    if (selectedFeedback.length === 0) {
         return;
     }
 
@@ -71,7 +80,7 @@ function RecoverySessionPage() {
     // 백엔드가 불편 사유를 바탕으로 새로운 사운드를 결정
     // 결정된 사운드를 받아 회복 세션에 적용
 
-    setSelectedFeedback(null);
+    setSelectedFeedback([]);
     setPlaying(true);
     setScreen("session");
     };
@@ -345,48 +354,60 @@ function RecoverySessionPage() {
             "
             >
             <h2
-                className="
-                text-[20px]
-                leading-[28px]
+            className="
+                font-sans
+                text-[22px]
                 font-bold
-                text-[#ECF3F2]
-                "
+                leading-normal
+                text-[#F0F7FA]
+            "
             >
                 소리가 불편했나요?
             </h2>
 
             <p
-                className="
+            className="
                 mt-3
-                text-[11px]
-                text-text-secondary
-                "
+                font-sans
+                text-[13px]
+                font-normal
+                leading-normal
+                text-[#809EA8]
+            "
             >
-                느낌을 골라주면 지금 세션과 다음 추천을 조정할게요.
+            느낌을 골라주면 지금 세션과 다음 추천을 조정할게요.
             </p>
 
-            <div className="mt-6 grid grid-cols-2 gap-2">
-                {FEEDBACK_REASONS.map((reason) => {
+            <div className="mt-6 flex flex-col gap-2">
+            {/* 첫 번째 줄 */}
+            <div className="flex gap-2">
+                {FEEDBACK_REASONS.slice(0, 2).map((reason) => {
                 const selected =
-                    selectedFeedback === reason;
+                    selectedFeedback.includes(reason);
 
                 return (
                     <button
                     key={reason}
                     type="button"
-                    onClick={() =>
-                        setSelectedFeedback(reason)
-                    }
+                    onClick={() => toggleFeedback(reason)}
                     className={`
-                        h-[36px]
-                        rounded-full
-                        border
-                        text-[11px]
-                        ${
+                    inline-flex
+                    items-center
+                    justify-center
+                    rounded-[99px]
+                    border
+                    px-[20px]
+                    py-[10px]
+                    font-sans
+                    text-[13px]
+                    font-normal
+                    leading-normal
+                    whitespace-nowrap
+                    ${
                         selected
-                            ? "border-[#38A887] bg-[#154638] text-[#60CEA7]"
-                            : "border-[#294A4F] bg-[#102126] text-text-secondary"
-                        }
+                        ? "border-[#38A887] bg-[#154638] text-[#61DBB8]"
+                        : "border-[#24464E] bg-[#112126] text-[#809EA8]"
+                    }
                     `}
                     >
                     {reason}
@@ -395,20 +416,65 @@ function RecoverySessionPage() {
                 })}
             </div>
 
+            {/* 두 번째 줄 */}
+            <div className="flex gap-2">
+                {FEEDBACK_REASONS.slice(2).map((reason) => {
+                const selected =
+                    selectedFeedback.includes(reason);
+
+                return (
+                    <button
+                    key={reason}
+                    type="button"
+                    onClick={() => toggleFeedback(reason)}
+                    className={`
+                    inline-flex
+                    items-center
+                    justify-center
+                    rounded-[99px]
+                    border
+                    px-[20px]
+                    py-[10px]
+                    font-sans
+                    text-[13px]
+                    font-normal
+                    leading-normal
+                    whitespace-nowrap
+                    ${
+                        selected
+                        ? "border-[#38A887] bg-[#154638] text-[#61DBB8]"
+                        : "border-[#24464E] bg-[#112126] text-[#809EA8]"
+                    }
+                    `}
+                    >
+                    {reason}
+                    </button>
+                );
+                })}
+            </div>
+            </div>
+
             <div
                 className="
                 mt-7
-                rounded-[12px]
-                border border-[#24665D]
-                bg-[#10332F]
-                p-4
+                flex
+                flex-col
+                items-start
+                rounded-[18px]
+                border border-[#24464E]
+                bg-[#0F2B2C]
+                px-[16px]
+                pt-[14px]
+                pb-[39px]
                 "
             >
                 <p
                 className="
-                    text-[12px]
+                    font-sans
+                    text-[13px]
                     font-bold
-                    text-[#60CEA7]
+                    leading-normal
+                    text-[#61DBB8]
                 "
                 >
                 지금 바로 바꿀 수 있어요.
@@ -416,10 +482,12 @@ function RecoverySessionPage() {
 
                 <p
                 className="
-                    mt-2
-                    text-[10px]
-                    leading-5
-                    text-text-secondary
+                    mt-[19px]
+                    font-sans
+                    text-[12px]
+                    font-normal
+                    leading-normal
+                    text-[#F0F7FA]
                 "
                 >
                 오늘 상태는 유지하고 불편 요인만 제외해 다시 준비해요.
@@ -429,7 +497,7 @@ function RecoverySessionPage() {
             <button
                 type="button"
                 onClick={handleChangeSound}
-                disabled={!selectedFeedback}
+                disabled={selectedFeedback.length === 0}
                 className={`
                 mt-7
                 h-14 w-full
@@ -437,7 +505,7 @@ function RecoverySessionPage() {
                 text-[14px]
                 font-bold
                 ${
-                    selectedFeedback
+                    selectedFeedback.length > 0
                     ? "bg-[#60CEA7] text-[#07100D]"
                     : "bg-[#214750] text-[#0D1719]"
                 }
@@ -467,180 +535,215 @@ function RecoverySessionPage() {
     );
   }
 
-  /*
-   * 2. 안전 확인
-   */
-  if (screen === "safety") {
+/*
+ * 2. 세션 마치기
+ */
+    if (screen === "safety") {
     const hasSymptoms = selectedSymptoms.length > 0;
 
+    const handleSafetyConfirm = () => {
+        if (!hasSymptoms) {
+        return;
+        }
+
+        // TODO: 선택한 증상을 백엔드에 전달
+        console.log("선택된 증상:", selectedSymptoms);
+
+        // 세션 종료 후 홈으로 이동
+        navigate("/");
+    };
+
     return (
-      <div className="flex min-h-full flex-col px-5 pb-6">
+        <div className="relative min-h-full px-5 pb-[96px]">
         {/* 헤더 */}
         <div className="relative flex h-16 shrink-0 items-center justify-center">
-          <button
+            <button
             type="button"
             onClick={handleBack}
             aria-label="이전 화면"
             className="
-              absolute left-[-8px]
-              flex h-10 w-10
-              items-center justify-center
-              text-[1.8rem]
-              font-light
-              text-text-primary
+                absolute left-[-8px]
+                flex h-10 w-10
+                items-center justify-center
+                text-[1.8rem]
+                font-light
+                text-[#ECF3F2]
             "
-          >
+            >
             ‹
-          </button>
+            </button>
 
-          <h1 className="text-[1rem] font-bold text-text-primary">
-            안전 확인
-          </h1>
+            <h1
+            className="
+                text-center
+                font-sans
+                text-[20px]
+                leading-[23px]
+                font-bold
+                text-[#ECF3F2]
+            "
+            >
+            세션 마치기
+            </h1>
         </div>
 
+        {/* 내용 */}
         <section className="pt-10">
-          <h2
+            <h2
             className="
-              text-[1.25rem]
-              leading-[1.75rem]
-              font-bold
-              text-text-primary
+                font-sans
+                text-[27px]
+                font-bold
+                leading-normal
+                text-[#F0F7FA]
             "
-          >
+            >
             더 불편하거나
             <br />
             이상하게 느껴졌나요?
-          </h2>
+            </h2>
 
-          <p className="mt-4 text-[0.6875rem] text-text-secondary">
+            <p
+            className="
+                mt-5
+                font-sans
+                text-[13px]
+                font-normal
+                leading-normal
+                text-[#809EA8]
+            "
+            >
             느낀 증상을 알려주면 다음 추천에서 제외할게요.
-          </p>
+            </p>
 
-          <p
-            className="
-              mt-9
-              text-[0.75rem]
-              font-semibold
-              text-text-primary
-            "
-          >
-            어떤 느낌이었나요?
-          </p>
-
-          {/* 증상 선택 */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            {SYMPTOMS.map((symptom) => {
-              const selected =
-                selectedSymptoms.includes(symptom);
-
-              return (
-                <button
-                  key={symptom}
-                  type="button"
-                  onClick={() => toggleSymptom(symptom)}
-                  className={`
-                    h-[32px]
-                    rounded-full
-                    border
-                    px-4
-                    text-[0.6875rem]
-                    ${
-                      selected
-                        ? "border-[#38A887] bg-[#154638] text-[#60CEA7]"
-                        : "border-[#294A4F] bg-[#102126] text-text-secondary"
-                    }
-                  `}
-                >
-                  {symptom}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* 의료 안내 */}
-          <div
-            className="
-              mt-8
-              rounded-[14px]
-              border border-[#744343]
-              bg-[#382526]
-              p-4
-            "
-          >
             <p
-              className="
-                text-[0.75rem]
+            className="
+                mt-10
+                font-sans
+                text-[15px]
                 font-bold
-                text-[#F58C8C]
-              "
+                leading-normal
+                text-[#F0F7FA]
+            "
             >
-              이런 증상은 진료가 우선이에요.
+            어떤 느낌이었나요?
             </p>
 
-            <p
-              className="
-                mt-3
-                text-[0.625rem]
-                leading-[1.125rem]
-                text-[#E7CACA]
-              "
-            >
-              갑작스러운 한쪽 청력 저하, 심한 어지러움이나
-              통증이 있으면 사용을 멈추고 의료기관에
-              문의하세요.
-            </p>
+            {/* 증상 선택 */}
+            <div className="mt-4 flex flex-col gap-2">
+            {/* 첫 번째 줄 */}
+            <div className="flex gap-2">
+                {SYMPTOMS.slice(0, 3).map((symptom) => {
+                const selected = selectedSymptoms.includes(symptom);
 
-            <button
-              type="button"
-              className="
-                mt-4
-                text-[0.625rem]
-                font-semibold
-                text-[#F58C8C]
-              "
-            >
-              의료기관 찾아보기 〉
-            </button>
-          </div>
+                return (
+                    <button
+                    key={symptom}
+                    type="button"
+                    onClick={() => toggleSymptom(symptom)}
+                    className={`
+                        inline-flex
+                        items-center
+                        justify-center
+                        rounded-[99px]
+                        border
+                        px-[20px]
+                        py-[10px]
+                        font-sans
+                        text-[13px]
+                        font-normal
+                        leading-normal
+                        whitespace-nowrap
+                        transition-colors
+                        ${
+                        selected
+                            ? "border-[#38A887] bg-[#154638] text-[#61DBB8]"
+                            : "border-[#24464E] bg-[#112126] text-[#809EA8]"
+                        }
+                    `}
+                    >
+                    {symptom}
+                    </button>
+                );
+                })}
+            </div>
+
+            {/* 두 번째 줄 */}
+            <div className="flex gap-2">
+                {SYMPTOMS.slice(3).map((symptom) => {
+                    const selected = selectedSymptoms.includes(symptom);
+
+                    return (
+                    <button
+                        key={symptom}
+                        type="button"
+                        onClick={() => toggleSymptom(symptom)}
+                        className={`
+                        inline-flex
+                        items-center
+                        justify-center
+                        rounded-[99px]
+                        border
+                        px-[20px]
+                        py-[10px]
+                        font-sans
+                        text-[13px]
+                        font-normal
+                        leading-normal
+                        whitespace-nowrap
+                        transition-colors
+                        ${
+                            selected
+                            ? "border-[#38A887] bg-[#154638] text-[#61DBB8]"
+                            : "border-[#24464E] bg-[#112126] text-[#809EA8]"
+                        }
+                        `}
+                    >
+                        {symptom}
+                    </button>
+                    );
+                })}
+                </div>
+
+            </div>
+
         </section>
 
-        {/* 하단 버튼 */}
-        <div className="mt-auto">
-          <button
+        {/* 확인 버튼 */}
+        <div
+        className="
+            absolute
+            bottom-6
+            left-5
+            right-5
+        "
+        >
+        <button
             type="button"
+            onClick={handleSafetyConfirm}
             disabled={!hasSymptoms}
             className={`
-              h-14 w-full
-              rounded-[12px]
-              text-[0.875rem]
-              font-bold
-              ${
+            h-14
+            w-full
+            rounded-[12px]
+            font-sans
+            text-[14px]
+            font-bold
+            transition-colors
+            ${
                 hasSymptoms
-                  ? "bg-[#60CEA7] text-[#07100D]"
-                  : "bg-[#214750] text-[#0D1719]"
-              }
+                ? "bg-[#60CEA7] text-[#07100D]"
+                : "bg-[#214750] text-[#0D1719]"
+            }
             `}
-          >
-            호흡 가이드로 전환하기
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setScreen("feedback")}
-            className="
-              mt-5 w-full
-              text-center
-              text-[0.75rem]
-              font-medium
-              text-[#87CBE6]
-            "
-          >
-            오늘은 세션 마치기
-          </button>
+        >
+            확인
+        </button>
         </div>
-      </div>
+
+        </div>
     );
-  }
+    }
 
 
 }
