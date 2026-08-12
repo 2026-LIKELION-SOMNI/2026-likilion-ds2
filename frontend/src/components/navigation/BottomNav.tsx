@@ -43,62 +43,71 @@ function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  return (
+return (
     <nav
     className="
         absolute
-        bottom-0 left-0
+        bottom-0
+        left-0
+        right-0
         z-50
         flex
-        h-[88px]
-        w-full
         items-center
-        border-t border-[#24464A]
+        justify-center
+        gap-[48px]
+        border-t border-[#24464E]
         bg-[#071114]
+        px-[24px]
+        py-[8px]
     "
     >
-      {NAV_ITEMS.map((item) => {
-        const isActive =
-          item.path === "/"
-            ? location.pathname === "/"
-            : location.pathname.startsWith(item.path);
+    {NAV_ITEMS.map((item) => {
+      const isActive =
+        item.path === "/"
+          ? location.pathname === "/"
+          : location.pathname.startsWith(item.path);
 
-        return (
-          <button
-            key={item.path}
-            type="button"
-            onClick={() => navigate(item.path)}
-            className="
-              flex flex-1 flex-col
-              items-center justify-center
-              gap-[7px]
-            "
+      return (
+        <button
+          key={item.path}
+          type="button"
+          onClick={() => navigate(item.path)}
+          className="
+            flex
+            w-[52px]
+            shrink-0
+            flex-col
+            items-center
+            gap-[6px]
+          "
+        >
+          <img
+            src={isActive ? item.activeIcon : item.icon}
+            alt=""
+            aria-hidden="true"
+            className="h-[24px] w-[24px]"
+          />
+
+          <span
+            className={`
+              whitespace-nowrap
+              text-[11px]
+              font-medium
+              leading-normal
+              ${
+                isActive
+                  ? "text-[#61DBB8]"
+                  : "text-[#809EA8]"
+              }
+            `}
           >
-            <img
-              src={isActive ? item.activeIcon : item.icon}
-              alt=""
-              aria-hidden="true"
-              className="h-[24px] w-[24px]"
-            />
-
-            <span
-              className={`
-                text-[11px]
-                font-medium
-                ${
-                  isActive
-                    ? "text-[#61DBB8]"
-                    : "text-[#F0F7FA]"
-                }
-              `}
-            >
-              {item.label}
-            </span>
-          </button>
-        );
-      })}
-    </nav>
-  );
+            {item.label}
+          </span>
+        </button>
+      );
+    })}
+  </nav>
+);
 }
 
 export default BottomNav;
