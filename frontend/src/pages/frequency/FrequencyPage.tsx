@@ -1,15 +1,8 @@
-import {
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
-import {
-  useLocation,
-  useNavigate,
-} from "react-router-dom";
+import { useCallback, useEffect, useState, } from "react";
+import { useLocation, useNavigate, } from "react-router-dom";
 
 import FrequencyCard from "../../components/frequency/FrequencyCard";
-
+import { savePitchMatchSession, } from "../../utils/pitchMatchStorage";
 import playIcon from "../../assets/icons/play.svg";
 import pauseIcon from "../../assets/icons/pause.svg";
 
@@ -299,47 +292,21 @@ function FrequencyPage() {
         );
 
         /*
-         * 여러 소리가 함께 들려요
-         * → 대표 소리 선택 화면
-         */
-        if (
-          selectedTinnitusType ===
-          "multiple"
-        ) {
-          setRepresentativeType(null);
+        * 어떤 유형을 선택했든
+        * 다음은 대표 소리 선택 화면
+        */
+        setRepresentativeType(null);
+        setPlayingTinnitusType(null);
 
-          setScreen(
-            "representative",
-          );
-
-          return;
-        }
-
-        /*
-         * high / low / wide
-         * → 바로 음역 매칭 시작
-         */
-        const session =
-          await startPitchMatching();
-
-        setMatchSession(session);
-
-        setCurrentStep(
-          session.round_number - 1,
-        );
-
-        setSelectedOptionId(null);
-        setPlayingOptionId(null);
-
-        setScreen("matching");
+        setScreen("representative");
       } catch (error) {
         console.error(
-          "이명 프로필 저장 또는 음역 매칭 시작 실패",
+          "이명 프로필 저장 실패",
           error,
         );
 
         setErrorMessage(
-          "음역 매칭을 시작하지 못했어요.",
+          "선택 결과를 저장하지 못했어요.",
         );
       } finally {
         setIsLoading(false);
@@ -363,8 +330,6 @@ function FrequencyPage() {
     async () => {
       if (
         !representativeType ||
-        selectedTinnitusType !==
-          "multiple" ||
         isLoading
       ) {
         return;
@@ -376,17 +341,24 @@ function FrequencyPage() {
 
       try {
         setIsLoading(true);
-
+        
         const primaryTone =
           representativeType as Exclude<
             ToneType,
             "multiple"
           >;
 
+        sessionStorage.removeItem(
+          "somni-sound-setup-completed",
+        );
+
         const session =
-          await startPitchMatching(
-            primaryTone,
-          );
+          selectedTinnitusType === "multiple"
+            ? await startPitchMatching(
+                primaryTone,
+              )
+            : await startPitchMatching();
+
 
         setMatchSession(session);
 
@@ -589,6 +561,10 @@ function FrequencyPage() {
           );
 
         setMatchSession(
+          resultSession,
+        );
+
+        savePitchMatchSession(
           resultSession,
         );
 

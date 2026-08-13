@@ -53,9 +53,7 @@ function requireUuid() {
   const uuid = getUserUuid();
 
   if (!uuid) {
-    throw new Error(
-      "사용자 UUID가 없습니다.",
-    );
+    throw new Error("사용자 UUID가 없습니다.");
   }
 
   return uuid;
@@ -83,11 +81,32 @@ export async function saveTinnitusProfile(
       },
       body: JSON.stringify({
         tone_type: toneType,
+
+        /*
+         * 이전에 multiple을 선택했다가
+         * 일반 유형으로 다시 선택하는 경우
+         * 기존 대표 소리를 초기화한다.
+         */
+        ...(toneType !== "multiple"
+          ? {
+              primary_tone_type: null,
+            }
+          : {}),
       }),
     },
   );
 
   if (!response.ok) {
+    const errorData =
+      await response.json().catch(
+        () => null,
+      );
+
+    console.error(
+      "이명 프로필 저장 실패 응답:",
+      errorData,
+    );
+
     throw new Error(
       "이명 프로필 저장에 실패했습니다.",
     );
@@ -126,6 +145,16 @@ export async function startPitchMatching(
   );
 
   if (!response.ok) {
+    const errorData =
+      await response.json().catch(
+        () => null,
+      );
+
+    console.error(
+      "음역 매칭 시작 실패 응답:",
+      errorData,
+    );
+
     throw new Error(
       "음역 매칭 시작에 실패했습니다.",
     );
@@ -135,7 +164,7 @@ export async function startPitchMatching(
 }
 
 /*
- * A/B 선택
+ * A/B 음역 선택
  */
 export async function selectPitchMatch(
   sessionId: number,
@@ -155,6 +184,16 @@ export async function selectPitchMatch(
   );
 
   if (!response.ok) {
+    const errorData =
+      await response.json().catch(
+        () => null,
+      );
+
+    console.error(
+      "음역 선택 실패 응답:",
+      errorData,
+    );
+
     throw new Error(
       "음역 선택에 실패했습니다.",
     );
@@ -164,19 +203,21 @@ export async function selectPitchMatch(
 }
 
 /*
- * octave confusion test
+ * 옥타브 혼동 검사
  */
 export async function selectOctave(
   sessionId: number,
-  selected: "half" | "same" | "double",
+  selected:
+    | "half"
+    | "same"
+    | "double",
 ): Promise<PitchMatchSession> {
   const response = await fetch(
     `/api/tinnitus/matching/octave-check/${sessionId}/`,
     {
       method: "POST",
       headers: {
-        "Content-Type":
-          "application/json",
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         selected,
@@ -185,6 +226,16 @@ export async function selectOctave(
   );
 
   if (!response.ok) {
+    const errorData =
+      await response.json().catch(
+        () => null,
+      );
+
+    console.error(
+      "옥타브 선택 실패 응답:",
+      errorData,
+    );
+
     throw new Error(
       "옥타브 선택에 실패했습니다.",
     );
@@ -192,26 +243,75 @@ export async function selectOctave(
 
   return response.json();
 }
+
+/*
+ * 음역 매칭 이전 단계
+ *
+ * 백엔드의 back API가 구현된 이후 사용
+ */
+export async function goBackPitchMatch(
+  sessionId: number,
+): Promise<PitchMatchSession> {
+  const response = await fetch(
+    `/api/tinnitus/matching/back/${sessionId}/`,
+    {
+      method: "POST",
+    },
+  );
+
+  if (!response.ok) {
+    const errorData =
+      await response.json().catch(
+        () => null,
+      );
+
+    console.error(
+      "이전 음역 단계 이동 실패 응답:",
+      errorData,
+    );
+
+    throw new Error(
+      "이전 음역 단계로 이동하지 못했습니다.",
+    );
+  }
+
+  return response.json();
+}
+
+/*
+ * 혼합점 저장
+ *
+ * volume은 Web Audio API gain 값으로
+ * 0.0 ~ 0.6 범위를 사용한다.
+ */
 export async function saveMixingPoint(
   sessionId: number,
-  mixingPointGain: number,
+  gain: number,
 ): Promise<PitchMatchSession> {
   const response = await fetch(
     `/api/tinnitus/matching/${sessionId}/mixing-point/`,
     {
       method: "POST",
       headers: {
-        "Content-Type":
-          "application/json",
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        mixing_point_gain:
-          mixingPointGain,
+        mixing_point_gain: gain,
       }),
     },
   );
 
   if (!response.ok) {
+    const errorData =
+      await response.json().catch(
+        () => null,
+      );
+
+    console.error(
+      "혼합점 저장 실패 응답:",
+      errorData,
+    );
+
     throw new Error(
       "혼합점 저장에 실패했습니다.",
     );

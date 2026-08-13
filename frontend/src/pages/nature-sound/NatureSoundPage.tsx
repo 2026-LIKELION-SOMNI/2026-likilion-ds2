@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import NatureSoundCard from "../../components/nature-sound/NatureSoundCard";
@@ -10,6 +10,21 @@ import {
 
 function NatureSoundPage() {
   const navigate = useNavigate();
+  useEffect(() => {
+    const setupCompleted =
+      sessionStorage.getItem(
+        "somni-sound-setup-completed",
+      );
+
+    if (setupCompleted === "true") {
+      navigate(
+        "/recovery-session",
+        {
+          replace: true,
+        },
+      );
+    }
+  }, [navigate]);
   const [selectedCategory, setSelectedCategory] =
     useState<NatureSoundCategory>("추천");
 
