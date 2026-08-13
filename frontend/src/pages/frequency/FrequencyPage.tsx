@@ -2,8 +2,7 @@ import { useCallback, useEffect, useState, } from "react";
 import { useLocation, useNavigate, } from "react-router-dom";
 
 import FrequencyCard from "../../components/frequency/FrequencyCard";
-import { savePitchMatchSession, } from "../../utils/pitchMatchStorage";
-import playIcon from "../../assets/icons/play.svg";
+import { clearPitchMatchSession, getPitchMatchSession, savePitchMatchSession,} from "../../utils/pitchMatchStorage";import playIcon from "../../assets/icons/play.svg";
 import pauseIcon from "../../assets/icons/pause.svg";
 
 import {
@@ -91,9 +90,13 @@ function FrequencyPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const savedMatchSession =
+    getPitchMatchSession();
+
   const [screen, setScreen] =
     useState<FrequencyScreen>(
-      location.state?.screen === "result"
+      location.state?.screen === "result" &&
+        savedMatchSession
         ? "result"
         : "type",
     );
@@ -140,7 +143,7 @@ function FrequencyPage() {
     matchSession,
     setMatchSession,
   ] = useState<PitchMatchSession | null>(
-    null,
+    savedMatchSession,
   );
 
   const [
@@ -351,6 +354,7 @@ function FrequencyPage() {
         sessionStorage.removeItem(
           "somni-sound-setup-completed",
         );
+        clearPitchMatchSession();
 
         const session =
           selectedTinnitusType === "multiple"

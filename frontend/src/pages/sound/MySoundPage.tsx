@@ -1,4 +1,7 @@
 import { useNavigate } from "react-router-dom";
+import {
+  getPitchMatchSession,
+} from "../../utils/pitchMatchStorage";
 
 const WAVE_HEIGHTS = [
   28, 30, 26, 22, 20, 22, 26, 30, 32, 30,
@@ -9,6 +12,37 @@ const WAVE_HEIGHTS = [
 
 function MySoundPage() {
   const navigate = useNavigate();
+  
+  const pitchMatchSession =
+    getPitchMatchSession();
+
+  const centerFrequency =
+    Math.round(
+      pitchMatchSession
+        ?.center_frequency ?? 0,
+    );
+
+  const lowerBound =
+    Math.round(
+      pitchMatchSession?.lower_bound ??
+        0,
+    );
+
+  const upperBound =
+    Math.round(
+      pitchMatchSession?.upper_bound ??
+        0,
+    );
+
+  if (!pitchMatchSession) {
+    return (
+      <div className="flex min-h-full items-center justify-center px-5">
+        <p className="text-[13px] text-text-secondary">
+          음역 매칭 결과를 찾지 못했어요.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-full flex-col px-5 pb-6">
@@ -58,7 +92,7 @@ function MySoundPage() {
             </span>
 
             <strong className="text-[15px] text-text-primary">
-              853Hz 중심 대역 감소
+              {centerFrequency}Hz 중심 대역 감소
             </strong>
           </div>
 
@@ -92,7 +126,8 @@ function MySoundPage() {
           </p>
 
           <p className="mt-4 text-[24px] font-bold text-[#60CEA7]">
-            842 - 863 Hz
+              {lowerBound.toLocaleString()} -{" "}
+              {upperBound.toLocaleString()} Hz
           </p>
         </section>
 

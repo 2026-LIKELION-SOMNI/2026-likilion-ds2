@@ -65,7 +65,10 @@ return (
       const isActive =
         item.path === "/"
           ? location.pathname === "/"
-          : location.pathname.startsWith(item.path);
+          : location.pathname === item.path ||
+            location.pathname.startsWith(
+              `${item.path}/`,
+            );
 
       return (
         <button

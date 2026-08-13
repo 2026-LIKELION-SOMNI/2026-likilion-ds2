@@ -1,12 +1,16 @@
 import type { ToneType } from "../services/tinnitusService";
 
-let audioContext: AudioContext | null = null;
+import {
+  getAudioContext,
+  resumeAudioContext,
+} from "./audioContext";
 
 let currentSources: Array<
   AudioBufferSourceNode | OscillatorNode
 > = [];
 
 let currentGainNode: GainNode | null = null;
+let currentNodes: AudioNode[] = [];
 
 /*
  * 백엔드 sound/services.py와 동일한 노치 설계값
@@ -14,24 +18,6 @@ let currentGainNode: GainNode | null = null;
 const HALF_OCTAVE_RATIO = 2 ** 0.25;
 const NOTCH_STAGE_COUNT = 6;
 const NOTCH_STAGE_Q = 5.6;
-
-function getAudioContext() {
-  if (!audioContext) {
-    audioContext = new AudioContext();
-  }
-
-  return audioContext;
-}
-
-async function resumeAudioContext() {
-  const context = getAudioContext();
-
-  if (context.state === "suspended") {
-    await context.resume();
-  }
-
-  return context;
-}
 
 function createWhiteNoiseBuffer(
   context: AudioContext,
@@ -168,13 +154,21 @@ export function stopTinnitusAudio() {
   currentSources.forEach((source) => {
     try {
       source.stop();
-      source.disconnect();
     } catch {
       // 이미 종료된 경우 무시
     }
   });
 
+  currentNodes.forEach((node) => {
+    try {
+      node.disconnect();
+    } catch {
+      // 이미 연결 해제된 경우 무시
+    }
+  });
+
   currentSources = [];
+  currentNodes = [];
   currentGainNode = null;
 }
 
@@ -236,6 +230,13 @@ export async function playMatchingNoise(
   source.start();
 
   currentSources = [source];
+
+  currentNodes = [
+    source,
+    bandpass,
+    gain,
+  ];
+
   currentGainNode = gain;
 }
 
@@ -274,11 +275,16 @@ export async function playTinnitusTypePreview(
 
     oscillator.start();
 
-    currentSources = [
-      oscillator,
-    ];
+  currentSources = [
+    oscillator,
+  ];
 
-    currentGainNode = gain;
+  currentNodes = [
+    oscillator,
+    gain,
+  ];
+
+  currentGainNode = gain;
 
     return;
   }
@@ -336,6 +342,12 @@ export async function playTinnitusTypePreview(
     high,
   ];
 
+  currentNodes = [
+    low,
+    high,
+    gain,
+  ];
+
   currentGainNode = gain;
 }
 
@@ -382,6 +394,8 @@ export async function playMixingPointNoise(
    */
   let previousNode:
     AudioNode = source;
+  const notchNodes:
+    BiquadFilterNode[] = [];
 
   /*
    * 백엔드와 동일하게
@@ -420,7 +434,7 @@ export async function playMixingPointNoise(
       NOTCH_STAGE_Q,
       context.currentTime,
     );
-
+    notchNodes.push(notch);
     previousNode.connect(notch);
 
     previousNode = notch;
@@ -441,6 +455,13 @@ export async function playMixingPointNoise(
   source.start();
 
   currentSources = [source];
+
+  currentNodes = [
+    source,
+    ...notchNodes,
+    gain,
+  ];
+
   currentGainNode = gain;
 }
 
@@ -454,12 +475,12 @@ export async function playMixingPointNoise(
 export function setMixingPointGain(
   gainValue: number,
 ) {
-  if (
-    !audioContext ||
-    !currentGainNode
-  ) {
+  if (!currentGainNode) {
     return;
   }
+
+  const context =
+    getAudioContext();
 
   /*
    * 백엔드 실제 저장 상한이 0.6이므로
@@ -475,7 +496,7 @@ export function setMixingPointGain(
     );
 
   const now =
-    audioContext.currentTime;
+    context.currentTime;
 
   /*
    * 갑자기 튀는 소리를 피하기 위해

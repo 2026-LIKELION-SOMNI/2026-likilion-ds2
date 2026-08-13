@@ -100,3 +100,14 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+
+/* 스크롤은 유지하고 스크롤바만 숨김 */
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}

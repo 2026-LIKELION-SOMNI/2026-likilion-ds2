@@ -1,6 +1,7 @@
 import {
   getUserUuid,
   saveUserUuid,
+  removeUserUuid,
 } from "../utils/userStorage";
 
 interface AnonymousUserResponse {
@@ -30,9 +31,15 @@ async function registerAnonymousUser() {
   );
 
   if (!response.ok) {
-    throw new Error(
+    const error = new Error(
       "익명 사용자 생성에 실패했습니다.",
     );
+
+    Object.assign(error, {
+      status: response.status,
+    });
+
+    throw error;
   }
 
   const data =
@@ -59,9 +66,15 @@ async function reconnectAnonymousUser(uuid: string) {
   );
 
   if (!response.ok) {
-    throw new Error(
+    const error = new Error(
       "익명 사용자 재접속에 실패했습니다.",
     );
+
+    Object.assign(error, {
+      status: response.status,
+    });
+
+    throw error;
   }
 
   const data =
@@ -72,27 +85,48 @@ async function reconnectAnonymousUser(uuid: string) {
   return data.profile;
 }
 
-export async function ensureAnonymousUser() {
-  const savedUuid = getUserUuid();
+let ensureUserPromise:
+  | Promise<AnonymousUserResponse>
+  | null = null;
 
-  if (!savedUuid) {
-    return registerAnonymousUser();
+export function ensureAnonymousUser() {
+  if (ensureUserPromise) {
+    return ensureUserPromise;
   }
 
-  try {
-    return await reconnectAnonymousUser(savedUuid);
-  } catch {
-    /*
-      localStorage에는 UUID가 있는데
-      백엔드 DB에는 해당 사용자가 없는 경우
-      새 사용자 생성
-    */
-    removeInvalidUuid();
+  ensureUserPromise = (async () => {
+    const savedUuid = getUserUuid();
 
-    return registerAnonymousUser();
-  }
-}
+    if (!savedUuid) {
+      return registerAnonymousUser();
+    }
 
-function removeInvalidUuid() {
-  localStorage.removeItem("somni-user-uuid");
+    try {
+      return await reconnectAnonymousUser(
+        savedUuid,
+      );
+    } catch (error) {
+      const status =
+        error instanceof Error &&
+        "status" in error
+          ? Number(
+              (
+                error as Error & {
+                  status?: number;
+                }
+              ).status,
+            )
+          : undefined;
+
+      if (status !== 404) {
+        throw error;
+      }
+
+      removeUserUuid();
+
+      return registerAnonymousUser();
+    }
+  })();
+
+  return ensureUserPromise;
 }

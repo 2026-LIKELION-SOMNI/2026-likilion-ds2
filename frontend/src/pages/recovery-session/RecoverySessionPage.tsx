@@ -90,7 +90,8 @@ function RecoverySessionPage() {
    */
   if (screen === "session" || screen === "feedback") {
     return (
-        <div className="relative flex min-h-full flex-col px-5 pb-6">
+        <div className="hide-scrollbar relative flex min-h-full 
+        flex-col overflow-y-auto px-5 pb-6">
         {/* 자체 헤더 */}
         <div className="relative flex h-16 shrink-0 items-center justify-center">
         <h1
@@ -539,17 +540,14 @@ function RecoverySessionPage() {
  * 2. 세션 마치기
  */
     if (screen === "safety") {
-    const hasSymptoms = selectedSymptoms.length > 0;
-
     const handleSafetyConfirm = () => {
-        if (!hasSymptoms) {
-        return;
+        if (selectedSymptoms.length > 0) {
+        console.log(
+            "선택된 증상:",
+            selectedSymptoms,
+        );
         }
 
-        // TODO: 선택한 증상을 백엔드에 전달
-        console.log("선택된 증상:", selectedSymptoms);
-
-        // 세션 종료 후 홈으로 이동
         navigate("/");
     };
 
@@ -721,20 +719,15 @@ function RecoverySessionPage() {
         <button
             type="button"
             onClick={handleSafetyConfirm}
-            disabled={!hasSymptoms}
             className={`
             h-14
             w-full
             rounded-[12px]
+            bg-[#60CEA7]
             font-sans
             text-[14px]
             font-bold
             transition-colors
-            ${
-                hasSymptoms
-                ? "bg-[#60CEA7] text-[#07100D]"
-                : "bg-[#214750] text-[#0D1719]"
-            }
             `}
         >
             확인
