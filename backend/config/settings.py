@@ -35,6 +35,8 @@ INSTALLED_APPS = [
     'checkin',
     'feedback',
     'tinnitus',
+    'sound',
+    'data',
 ]
 
 MIDDLEWARE = [
