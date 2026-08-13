@@ -260,22 +260,28 @@ function SoundSetupPage() {
             {volume}%
           </p>
 
-        <div className="mt-3 flex h-[72px] w-full items-center gap-[2px]">
-          {MIXING_WAVE_HEIGHTS.map((height, index) => (
-            <span
-              key={index}
-              className="
-                min-w-[3px]
-                flex-1
-                rounded-full
-                bg-[#60CEA7]
-              "
-              style={{
-                height: `${height}px`,
-              }}
-            />
-          ))}
-        </div>
+          <div className="mt-3 flex h-[72px] w-full items-center gap-[2px]">
+            {MIXING_WAVE_HEIGHTS.map((height, index) => {
+              const volumeScale = 0.35 + volume * 0.009;
+
+              return (
+                <span
+                  key={index}
+                  className="
+                    min-w-[3px]
+                    flex-1
+                    rounded-full
+                    bg-[#60CEA7]
+                    transition-[height]
+                    duration-150
+                  "
+                  style={{
+                    height: `${Math.max(6, height * volumeScale)}px`,
+                  }}
+                />
+              );
+            })}
+          </div>
 
         </div>
 
