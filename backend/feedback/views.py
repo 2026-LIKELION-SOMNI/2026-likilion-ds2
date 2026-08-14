@@ -1,4 +1,3 @@
-
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from rest_framework import status
@@ -14,23 +13,69 @@ from .serializers import (
     NightlyEvaluationSubmitRequestSerializer,
 )
 
+
 # 결과 기록 화면 진입점
-# 어젯밤에 대한 평가가 없으면 생성 / 있으면 그대로 반환
-# 24시간 지난 PENDING 건은 조회 시점에 EXPIRED로 정리
+# 현재 평가 가능한 PENDING 목록을 생성/정리한 뒤 가장 최근 평가 1개 반환
 class NightlyEvaluationTodayView(APIView):
 
     def get(self, request, uuid):
-        user = get_object_or_404(AnonymousUser,uuid=uuid,)
+        user = get_object_or_404(
+            AnonymousUser,
+            uuid=uuid,
+        )
 
         try:
-            evaluation = services.ensure_nightly_evaluation(
+            evaluations = services.ensure_pending_evaluations(
                 user=user,
             )
-            evaluation = services.expire_evaluation_if_needed(
-                evaluation,
+        except ValidationError as e:
+            return Response(
+                {
+                    "detail": (
+                        e.messages[0]
+                        if e.messages
+                        else str(e)
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # 현재 평가할 수 있는 기록이 없는 경우
+        if not evaluations:
+            return Response(
+                {
+                    "detail": "현재 평가 가능한 기록이 없습니다."
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        evaluation = evaluations[0]
+
+        return Response(
+            NightlyEvaluationSerializer(
+                evaluation
+            ).data
+        )
+
+
+# 24시간 이내의 미평가 목록 조회
+class NightlyEvaluationPendingListView(APIView):
+
+    def get(self, request, uuid):
+        user = get_object_or_404(
+            AnonymousUser,
+            uuid=uuid,
+        )
+
+        try:
+            evaluations = services.ensure_pending_evaluations(
+                user=user,
             )
         except ValidationError as e:
-            return Response({"detail": (e.messages[0]
+            return Response(
+                {
+                    "detail": (
+                        e.messages[0]
                         if e.messages
                         else str(e)
                     )
@@ -39,16 +84,26 @@ class NightlyEvaluationTodayView(APIView):
             )
 
         return Response(
-            NightlyEvaluationSerializer(evaluation).data
+            NightlyEvaluationSerializer(
+                evaluations,
+                many=True,
+            ).data
         )
 
 
 class NightlyEvaluationDetailView(APIView):
 
     def get(self, request, uuid, pk):
-        user = get_object_or_404(AnonymousUser,uuid=uuid,)
+        user = get_object_or_404(
+            AnonymousUser,
+            uuid=uuid,
+        )
 
-        evaluation = get_object_or_404(NightlyEvaluation,pk=pk,user=user,)
+        evaluation = get_object_or_404(
+            NightlyEvaluation,
+            pk=pk,
+            user=user,
+        )
 
         try:
             evaluation = services.expire_evaluation_if_needed(
@@ -67,8 +122,11 @@ class NightlyEvaluationDetailView(APIView):
             )
 
         return Response(
-            NightlyEvaluationSerializer(evaluation).data
+            NightlyEvaluationSerializer(
+                evaluation
+            ).data
         )
+
 
 # 저장하기 - 평가 항목 제출
 class NightlyEvaluationSubmitView(APIView):
@@ -88,7 +146,9 @@ class NightlyEvaluationSubmitView(APIView):
         req = NightlyEvaluationSubmitRequestSerializer(
             data=request.data
         )
-        req.is_valid(raise_exception=True)
+        req.is_valid(
+            raise_exception=True
+        )
 
         try:
             evaluation = services.submit_evaluation(
@@ -109,5 +169,7 @@ class NightlyEvaluationSubmitView(APIView):
             )
 
         return Response(
-            NightlyEvaluationSerializer(evaluation).data
-        ) 
+            NightlyEvaluationSerializer(
+                evaluation
+            ).data
+        )

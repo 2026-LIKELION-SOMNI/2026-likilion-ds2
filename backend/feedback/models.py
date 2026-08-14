@@ -5,7 +5,7 @@ from django.db import models
 from accounts.models import AnonymousUser
 
 
-# 사용자당 하루(밤) 1개의 결과 평가
+# 한 번의 세션/루틴 실행에 대한 결과 평가
 # sound / relaxation 구조가 완전히 확정되기 전까지는 세션 PK를 소프트 참조로 저장
 class NightlyEvaluation(models.Model):
 
@@ -42,17 +42,24 @@ class NightlyEvaluation(models.Model):
         related_name="nightly_evaluations",
     )
 
-    # 평가 대상이 되는 밤의 날짜
-    # 사용자당 동일한 밤에 하나의 평가만 생성
+    # 평가 대상 세션이 실행된 날짜
+    # 같은 날짜에도 여러 번 앱을 사용할 수 있으므로 하루에 여러 평가 생성 가능
     for_date = models.DateField(
-        help_text="평가 대상이 되는 밤의 날짜",
+        help_text="평가 대상 세션이 실행된 날짜",
     )
 
-    # 해당 밤에 실행된 세션 PK, 해당 개입이 없었던 경우 null, sound / relaxation 구조 확정 후 실제 FK 전환 예정
-    sound_session_id = models.PositiveIntegerField(null=True,blank=True,)
-    relaxation_session_id = models.PositiveIntegerField(null=True,blank=True,)
+    # 해당 세션에 연결된 PK, 해당 개입이 없었던 경우 null, sound / relaxation 구조 확정 후 실제 FK 전환 예정
+    sound_session_id = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+    )
 
-    # 그날 밤 전체에 대한 결과
+    relaxation_session_id = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+    )
+
+    # 그 세션 전체에 대한 결과
     sleep_latency = models.CharField(
         max_length=20,
         choices=SleepLatency.choices,
@@ -134,31 +141,37 @@ class NightlyEvaluation(models.Model):
     )
 
     class Meta:
-        constraints = [
-            models.UniqueConstraint(
+        indexes = [
+            models.Index(
                 fields=[
                     "user",
-                    "for_date",
-                ],
-                name="feedback_one_nightly_evaluation_per_night",
-            )
-        ]
-
-        indexes = [
+                    "status",
+                ]
+            ),
             models.Index(
                 fields=[
                     "user",
                     "-for_date",
                 ]
             ),
+            models.Index(
+                fields=[
+                    "sound_session_id",
+                ]
+            ),
+            models.Index(
+                fields=[
+                    "relaxation_session_id",
+                ]
+            ),
         ]
 
         ordering = [
-            "-for_date",
+            "-created_at",
         ]
 
-        verbose_name = "밤 단위 평가"
-        verbose_name_plural = "밤 단위 평가 목록"
+        verbose_name = "세션 결과 평가"
+        verbose_name_plural = "세션 결과 평가 목록"
 
     def __str__(self):
         return (
@@ -186,10 +199,13 @@ class NightlyEvaluation(models.Model):
         if not self.relaxation_session_id:
             return None
 
-        Model = apps.get_model(
-            "relaxation",
-            "RelaxationSession",
-        )
+        try:
+            Model = apps.get_model(
+                "relaxtion",
+                "RelaxationSession",
+            )
+        except LookupError:
+            return None
 
         return Model.objects.filter(
             pk=self.relaxation_session_id
