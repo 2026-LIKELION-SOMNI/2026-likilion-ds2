@@ -1,4 +1,3 @@
-
 export interface FallbackSound {
   id: number;
   name: string;
@@ -47,7 +46,10 @@ export interface GeneratedSoundParams {
     ambient: number;
   };
 
-  modulation_intensity: "low" | "medium" | "high";
+  modulation_intensity:
+    | "low"
+    | "medium"
+    | "high";
 
   duration_minutes: number;
   fade_out_seconds: number;
@@ -71,18 +73,26 @@ export interface SoundSession {
     | "stopped_early"
     | "discomfort_stopped";
 
-  generated_params: GeneratedSoundParams | null;
+  generated_params:
+    | GeneratedSoundParams
+    | null;
 
-  recommended_duration_minutes: number | null;
+  recommended_duration_minutes:
+    | number
+    | null;
 
   is_fallback: boolean;
 
-  fallback_sound: FallbackSound | null;
+  fallback_sound:
+    | FallbackSound
+    | null;
 
   generation_error_code: string;
 
   initial_volume: number;
-  max_volume_applied: number | null;
+  max_volume_applied:
+    | number
+    | null;
 
   created_at: string;
 }
@@ -112,25 +122,48 @@ export type FollowUpAction =
   | "switch_previous"
   | "end_session";
 
+export interface VolumeUpdateResponse {
+  requested_volume: number;
+  applied_volume: number;
+  capped: boolean;
+  max_volume: number;
+}
+
+export interface DiscomfortReportResponse {
+  id: number;
+  reasons: DiscomfortReason[];
+  note: string;
+  follow_up_action:
+    | FollowUpAction
+    | null;
+  reported_at: string;
+
+  session_status?: string;
+  can_regenerate?: boolean;
+  session_ended?: boolean;
+}
+
 async function request<T>(
   url: string,
   options?: RequestInit,
 ): Promise<T> {
-    const response = await fetch(
-    url,
-    {
-        ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options?.headers,
-      },
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options?.headers,
     },
-  );
+  });
 
   if (!response.ok) {
     const errorBody = await response
       .json()
       .catch(() => null);
+
+    console.error(
+      "Sound API 실패 응답:",
+      errorBody,
+    );
 
     throw new Error(
       errorBody?.detail ??
@@ -153,7 +186,8 @@ export async function generateTodaySound(
     {
       method: "POST",
       body: JSON.stringify({
-        force_regenerate: forceRegenerate,
+        force_regenerate:
+          forceRegenerate,
       }),
     },
   );
@@ -172,7 +206,7 @@ export async function getSoundSession(
 }
 
 /*
- * 불편 신고 후 새로운 사운드 생성
+ * 불편 신고 반영 후 새 사운드 생성
  */
 export async function regenerateSound(
   uuid: string,
@@ -187,7 +221,7 @@ export async function regenerateSound(
 }
 
 /*
- * 생성 실패 시 fallback 사운드 사용
+ * 생성 실패 시 fallback 사용
  */
 export async function useFallbackSound(
   uuid: string,
@@ -217,9 +251,12 @@ export async function updateSoundPlayback(
       method: "PATCH",
       body: JSON.stringify({
         action,
-        played_seconds_delta: playedSecondsDelta,
+        played_seconds_delta:
+          playedSecondsDelta,
         ...(endReason
-          ? { end_reason: endReason }
+          ? {
+              end_reason: endReason,
+            }
           : {}),
       }),
     },
@@ -234,7 +271,7 @@ export async function updateSoundVolume(
   sessionId: string,
   volume: number,
 ) {
-  return request<SoundSession>(
+  return request<VolumeUpdateResponse>(
     `/api/sound/${uuid}/sessions/${sessionId}/volume/`,
     {
       method: "PATCH",
@@ -255,7 +292,7 @@ export async function reportSoundDiscomfort(
   followUpAction?: FollowUpAction,
   note = "",
 ) {
-  return request(
+  return request<DiscomfortReportResponse>(
     `/api/sound/${uuid}/sessions/${sessionId}/discomfort-reports/`,
     {
       method: "POST",

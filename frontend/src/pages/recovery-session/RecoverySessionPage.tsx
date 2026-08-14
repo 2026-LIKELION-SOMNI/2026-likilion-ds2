@@ -1,15 +1,32 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
-import arrowLeftIcon from "../../assets/icons/ArrowClockwise-left.svg";
-import arrowRightIcon from "../../assets/icons/ArrowClockwise-right.svg";
+
 import playIcon from "../../assets/icons/Play.svg";
 import pauseIcon from "../../assets/icons/pause-recovery.svg";
-import { pauseRecoveryAudio, playRecoveryAudio, resumeRecoveryAudio, 
-  stopRecoveryAudio, } from "../../audio/recoveryAudio";
 
-import { generateTodaySound, updateSoundPlayback, type SoundSession,
-} from "../../api/sound";import { getUserUuid } from "../../utils/userStorage";
+import {
+  pauseRecoveryAudio,
+  playRecoveryAudio,
+  resumeRecoveryAudio,
+  stopRecoveryAudio,
+} from "../../audio/recoveryAudio";
 
+import {
+  generateTodaySound,
+  regenerateSound,
+  reportSoundDiscomfort,
+  updateSoundPlayback,
+  type DiscomfortReason,
+  type SoundSession,
+} from "../../api/sound";
+
+import {
+  getUserUuid,
+} from "../../utils/userStorage";
 
 type RecoveryScreen =
   | "session"
@@ -33,489 +50,814 @@ const FEEDBACK_REASONS = [
   "기타",
 ];
 
+const FEEDBACK_REASON_MAP: Record<
+  string,
+  DiscomfortReason
+> = {
+  "너무 날카로워요": "sharp",
+  "이명과 너무 비슷해요":
+    "too_similar",
+  "변화가 너무 많아요":
+    "too_much_variation",
+  "배경음이 불편해요":
+    "dislike_background",
+};
+
 function RecoverySessionPage() {
   const navigate = useNavigate();
 
+  const hasLoadedSoundRef =
+    useRef(false);
+
   const [screen, setScreen] =
-    useState<RecoveryScreen>("session");
-
-  const [playing, setPlaying] = useState(false);
-
-    const [
-    elapsedSeconds,
-    setElapsedSeconds,
-    ] = useState(0);
-
-    const [
-    hasStarted,
-    setHasStarted,
-    ] = useState(false);
-
-    const [
-    soundSession,
-    setSoundSession,
-    ] = useState<SoundSession | null>(null);
-
-    const [isSoundLoading, setIsSoundLoading] =
-    useState(true);
-
-    const [
-    soundError,
-    setSoundError,
-    ] = useState<string | null>(null);
-
-
-    const totalSeconds =
-    (soundSession
-        ?.recommended_duration_minutes ??
-        0) * 60;
-
-    const remainingSeconds =
-    Math.max(
-        0,
-        totalSeconds - elapsedSeconds,
+    useState<RecoveryScreen>(
+      "session",
     );
 
-    const progress =
+  const [playing, setPlaying] =
+    useState(false);
+
+  const [
+    elapsedSeconds,
+    setElapsedSeconds,
+  ] = useState(0);
+
+  const [
+    hasStarted,
+    setHasStarted,
+  ] = useState(false);
+
+  const [
+    soundSession,
+    setSoundSession,
+  ] =
+    useState<SoundSession | null>(
+      null,
+    );
+
+  const [
+    isSoundLoading,
+    setIsSoundLoading,
+  ] = useState(true);
+
+  const [
+    soundError,
+    setSoundError,
+  ] = useState<string | null>(
+    null,
+  );
+
+  const [
+    selectedSymptoms,
+    setSelectedSymptoms,
+  ] = useState<string[]>([]);
+
+  const [
+    selectedFeedback,
+    setSelectedFeedback,
+  ] = useState<string[]>([]);
+
+  /*
+   * =========================
+   * 시간 계산
+   * =========================
+   */
+
+  const totalSeconds =
+    (soundSession
+      ?.recommended_duration_minutes ??
+      0) * 60;
+
+  const remainingSeconds =
+    Math.max(
+      0,
+      totalSeconds -
+        elapsedSeconds,
+    );
+
+  const progress =
     totalSeconds > 0
-        ? Math.min(
-            100,
-            (elapsedSeconds /
+      ? Math.min(
+          100,
+          (elapsedSeconds /
             totalSeconds) *
             100,
         )
-        : 0;
+      : 0;
 
-    const formatTime = (
+  const formatTime = (
     seconds: number,
-    ) => {
+  ) => {
     const minutes = Math.floor(
-        seconds / 60,
+      seconds / 60,
     );
 
     const restSeconds =
-        seconds % 60;
+      seconds % 60;
 
-    return `${String(minutes).padStart(
-        2,
-        "0",
-    )}:${String(restSeconds).padStart(
-        2,
-        "0",
-    )}`;
-    };
+    return `${String(
+      minutes,
+    ).padStart(
+      2,
+      "0",
+    )}:${String(
+      restSeconds,
+    ).padStart(2, "0")}`;
+  };
 
+  /*
+   * =========================
+   * 오늘의 사운드 생성
+   * =========================
+   */
 
+  useEffect(() => {
+    if (
+      hasLoadedSoundRef.current
+    ) {
+      return;
+    }
 
+    hasLoadedSoundRef.current =
+      true;
 
-  const [selectedSymptoms, setSelectedSymptoms] =
-    useState<string[]>([]);
-
-    const [selectedFeedback, setSelectedFeedback] =
-        useState<string[]>([]);
-
-    useEffect(() => {
-    const loadSoundSession = async () => {
-        const uuid = getUserUuid();
+    const loadSoundSession =
+      async () => {
+        const uuid =
+          getUserUuid();
 
         if (!uuid) {
-        setSoundError(
+          setSoundError(
             "사용자 정보를 찾을 수 없습니다.",
-        );
-        setIsSoundLoading(false);
-        return;
+          );
+
+          setIsSoundLoading(
+            false,
+          );
+
+          return;
         }
 
         try {
-        setIsSoundLoading(true);
-        setSoundError(null);
+          setIsSoundLoading(
+            true,
+          );
 
-        const session =
-            await generateTodaySound(uuid);
+          setSoundError(null);
 
-        console.log(
-            "오늘의 사운드 생성 결과:",
-            session,
-        );
-
-        setSoundSession(session);
-        } catch (error) {
-        console.error(
-            "오늘의 사운드 생성 실패",
-            error,
-        );
-
-        setSoundError(
-            error instanceof Error
-            ? error.message
-            : "사운드를 불러오지 못했습니다.",
-        );
-        } finally {
-        setIsSoundLoading(false);
-        }
-    };
-
-    void loadSoundSession();
-    }, []);
-
-    useEffect(() => {
-        if (screen === "safety") {
-            window.dispatchEvent(
-            new CustomEvent("recovery-header", {
-                detail: {
-                title: "세션 마치기",
-                showBackButton: true,
-                showStopButton: false,
-                },
-            }),
+          const session =
+            await generateTodaySound(
+              uuid,
             );
 
-            return;
+          console.log(
+            "오늘의 사운드 생성 결과:",
+            session,
+          );
+
+          setSoundSession(
+            session,
+          );
+        } catch (error) {
+          console.error(
+            "오늘의 사운드 생성 실패",
+            error,
+          );
+
+          setSoundError(
+            error instanceof Error
+              ? error.message
+              : "사운드를 불러오지 못했습니다.",
+          );
+        } finally {
+          setIsSoundLoading(
+            false,
+          );
         }
+      };
+
+    void loadSoundSession();
+  }, []);
+
+  /*
+   * =========================
+   * 공통 Header 상태
+   * =========================
+   */
+
+  useEffect(() => {
+    if (screen === "safety") {
+      window.dispatchEvent(
+        new CustomEvent(
+          "recovery-header",
+          {
+            detail: {
+              title:
+                "세션 마치기",
+              showBackButton:
+                true,
+              showStopButton:
+                false,
+            },
+          },
+        ),
+      );
+
+      return;
+    }
 
     window.dispatchEvent(
-        new CustomEvent("recovery-header", {
-        detail: {
+      new CustomEvent(
+        "recovery-header",
+        {
+          detail: {
             title: "회복 세션",
-            showBackButton: false,
-            showStopButton: true,
+            showBackButton:
+              false,
+            showStopButton:
+              true,
+          },
         },
-        }),
+      ),
     );
-    }, [screen]);
+  }, [screen]);
 
-    useEffect(() => {
-    const handleStop = async () => {
-        if (playing && soundSession) {
-            const uuid = getUserUuid();
+  /*
+   * =========================
+   * Header 중단 / 뒤로가기
+   * =========================
+   */
 
+  useEffect(() => {
+    const handleStop =
+      async () => {
+        if (
+          playing &&
+          soundSession
+        ) {
+          const uuid =
+            getUserUuid();
+
+          try {
             await pauseRecoveryAudio();
 
             if (uuid) {
-            await updateSoundPlayback(
+              await updateSoundPlayback(
                 uuid,
                 soundSession.session_id,
                 "pause",
-            );
+              );
             }
 
             setPlaying(false);
+          } catch (error) {
+            console.error(
+              "회복 세션 중단 처리 실패",
+              error,
+            );
+          }
         }
 
         setScreen("feedback");
-        };
+      };
 
-    const handleRecoveryBack = () => {
+    const handleRecoveryBack =
+      () => {
         if (
-        screen === "safety" ||
-        screen === "feedback"
+          screen === "safety" ||
+          screen === "feedback"
         ) {
-        setScreen("session");
-        return;
+          setScreen("session");
+          return;
         }
 
         navigate(-1);
-    };
+      };
 
     window.addEventListener(
-        "recovery-stop",
-        handleStop,
+      "recovery-stop",
+      handleStop,
     );
 
     window.addEventListener(
-        "recovery-back",
-        handleRecoveryBack,
+      "recovery-back",
+      handleRecoveryBack,
     );
 
     return () => {
-        window.removeEventListener(
+      window.removeEventListener(
         "recovery-stop",
         handleStop,
-        );
+      );
 
-        window.removeEventListener(
+      window.removeEventListener(
         "recovery-back",
         handleRecoveryBack,
-        );
+      );
     };
-    }, [screen, navigate]);
+  }, [
+    screen,
+    navigate,
+    playing,
+    soundSession,
+  ]);
 
-    useEffect(() => {
+  /*
+   * =========================
+   * 재생 중 타이머
+   * =========================
+   */
+
+  useEffect(() => {
     if (
-        !playing ||
-        totalSeconds <= 0
+      !playing ||
+      totalSeconds <= 0
     ) {
-        return;
+      return;
     }
 
-    const timer = window.setInterval(
+    const timer =
+      window.setInterval(
         () => {
-        setElapsedSeconds(
+          setElapsedSeconds(
             (previous) => {
-            if (
+              if (
                 previous >=
                 totalSeconds - 1
-            ) {
+              ) {
                 return totalSeconds;
-            }
+              }
 
-            return previous + 1;
+              return (
+                previous + 1
+              );
             },
-        );
+          );
         },
         1000,
-    );
+      );
 
     return () => {
-        window.clearInterval(timer);
+      window.clearInterval(
+        timer,
+      );
     };
-    }, [
+  }, [
     playing,
     totalSeconds,
-    ]);
+  ]);
 
-    useEffect(() => {
+  /*
+   * =========================
+   * 타이머 종료
+   * =========================
+   */
+
+  useEffect(() => {
     if (
-        !soundSession ||
-        totalSeconds <= 0 ||
-        elapsedSeconds <
+      !soundSession ||
+      totalSeconds <= 0 ||
+      elapsedSeconds <
         totalSeconds
     ) {
-        return;
+      return;
     }
 
     const completeSession =
-        async () => {
+      async () => {
         const uuid =
-            getUserUuid();
+          getUserUuid();
 
         stopRecoveryAudio();
         setPlaying(false);
 
         if (!uuid) {
-            return;
+          return;
         }
 
         try {
-            await updateSoundPlayback(
+          await updateSoundPlayback(
             uuid,
             soundSession.session_id,
             "complete",
             elapsedSeconds,
             "timer",
-            );
+          );
         } catch (error) {
-            console.error(
+          console.error(
             "회복 세션 완료 처리 실패",
             error,
-            );
+          );
         }
-        };
+      };
 
     void completeSession();
-    }, [
+  }, [
     elapsedSeconds,
     totalSeconds,
     soundSession,
-    ]);
+  ]);
 
+  /*
+   * 페이지 이탈 시 오디오 종료
+   */
+  useEffect(() => {
+    return () => {
+      stopRecoveryAudio();
+    };
+  }, []);
 
-    const toggleFeedback = (reason: string) => {
-        setSelectedFeedback((previous) =>
-            previous.includes(reason)
-            ? previous.filter((item) => item !== reason)
-            : [...previous, reason],
-        );
-        };
+  /*
+   * =========================
+   * 재생 / 일시정지
+   * =========================
+   */
 
-  const toggleSymptom = (symptom: string) => {
-    setSelectedSymptoms((previous) =>
-      previous.includes(symptom)
-        ? previous.filter((item) => item !== symptom)
-        : [...previous, symptom],
-    );
-  };
-
-    const handlePlayToggle =
+  const handlePlayToggle =
     async () => {
-        if (
+      if (
         !soundSession ||
-        !soundSession.generated_params
-        ) {
+        !soundSession
+          .generated_params
+      ) {
         return;
-        }
+      }
 
-        const uuid = getUserUuid();
+      const uuid =
+        getUserUuid();
 
-        if (!uuid) {
+      if (!uuid) {
         return;
-        }
+      }
 
-        try {
+      try {
+        /*
+         * 최초 시작
+         */
         if (!hasStarted) {
-            await playRecoveryAudio(
+          await playRecoveryAudio(
             soundSession.generated_params,
-            );
+          );
 
-            await updateSoundPlayback(
+          await updateSoundPlayback(
             uuid,
             soundSession.session_id,
             "start",
-            );
+          );
 
-            setHasStarted(true);
-            setPlaying(true);
+          setHasStarted(true);
+          setPlaying(true);
 
-            return;
+          return;
         }
 
+        /*
+         * 일시정지
+         */
         if (playing) {
-            await pauseRecoveryAudio();
+          await pauseRecoveryAudio();
 
-            await updateSoundPlayback(
+          await updateSoundPlayback(
             uuid,
             soundSession.session_id,
             "pause",
-            );
+          );
 
-            setPlaying(false);
+          setPlaying(false);
 
-            return;
+          return;
         }
 
+        /*
+         * 재개
+         */
         await resumeRecoveryAudio();
 
         await updateSoundPlayback(
-            uuid,
-            soundSession.session_id,
-            "resume",
+          uuid,
+          soundSession.session_id,
+          "resume",
         );
 
         setPlaying(true);
-        } catch (error) {
+      } catch (error) {
         console.error(
-            "회복 세션 재생 상태 변경 실패",
-            error,
+          "회복 세션 재생 상태 변경 실패",
+          error,
         );
-        }
-    };
-
-    useEffect(() => {
-    return () => {
-        stopRecoveryAudio();
-    };
-    }, []);
-
-  const handleChangeSound = () => {
-    if (selectedFeedback.length === 0) {
-        return;
-    }
-
-    // TODO:
-    // selectedFeedback을 백엔드에 전달
-    // 백엔드가 불편 사유를 바탕으로 새로운 사운드를 결정
-    // 결정된 사운드를 받아 회복 세션에 적용
-
-        setSelectedFeedback([]);
-        setPlaying(false);
-        setScreen("session");
+      }
     };
 
   /*
-   * 1. 회복 세션
+   * =========================
+   * 불편 사유 선택
+   * =========================
    */
-  if (screen === "session" || screen === "feedback") {
+
+  const toggleFeedback = (
+    reason: string,
+  ) => {
+    setSelectedFeedback(
+      (previous) =>
+        previous.includes(
+          reason,
+        )
+          ? previous.filter(
+              (item) =>
+                item !== reason,
+            )
+          : [
+              ...previous,
+              reason,
+            ],
+    );
+  };
+
+  /*
+   * =========================
+   * 증상 선택
+   * =========================
+   */
+
+  const toggleSymptom = (
+    symptom: string,
+  ) => {
+    setSelectedSymptoms(
+      (previous) =>
+        previous.includes(
+          symptom,
+        )
+          ? previous.filter(
+              (item) =>
+                item !== symptom,
+            )
+          : [
+              ...previous,
+              symptom,
+            ],
+    );
+  };
+
+  /*
+   * =========================
+   * 다른 사운드로 바꾸기
+   * =========================
+   */
+
+  const handleChangeSound =
+    async () => {
+      if (
+        selectedFeedback.length ===
+          0 ||
+        !soundSession
+      ) {
+        return;
+      }
+
+      const uuid =
+        getUserUuid();
+
+      if (!uuid) {
+        return;
+      }
+
+      /*
+       * 현재 백엔드는
+       * "기타" reason 미지원
+       */
+      if (
+        selectedFeedback.includes(
+          "기타",
+        )
+      ) {
+        setSoundError(
+          "'기타' 불편 사유는 아직 지원되지 않습니다.",
+        );
+
+        return;
+      }
+
+      const reasons =
+        selectedFeedback.map(
+          (reason) =>
+            FEEDBACK_REASON_MAP[
+              reason
+            ],
+        );
+
+      try {
+        setIsSoundLoading(
+          true,
+        );
+
+        setSoundError(null);
+
+        /*
+         * 기존 사운드 종료
+         */
+        stopRecoveryAudio();
+
+        /*
+         * 불편 신고 저장
+         */
+        await reportSoundDiscomfort(
+          uuid,
+          soundSession.session_id,
+          reasons,
+          "regenerate",
+        );
+
+        /*
+         * 새 사운드 생성
+         */
+        const newSession =
+          await regenerateSound(
+            uuid,
+            soundSession.session_id,
+          );
+
+        console.log(
+          "재생성된 사운드:",
+          newSession,
+        );
+
+        setSoundSession(
+          newSession,
+        );
+
+        /*
+         * 새 세션 기준으로 초기화
+         */
+        setElapsedSeconds(0);
+        setHasStarted(false);
+        setPlaying(false);
+
+        setSelectedFeedback(
+          [],
+        );
+
+        setScreen("session");
+      } catch (error) {
+        console.error(
+          "사운드 변경 실패",
+          error,
+        );
+
+        setSoundError(
+          error instanceof Error
+            ? error.message
+            : "다른 사운드를 준비하지 못했습니다.",
+        );
+      } finally {
+        setIsSoundLoading(
+          false,
+        );
+      }
+    };
+
+  /*
+   * =========================
+   * 1. 회복 세션
+   * =========================
+   */
+
+  if (
+    screen === "session" ||
+    screen === "feedback"
+  ) {
     return (
-        <div className="hide-scrollbar relative flex min-h-full 
-        flex-col overflow-y-auto px-5 pb-6">
-
-
-        {/* 임시*/}
+      <div
+        className="
+          hide-scrollbar
+          relative
+          flex
+          min-h-full
+          flex-col
+          overflow-y-auto
+          px-5
+          pb-6
+        "
+      >
         {isSoundLoading && (
-        <p className="mt-4 text-center text-[12px] text-[#809EA8]">
-            사운드를 준비하고 있어요.
-        </p>
+          <p
+            className="
+              mt-4
+              text-center
+              text-[12px]
+              text-[#809EA8]
+            "
+          >
+            사운드를 준비하고
+            있어요.
+          </p>
         )}
 
         {soundError && (
-        <p className="mt-4 text-center text-[12px] text-[#F09292]">
+          <p
+            className="
+              mt-4
+              text-center
+              text-[12px]
+              text-[#F09292]
+            "
+          >
             {soundError}
-        </p>
+          </p>
         )}
-
 
         {/* 원형 그래픽 */}
         <div className="mt-12 flex justify-center">
-        <div
+          <div
             className="
-            relative flex
-            h-[300px] w-[358px]
-            max-w-full
-            items-center justify-center
-            overflow-hidden
-            rounded-[34px]
-            bg-[#071B22]
+              relative
+              flex
+              h-[300px]
+              w-[358px]
+              max-w-full
+              items-center
+              justify-center
+              overflow-hidden
+              rounded-[34px]
+              bg-[#071B22]
             "
-        >
+          >
             <div
-            className="
+              className="
                 absolute
-                h-[270px] w-[270px]
+                h-[270px]
+                w-[270px]
                 rounded-full
                 bg-[#2EA694]/35
                 blur-[42px]
-            "
+              "
             />
 
             <div
-            className="
-                relative flex
-                h-[210px] w-[210px]
-                items-center justify-center
+              className="
+                relative
+                flex
+                h-[210px]
+                w-[210px]
+                items-center
+                justify-center
                 rounded-full
-                border border-[#24665D]
-            "
+                border
+                border-[#24665D]
+              "
             >
-            <div
+              <div
                 className="
-                flex h-[176px] w-[176px]
-                items-center justify-center
-                rounded-full
-                border border-[#287469]
+                  flex
+                  h-[176px]
+                  w-[176px]
+                  items-center
+                  justify-center
+                  rounded-full
+                  border
+                  border-[#287469]
                 "
-            >
+              >
                 <div
-                className="
-                    flex h-[142px] w-[142px]
-                    items-center justify-center
+                  className="
+                    flex
+                    h-[142px]
+                    w-[142px]
+                    items-center
+                    justify-center
                     rounded-full
-                    border border-[#31887A]
-                "
+                    border
+                    border-[#31887A]
+                  "
                 >
-                <div
+                  <div
                     className="
-                    flex h-[108px] w-[108px]
-                    items-center justify-center
-                    rounded-full
-                    border border-[#3C9D8D]
+                      flex
+                      h-[108px]
+                      w-[108px]
+                      items-center
+                      justify-center
+                      rounded-full
+                      border
+                      border-[#3C9D8D]
                     "
-                >
+                  >
                     <div
-                    className="
-                        h-[82px] w-[82px]
+                      className="
+                        h-[82px]
+                        w-[82px]
                         rounded-full
                         bg-[#48B9A5]
                         shadow-[0_0_60px_20px_rgba(72,185,165,0.40)]
-                    "
-                    />  
+                      "
+                    />
+                  </div>
                 </div>
-                </div>
+              </div>
             </div>
-            </div>
-        </div>
+          </div>
         </div>
 
-        {/* 시간 */}
+        {/* 남은 시간 */}
         <div className="mt-8 text-center">
           <p
             className="
@@ -526,538 +868,609 @@ function RecoverySessionPage() {
             "
           >
             {formatTime(
-                remainingSeconds,
+              remainingSeconds,
             )}
           </p>
 
-          <p className="mt-3 text-[0.6875rem] text-text-secondary">
+          <p
+            className="
+              mt-3
+              text-[0.6875rem]
+              text-text-secondary
+            "
+          >
             천천히 호흡하세요.
           </p>
         </div>
 
         {/* 현재 사운드 */}
         <p
-        className="
-            mt-7 text-center
+          className="
+            mt-7
+            text-center
             text-[0.6875rem]
             font-semibold
             text-text-primary
-        "
+          "
         >
-        {soundSession?.generated_params
+          {soundSession
+            ?.generated_params
             ?.frequency_bands?.[0]
             ?.center_hz
-            ? `개인화 노이즈 ${
-                Math.round(
-                soundSession.generated_params
-                    .frequency_bands[0].center_hz,
-                )
-            }Hz`
+            ? `개인화 노이즈 ${Math.round(
+                soundSession
+                  .generated_params
+                  .frequency_bands[0]
+                  .center_hz,
+              )}Hz`
             : "사운드 준비 중"}
         </p>
 
         {/* 진행바 */}
         <div className="mt-5">
-          <div className="h-[4px] w-full overflow-hidden rounded-full bg-[#294A4F]">
+          <div
+            className="
+              h-[4px]
+              w-full
+              overflow-hidden
+              rounded-full
+              bg-[#294A4F]
+            "
+          >
             <div
-                className="
-                    h-full
-                    rounded-full
-                    bg-[#60CEA7]
-                "
-                style={{
-                    width: `${progress}%`,
-                }}
-                />
+              className="
+                h-full
+                rounded-full
+                bg-[#60CEA7]
+              "
+              style={{
+                width: `${progress}%`,
+              }}
+            />
           </div>
 
           <div
             className="
-              mt-2 flex justify-between
+              mt-2
+              flex
+              justify-between
               text-[0.5625rem]
               text-text-secondary
             "
           >
             <span>
-            {formatTime(
+              {formatTime(
                 elapsedSeconds,
-            )}
+              )}
             </span>
 
             <span>
-            {formatTime(
+              {formatTime(
                 totalSeconds,
-            )}
+              )}
             </span>
           </div>
         </div>
 
-        {/* 재생 컨트롤 */}
-        <div className="mt-8 flex w-full items-center justify-center">
-        {/* 15초 이전 */}
-        <button
-            type="button"
-            aria-label="15초 이전"
-            className="
-            flex items-center
-            gap-[6px]
-            text-[#92A8AB]
-            "
-        >
-            <span
-            className="
-                font-sans
-                text-[16px]
-                leading-none
-                font-medium
-            "
-            >
-            15
-            </span>
-
-            <img
-            src={arrowLeftIcon}
-            alt=""
-            aria-hidden="true"
-            className="h-6 w-6"
-            />
-        </button>
-
         {/* 재생 / 일시정지 */}
-        <button
-            type="button"
-            aria-label={playing ? "일시정지" : "재생"}
-            onClick={handlePlayToggle}
-            className="
-            mx-[42px]
-            flex h-[66px] w-[66px]
-            shrink-0
-            items-center justify-center
-            rounded-full
-            bg-[#60CEA7]
-            "
+        <div
+          className="
+            mt-8
+            flex
+            w-full
+            items-center
+            justify-center
+          "
         >
-            <img
-            src={playing ? pauseIcon : playIcon}
-            alt=""
-            aria-hidden="true"
-            className="h-[30px] w-[30px]"
-            />
-        </button>
-
-        {/* 15초 이후 */}
-        <button
+          <button
             type="button"
-            aria-label="15초 이후"
+            disabled={
+              !soundSession
+                ?.generated_params ||
+              isSoundLoading
+            }
+            aria-label={
+              playing
+                ? "일시정지"
+                : "재생"
+            }
+            onClick={
+              handlePlayToggle
+            }
             className="
-            flex items-center
-            gap-[6px]
-            text-[#92A8AB]
+              flex
+              h-[66px]
+              w-[66px]
+              shrink-0
+              items-center
+              justify-center
+              rounded-full
+              bg-[#60CEA7]
+              disabled:opacity-40
             "
-        >
+          >
             <img
-            src={arrowRightIcon}
-            alt=""
-            aria-hidden="true"
-            className="h-6 w-6"
+              src={
+                playing
+                  ? pauseIcon
+                  : playIcon
+              }
+              alt=""
+              aria-hidden="true"
+              className="
+                h-[30px]
+                w-[30px]
+              "
             />
-
-            <span
-            className="
-                font-sans
-                text-[16px]
-                leading-none
-                font-medium
-            "
-            >
-            15
-            </span>
-        </button>
+          </button>
         </div>
 
-        {screen === "feedback" && (
-        <>
-            {/* 뒤 회복 세션 어둡게 처리 */}
+        {/* 불편 신고 모달 */}
+        {screen ===
+          "feedback" && (
+          <>
             <div
-            className="
-                absolute inset-0
+              className="
+                absolute
+                inset-0
                 z-40
                 bg-black/35
-            "
+              "
             />
 
-            {/* 하단 피드백 모달 */}
             <section
-            className="
+              className="
                 absolute
-                bottom-0 left-0 right-0
+                bottom-0
+                left-0
+                right-0
                 z-50
-                flex flex-col
+                flex
+                flex-col
                 rounded-t-[22px]
-                border-t border-[#24464A]
+                border-t
+                border-[#24464A]
                 bg-[#102126]
                 px-5
                 pb-6
                 pt-6
-            "
+              "
             >
-            <h2
-            className="
-                font-sans
-                text-[22px]
-                font-bold
-                leading-normal
-                text-[#F0F7FA]
-            "
-            >
+              <h2
+                className="
+                  font-sans
+                  text-[22px]
+                  font-bold
+                  leading-normal
+                  text-[#F0F7FA]
+                "
+              >
                 소리가 불편했나요?
-            </h2>
+              </h2>
 
-            <p
-            className="
-                mt-3
-                font-sans
-                text-[13px]
-                font-normal
-                leading-normal
-                text-[#809EA8]
-            "
-            >
-            느낌을 골라주면 지금 세션과 다음 추천을 조정할게요.
-            </p>
+              <p
+                className="
+                  mt-3
+                  font-sans
+                  text-[13px]
+                  font-normal
+                  leading-normal
+                  text-[#809EA8]
+                "
+              >
+                느낌을 골라주면
+                지금 세션과 다음
+                추천을 조정할게요.
+              </p>
 
-            <div className="mt-6 flex flex-col gap-2">
-            {/* 첫 번째 줄 */}
-            <div className="flex gap-2">
-                {FEEDBACK_REASONS.slice(0, 2).map((reason) => {
-                const selected =
-                    selectedFeedback.includes(reason);
+              <div className="mt-6 flex flex-col gap-2">
+                <div className="flex gap-2">
+                  {FEEDBACK_REASONS
+                    .slice(0, 2)
+                    .map(
+                      (reason) => {
+                        const selected =
+                          selectedFeedback.includes(
+                            reason,
+                          );
 
-                return (
-                    <button
-                    key={reason}
-                    type="button"
-                    onClick={() => toggleFeedback(reason)}
-                    className={`
-                    inline-flex
-                    items-center
-                    justify-center
-                    rounded-[99px]
-                    border
-                    px-[20px]
-                    py-[10px]
+                        return (
+                          <button
+                            key={
+                              reason
+                            }
+                            type="button"
+                            onClick={() =>
+                              toggleFeedback(
+                                reason,
+                              )
+                            }
+                            className={`
+                              inline-flex
+                              items-center
+                              justify-center
+                              rounded-[99px]
+                              border
+                              px-[20px]
+                              py-[10px]
+                              font-sans
+                              text-[13px]
+                              font-normal
+                              leading-normal
+                              whitespace-nowrap
+                              ${
+                                selected
+                                  ? "border-[#38A887] bg-[#154638] text-[#61DBB8]"
+                                  : "border-[#24464E] bg-[#112126] text-[#809EA8]"
+                              }
+                            `}
+                          >
+                            {
+                              reason
+                            }
+                          </button>
+                        );
+                      },
+                    )}
+                </div>
+
+                <div className="flex gap-2">
+                  {FEEDBACK_REASONS
+                    .slice(2)
+                    .map(
+                      (reason) => {
+                        const selected =
+                          selectedFeedback.includes(
+                            reason,
+                          );
+
+                        return (
+                          <button
+                            key={
+                              reason
+                            }
+                            type="button"
+                            onClick={() =>
+                              toggleFeedback(
+                                reason,
+                              )
+                            }
+                            className={`
+                              inline-flex
+                              items-center
+                              justify-center
+                              rounded-[99px]
+                              border
+                              px-[20px]
+                              py-[10px]
+                              font-sans
+                              text-[13px]
+                              font-normal
+                              leading-normal
+                              whitespace-nowrap
+                              ${
+                                selected
+                                  ? "border-[#38A887] bg-[#154638] text-[#61DBB8]"
+                                  : "border-[#24464E] bg-[#112126] text-[#809EA8]"
+                              }
+                            `}
+                          >
+                            {
+                              reason
+                            }
+                          </button>
+                        );
+                      },
+                    )}
+                </div>
+              </div>
+
+              <div
+                className="
+                  mt-7
+                  flex
+                  w-full
+                  flex-col
+                  items-start
+                  justify-center
+                  gap-[13px]
+                  rounded-[18px]
+                  border
+                  border-[#24464E]
+                  bg-[#0F2B2C]
+                  px-[16px]
+                  pt-[24px]
+                  pb-[25px]
+                "
+              >
+                <p
+                  className="
                     font-sans
                     text-[13px]
-                    font-normal
+                    font-bold
                     leading-normal
-                    whitespace-nowrap
-                    ${
-                        selected
-                        ? "border-[#38A887] bg-[#154638] text-[#61DBB8]"
-                        : "border-[#24464E] bg-[#112126] text-[#809EA8]"
-                    }
-                    `}
-                    >
-                    {reason}
-                    </button>
-                );
-                })}
-            </div>
+                    text-[#61DBB8]
+                  "
+                >
+                  지금 바로 바꿀 수
+                  있어요.
+                </p>
 
-            {/* 두 번째 줄 */}
-            <div className="flex gap-2">
-                {FEEDBACK_REASONS.slice(2).map((reason) => {
-                const selected =
-                    selectedFeedback.includes(reason);
-
-                return (
-                    <button
-                    key={reason}
-                    type="button"
-                    onClick={() => toggleFeedback(reason)}
-                    className={`
-                    inline-flex
-                    items-center
-                    justify-center
-                    rounded-[99px]
-                    border
-                    px-[20px]
-                    py-[10px]
+                <p
+                  className="
                     font-sans
-                    text-[13px]
+                    text-[12px]
                     font-normal
                     leading-normal
-                    whitespace-nowrap
-                    ${
-                        selected
-                        ? "border-[#38A887] bg-[#154638] text-[#61DBB8]"
-                        : "border-[#24464E] bg-[#112126] text-[#809EA8]"
-                    }
-                    `}
-                    >
-                    {reason}
-                    </button>
-                );
-                })}
-            </div>
-            </div>
+                    text-[#F0F7FA]
+                  "
+                >
+                  오늘 상태는
+                  유지하고 불편
+                  요인만 제외해 다시
+                  준비해요.
+                </p>
+              </div>
 
-            <div
-            className="
-                mt-7
-                flex
-                w-full
-                flex-col
-                items-start
-                justify-center
-                gap-[13px]
-                rounded-[18px]
-                border border-[#24464E]
-                bg-[#0F2B2C]
-                px-[16px]
-                pt-[24px]
-                pb-[25px]
-            "
-            >
-            <p
-                className="
-                font-sans
-                text-[13px]
-                font-bold
-                leading-normal
-                text-[#61DBB8]
-                "
-            >
-                지금 바로 바꿀 수 있어요.
-            </p>
-
-            <p
-                className="
-                font-sans
-                text-[12px]
-                font-normal
-                leading-normal
-                text-[#F0F7FA]
-                "
-            >
-                오늘 상태는 유지하고 불편 요인만 제외해 다시 준비해요.
-            </p>
-            </div>
-
-            <button
+              <button
                 type="button"
-                onClick={handleChangeSound}
-                disabled={selectedFeedback.length === 0}
-                className={`
-                mt-7
-                h-14 w-full
-                rounded-[12px]
-                text-[14px]
-                font-bold
-                ${
-                    selectedFeedback.length > 0
-                    ? "bg-[#60CEA7] text-[#07100D]"
-                    : "bg-[#214750] text-[#0D1719]"
+                onClick={
+                  handleChangeSound
                 }
+                disabled={
+                  selectedFeedback
+                    .length === 0 ||
+                  isSoundLoading
+                }
+                className={`
+                  mt-7
+                  h-14
+                  w-full
+                  rounded-[12px]
+                  text-[14px]
+                  font-bold
+                  ${
+                    selectedFeedback
+                      .length > 0
+                      ? "bg-[#60CEA7] text-[#07100D]"
+                      : "bg-[#214750] text-[#0D1719]"
+                  }
                 `}
-            >
-                다른 사운드로 바꾸기
-            </button>
+              >
+                {isSoundLoading
+                  ? "다시 준비하고 있어요"
+                  : "다른 사운드로 바꾸기"}
+              </button>
 
-            <button
+              <button
                 type="button"
-                onClick={() => setScreen("safety")}
+                onClick={() =>
+                  setScreen(
+                    "safety",
+                  )
+                }
                 className="
-                mt-5
-                w-full
-                text-center
-                text-[12px]
-                font-medium
-                text-[#87CBE6]
+                  mt-5
+                  w-full
+                  text-center
+                  text-[12px]
+                  font-medium
+                  text-[#87CBE6]
                 "
-            >
+              >
                 오늘은 세션 마치기
-            </button>
+              </button>
             </section>
-        </>
+          </>
         )}
       </div>
     );
   }
 
-/*
- * 2. 세션 마치기
- */
-    if (screen === "safety") {
-    const handleSafetyConfirm = () => {
-        if (selectedSymptoms.length > 0) {
-        console.log(
+  /*
+   * =========================
+   * 2. 세션 마치기
+   * =========================
+   */
+
+  if (screen === "safety") {
+    const handleSafetyConfirm =
+      () => {
+        if (
+          selectedSymptoms.length >
+          0
+        ) {
+          console.log(
             "선택된 증상:",
             selectedSymptoms,
-        );
+          );
         }
 
+        /*
+         * TODO:
+         * 백엔드 증상 저장 API 확정 후
+         * 여기 연결
+         */
+        stopRecoveryAudio();
+
         navigate("/");
-    };
+      };
 
     return (
-        <div className="flex min-h-dvh flex-col px-5 pb-6">
-
-        {/* 내용 */}
+      <div className="flex min-h-dvh flex-col px-5 pb-6">
         <section className="pt-10">
-            <h2
+          <h2
             className="
-                font-sans
-                text-[27px]
-                font-bold
-                leading-normal
-                text-[#F0F7FA]
+              font-sans
+              text-[27px]
+              font-bold
+              leading-normal
+              text-[#F0F7FA]
             "
-            >
+          >
             더 불편하거나
             <br />
             이상하게 느껴졌나요?
-            </h2>
+          </h2>
 
-            <p
+          <p
             className="
-                mt-5
-                font-sans
-                text-[13px]
-                font-normal
-                leading-normal
-                text-[#809EA8]
+              mt-5
+              font-sans
+              text-[13px]
+              font-normal
+              leading-normal
+              text-[#809EA8]
             "
-            >
-            느낀 증상을 알려주면 다음 추천에서 제외할게요.
-            </p>
+          >
+            느낀 증상을 알려주면
+            다음 추천에서
+            제외할게요.
+          </p>
 
-            <p
+          <p
             className="
-                mt-10
-                font-sans
-                text-[15px]
-                font-bold
-                leading-normal
-                text-[#F0F7FA]
+              mt-10
+              font-sans
+              text-[15px]
+              font-bold
+              leading-normal
+              text-[#F0F7FA]
             "
-            >
+          >
             어떤 느낌이었나요?
-            </p>
+          </p>
 
-            {/* 증상 선택 */}
-            <div className="mt-4 flex flex-col gap-2">
-            {/* 첫 번째 줄 */}
+          <div className="mt-4 flex flex-col gap-2">
             <div className="flex gap-2">
-                {SYMPTOMS.slice(0, 3).map((symptom) => {
-                const selected = selectedSymptoms.includes(symptom);
-
-                return (
-                    <button
-                    key={symptom}
-                    type="button"
-                    onClick={() => toggleSymptom(symptom)}
-                    className={`
-                        inline-flex
-                        items-center
-                        justify-center
-                        rounded-[99px]
-                        border
-                        px-[20px]
-                        py-[10px]
-                        font-sans
-                        text-[12px]
-                        font-medium
-                        leading-normal
-                        whitespace-nowrap
-                        transition-colors
-                        ${
-                        selected
-                            ? "border-[#38A887] bg-[#154638] text-[#61DBB8]"
-                            : "border-[#24464E] bg-[#112126] text-[#809EA8]"
-                        }
-                    `}
-                    >
-                    {symptom}
-                    </button>
-                );
-                })}
-            </div>
-
-            {/* 두 번째 줄 */}
-            <div className="flex gap-2">
-                {SYMPTOMS.slice(3).map((symptom) => {
-                    const selected = selectedSymptoms.includes(symptom);
-
-                    return (
-                    <button
-                        key={symptom}
-                        type="button"
-                        onClick={() => toggleSymptom(symptom)}
-                        className={`
-                        inline-flex
-                        items-center
-                        justify-center
-                        rounded-[99px]
-                        border
-                        px-[20px]
-                        py-[10px]
-                        font-sans
-                        text-[12px]
-                        font-medium
-                        leading-normal
-                        whitespace-nowrap
-                        transition-colors
-                        ${
-                            selected
-                            ? "border-[#38A887] bg-[#154638] text-[#61DBB8]"
-                            : "border-[#24464E] bg-[#112126] text-[#809EA8]"
-                        }
-                        `}
-                    >
-                        {symptom}
-                    </button>
+              {SYMPTOMS.slice(
+                0,
+                3,
+              ).map(
+                (symptom) => {
+                  const selected =
+                    selectedSymptoms.includes(
+                      symptom,
                     );
-                })}
-                </div>
 
+                  return (
+                    <button
+                      key={symptom}
+                      type="button"
+                      onClick={() =>
+                        toggleSymptom(
+                          symptom,
+                        )
+                      }
+                      className={`
+                        inline-flex
+                        items-center
+                        justify-center
+                        rounded-[99px]
+                        border
+                        px-[20px]
+                        py-[10px]
+                        font-sans
+                        text-[12px]
+                        font-medium
+                        leading-normal
+                        whitespace-nowrap
+                        ${
+                          selected
+                            ? "border-[#38A887] bg-[#154638] text-[#61DBB8]"
+                            : "border-[#24464E] bg-[#112126] text-[#809EA8]"
+                        }
+                      `}
+                    >
+                      {symptom}
+                    </button>
+                  );
+                },
+              )}
             </div>
 
+            <div className="flex gap-2">
+              {SYMPTOMS.slice(
+                3,
+              ).map(
+                (symptom) => {
+                  const selected =
+                    selectedSymptoms.includes(
+                      symptom,
+                    );
+
+                  return (
+                    <button
+                      key={symptom}
+                      type="button"
+                      onClick={() =>
+                        toggleSymptom(
+                          symptom,
+                        )
+                      }
+                      className={`
+                        inline-flex
+                        items-center
+                        justify-center
+                        rounded-[99px]
+                        border
+                        px-[20px]
+                        py-[10px]
+                        font-sans
+                        text-[12px]
+                        font-medium
+                        leading-normal
+                        whitespace-nowrap
+                        ${
+                          selected
+                            ? "border-[#38A887] bg-[#154638] text-[#61DBB8]"
+                            : "border-[#24464E] bg-[#112126] text-[#809EA8]"
+                        }
+                      `}
+                    >
+                      {symptom}
+                    </button>
+                  );
+                },
+              )}
+            </div>
+          </div>
         </section>
 
-        {/* 확인 버튼 */}
         <div
-        className="
+          className="
             sticky
             bottom-0
             mt-auto
             bg-[#07191D]
             pt-4
             pb-6
-        "
+          "
         >
-        <button
+          <button
             type="button"
-            onClick={handleSafetyConfirm}
+            onClick={
+              handleSafetyConfirm
+            }
             className="
-            h-14
-            w-full
-            rounded-[12px]
-            bg-[#60CEA7]
-            font-sans
-            text-[14px]
-            font-bold
-            text-[#07100D]
+              h-14
+              w-full
+              rounded-[12px]
+              bg-[#60CEA7]
+              font-sans
+              text-[14px]
+              font-bold
+              text-[#07100D]
             "
-        >
+          >
             확인
-        </button>
+          </button>
         </div>
-        </div>
+      </div>
     );
-    }
+  }
 
-
+  return null;
 }
 
 export default RecoverySessionPage;
