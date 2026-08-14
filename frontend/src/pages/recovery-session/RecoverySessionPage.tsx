@@ -4,6 +4,12 @@ import arrowLeftIcon from "../../assets/icons/ArrowClockwise-left.svg";
 import arrowRightIcon from "../../assets/icons/ArrowClockwise-right.svg";
 import playIcon from "../../assets/icons/Play.svg";
 import pauseIcon from "../../assets/icons/pause-recovery.svg";
+import { pauseRecoveryAudio, playRecoveryAudio, resumeRecoveryAudio, 
+  stopRecoveryAudio, } from "../../audio/recoveryAudio";
+
+import { generateTodaySound, updateSoundPlayback, type SoundSession,
+} from "../../api/sound";import { getUserUuid } from "../../utils/userStorage";
+
 
 type RecoveryScreen =
   | "session"
@@ -33,13 +39,124 @@ function RecoverySessionPage() {
   const [screen, setScreen] =
     useState<RecoveryScreen>("session");
 
-  const [playing, setPlaying] = useState(true);
+  const [playing, setPlaying] = useState(false);
+
+    const [
+    elapsedSeconds,
+    setElapsedSeconds,
+    ] = useState(0);
+
+    const [
+    hasStarted,
+    setHasStarted,
+    ] = useState(false);
+
+    const [
+    soundSession,
+    setSoundSession,
+    ] = useState<SoundSession | null>(null);
+
+    const [isSoundLoading, setIsSoundLoading] =
+    useState(true);
+
+    const [
+    soundError,
+    setSoundError,
+    ] = useState<string | null>(null);
+
+
+    const totalSeconds =
+    (soundSession
+        ?.recommended_duration_minutes ??
+        0) * 60;
+
+    const remainingSeconds =
+    Math.max(
+        0,
+        totalSeconds - elapsedSeconds,
+    );
+
+    const progress =
+    totalSeconds > 0
+        ? Math.min(
+            100,
+            (elapsedSeconds /
+            totalSeconds) *
+            100,
+        )
+        : 0;
+
+    const formatTime = (
+    seconds: number,
+    ) => {
+    const minutes = Math.floor(
+        seconds / 60,
+    );
+
+    const restSeconds =
+        seconds % 60;
+
+    return `${String(minutes).padStart(
+        2,
+        "0",
+    )}:${String(restSeconds).padStart(
+        2,
+        "0",
+    )}`;
+    };
+
+
+
 
   const [selectedSymptoms, setSelectedSymptoms] =
     useState<string[]>([]);
 
     const [selectedFeedback, setSelectedFeedback] =
         useState<string[]>([]);
+
+    useEffect(() => {
+    const loadSoundSession = async () => {
+        const uuid = getUserUuid();
+
+        if (!uuid) {
+        setSoundError(
+            "사용자 정보를 찾을 수 없습니다.",
+        );
+        setIsSoundLoading(false);
+        return;
+        }
+
+        try {
+        setIsSoundLoading(true);
+        setSoundError(null);
+
+        const session =
+            await generateTodaySound(uuid);
+
+        console.log(
+            "오늘의 사운드 생성 결과:",
+            session,
+        );
+
+        setSoundSession(session);
+        } catch (error) {
+        console.error(
+            "오늘의 사운드 생성 실패",
+            error,
+        );
+
+        setSoundError(
+            error instanceof Error
+            ? error.message
+            : "사운드를 불러오지 못했습니다.",
+        );
+        } finally {
+        setIsSoundLoading(false);
+        }
+    };
+
+    void loadSoundSession();
+    }, []);
 
     useEffect(() => {
         if (screen === "safety") {
@@ -68,9 +185,25 @@ function RecoverySessionPage() {
     }, [screen]);
 
     useEffect(() => {
-    const handleStop = () => {
+    const handleStop = async () => {
+        if (playing && soundSession) {
+            const uuid = getUserUuid();
+
+            await pauseRecoveryAudio();
+
+            if (uuid) {
+            await updateSoundPlayback(
+                uuid,
+                soundSession.session_id,
+                "pause",
+            );
+            }
+
+            setPlaying(false);
+        }
+
         setScreen("feedback");
-    };
+        };
 
     const handleRecoveryBack = () => {
         if (
@@ -107,6 +240,86 @@ function RecoverySessionPage() {
     };
     }, [screen, navigate]);
 
+    useEffect(() => {
+    if (
+        !playing ||
+        totalSeconds <= 0
+    ) {
+        return;
+    }
+
+    const timer = window.setInterval(
+        () => {
+        setElapsedSeconds(
+            (previous) => {
+            if (
+                previous >=
+                totalSeconds - 1
+            ) {
+                return totalSeconds;
+            }
+
+            return previous + 1;
+            },
+        );
+        },
+        1000,
+    );
+
+    return () => {
+        window.clearInterval(timer);
+    };
+    }, [
+    playing,
+    totalSeconds,
+    ]);
+
+    useEffect(() => {
+    if (
+        !soundSession ||
+        totalSeconds <= 0 ||
+        elapsedSeconds <
+        totalSeconds
+    ) {
+        return;
+    }
+
+    const completeSession =
+        async () => {
+        const uuid =
+            getUserUuid();
+
+        stopRecoveryAudio();
+        setPlaying(false);
+
+        if (!uuid) {
+            return;
+        }
+
+        try {
+            await updateSoundPlayback(
+            uuid,
+            soundSession.session_id,
+            "complete",
+            elapsedSeconds,
+            "timer",
+            );
+        } catch (error) {
+            console.error(
+            "회복 세션 완료 처리 실패",
+            error,
+            );
+        }
+        };
+
+    void completeSession();
+    }, [
+    elapsedSeconds,
+    totalSeconds,
+    soundSession,
+    ]);
+
+
     const toggleFeedback = (reason: string) => {
         setSelectedFeedback((previous) =>
             previous.includes(reason)
@@ -123,6 +336,76 @@ function RecoverySessionPage() {
     );
   };
 
+    const handlePlayToggle =
+    async () => {
+        if (
+        !soundSession ||
+        !soundSession.generated_params
+        ) {
+        return;
+        }
+
+        const uuid = getUserUuid();
+
+        if (!uuid) {
+        return;
+        }
+
+        try {
+        if (!hasStarted) {
+            await playRecoveryAudio(
+            soundSession.generated_params,
+            );
+
+            await updateSoundPlayback(
+            uuid,
+            soundSession.session_id,
+            "start",
+            );
+
+            setHasStarted(true);
+            setPlaying(true);
+
+            return;
+        }
+
+        if (playing) {
+            await pauseRecoveryAudio();
+
+            await updateSoundPlayback(
+            uuid,
+            soundSession.session_id,
+            "pause",
+            );
+
+            setPlaying(false);
+
+            return;
+        }
+
+        await resumeRecoveryAudio();
+
+        await updateSoundPlayback(
+            uuid,
+            soundSession.session_id,
+            "resume",
+        );
+
+        setPlaying(true);
+        } catch (error) {
+        console.error(
+            "회복 세션 재생 상태 변경 실패",
+            error,
+        );
+        }
+    };
+
+    useEffect(() => {
+    return () => {
+        stopRecoveryAudio();
+    };
+    }, []);
+
   const handleChangeSound = () => {
     if (selectedFeedback.length === 0) {
         return;
@@ -133,9 +416,9 @@ function RecoverySessionPage() {
     // 백엔드가 불편 사유를 바탕으로 새로운 사운드를 결정
     // 결정된 사운드를 받아 회복 세션에 적용
 
-    setSelectedFeedback([]);
-    setPlaying(true);
-    setScreen("session");
+        setSelectedFeedback([]);
+        setPlaying(false);
+        setScreen("session");
     };
 
   /*
@@ -145,6 +428,21 @@ function RecoverySessionPage() {
     return (
         <div className="hide-scrollbar relative flex min-h-full 
         flex-col overflow-y-auto px-5 pb-6">
+
+
+        {/* 임시*/}
+        {isSoundLoading && (
+        <p className="mt-4 text-center text-[12px] text-[#809EA8]">
+            사운드를 준비하고 있어요.
+        </p>
+        )}
+
+        {soundError && (
+        <p className="mt-4 text-center text-[12px] text-[#F09292]">
+            {soundError}
+        </p>
+        )}
+
 
         {/* 원형 그래픽 */}
         <div className="mt-12 flex justify-center">
@@ -227,7 +525,9 @@ function RecoverySessionPage() {
               text-text-primary
             "
           >
-            08:42
+            {formatTime(
+                remainingSeconds,
+            )}
           </p>
 
           <p className="mt-3 text-[0.6875rem] text-text-secondary">
@@ -237,20 +537,38 @@ function RecoverySessionPage() {
 
         {/* 현재 사운드 */}
         <p
-          className="
+        className="
             mt-7 text-center
             text-[0.6875rem]
             font-semibold
             text-text-primary
-          "
+        "
         >
-          빗소리 + 853Hz 노이즈
+        {soundSession?.generated_params
+            ?.frequency_bands?.[0]
+            ?.center_hz
+            ? `개인화 노이즈 ${
+                Math.round(
+                soundSession.generated_params
+                    .frequency_bands[0].center_hz,
+                )
+            }Hz`
+            : "사운드 준비 중"}
         </p>
 
         {/* 진행바 */}
         <div className="mt-5">
           <div className="h-[4px] w-full overflow-hidden rounded-full bg-[#294A4F]">
-            <div className="h-full w-[58%] rounded-full bg-[#60CEA7]" />
+            <div
+                className="
+                    h-full
+                    rounded-full
+                    bg-[#60CEA7]
+                "
+                style={{
+                    width: `${progress}%`,
+                }}
+                />
           </div>
 
           <div
@@ -260,8 +578,17 @@ function RecoverySessionPage() {
               text-text-secondary
             "
           >
-            <span>06:18</span>
-            <span>15:00</span>
+            <span>
+            {formatTime(
+                elapsedSeconds,
+            )}
+            </span>
+
+            <span>
+            {formatTime(
+                totalSeconds,
+            )}
+            </span>
           </div>
         </div>
 
@@ -300,9 +627,7 @@ function RecoverySessionPage() {
         <button
             type="button"
             aria-label={playing ? "일시정지" : "재생"}
-            onClick={() =>
-            setPlaying((previous) => !previous)
-            }
+            onClick={handlePlayToggle}
             className="
             mx-[42px]
             flex h-[66px] w-[66px]
