@@ -1,101 +1,212 @@
 from django.apps import apps
-from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
-
-# sound/relaxation 앱 미확정으로 인해 우선 소프트 참조로 개입. 추후 FK 구조로 개선 필요
-class InterventionType(models.TextChoices):
-    SOUND = "sound", "사운드"
-    RELAXATION = "relaxation", "이완 활동"
+from accounts.models import AnonymousUser
 
 
-# 사운드 도움 여부 평가
-class SoundHelpfulness(models.TextChoices):
-    HELPFUL = "helpful", "도움됨"
-    NO_CHANGE = "no_change", "변화 없음"
-    UNCOMFORTABLE = "uncomfortable", "불편함"
+# 한 번의 세션/루틴 실행에 대한 결과 평가
+# sound / relaxation 구조가 완전히 확정되기 전까지는 세션 PK를 소프트 참조로 저장
+class NightlyEvaluation(models.Model):
 
+    class SleepLatency(models.TextChoices):
+        UNDER_15 = "under_15min", "15분 이내"
+        MIN_15_30 = "15_30min", "15-30분"
+        MIN_30_60 = "30_60min", "30-60분"
+        OVER_60 = "over_60min", "60분 초과"
+        UNKNOWN = "unknown", "잘 모르겠어요"
 
-# 평가 진행 상태.
-class EvaluationStatus(models.TextChoices):
-    PENDING = "pending", "대기 중"                # 아직 평가/스킵 안 됨, 24시간 이내
-    EVALUATED = "evaluated", "평가 완료"
-    SKIPPED = "skipped", "건너뜀"                  # 사용자가 명시적으로 "평가 안 하기"
-    EXPIRED = "expired", "미응답(24시간 경과)"       # 24시간 지나도록 응답 없음
+    class SoundReaction(models.TextChoices):
+        COMFORTABLE = "comfortable", "편안했어요"
+        NOISE_WEAK = "noise_weak", "노이즈가 약했어요"
+        SHARP = "sharp", "날카로웠어요"
+        VOLUME_TOO_LOUD = "volume_too_loud", "볼륨이 컸어요"
+        NATURAL_SOUND_UNCOMFORTABLE = (
+            "natural_sound_uncomfortable",
+            "자연음이 불편했어요",
+        )
 
+    class Status(models.TextChoices):
+        # 세션 종료 후 24시간 이내이며 아직 결과 기록을 제출하지 않은 상태(나중에 버튼 포함)
+        PENDING = "pending", "평가 대기"
 
-# 개입 후 효과 평가(평가 강제하지 않음)
-class InterventionEvaluation(models.Model):
+        # 사용자가 결과 기록을 정상적으로 저장한 상태
+        EVALUATED = "evaluated", "평가 완료"
+
+        # 세션 종료 후 24시간이 지나 더 이상 입력할 수 없는 상태
+        EXPIRED = "expired", "미응답(24시간 경과)"
 
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        AnonymousUser,
         on_delete=models.CASCADE,
-        related_name="intervention_evaluations",
+        related_name="nightly_evaluations",
     )
 
-    # 소프트 참조: sound.SoundSession 또는 relaxation.RelaxationSession의 PK
-    intervention_type = models.CharField(max_length=20, choices=InterventionType.choices)
-    session_id = models.PositiveIntegerField(
-        help_text="intervention_type에 해당하는 세션 모델의 PK (아직 실제 FK 아님)"
+    # 평가 대상 세션이 실행된 날짜
+    # 같은 날짜에도 여러 번 앱을 사용할 수 있으므로 하루에 여러 평가 생성 가능
+    for_date = models.DateField(
+        help_text="평가 대상 세션이 실행된 날짜",
     )
 
-    # 개입 후 이명 불편도 (1~5 척도)
+    # 해당 세션에 연결된 PK, 해당 개입이 없었던 경우 null, sound / relaxation 구조 확정 후 실제 FK 전환 예정
+    sound_session_id = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+    )
+
+    relaxation_session_id = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+    )
+
+    # 그 세션 전체에 대한 결과
+    sleep_latency = models.CharField(
+        max_length=20,
+        choices=SleepLatency.choices,
+        null=True,
+        blank=True,
+        help_text="잠드는 데 걸린 시간",
+    )
+
     discomfort_after = models.PositiveSmallIntegerField(
-        null=True, blank=True,
-        validators=[MinValueValidator(1), MaxValueValidator(5)],
-        help_text="개입 후 이명 불편도 (1~5)",
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(1),
+            MaxValueValidator(5),
+        ],
+        help_text="다음날 회상한 이명 불편도 (1~5)",
     )
 
-    # 개입 후 긴장도 (1~5 척도)
-    tension_after = models.PositiveSmallIntegerField(
-        null=True, blank=True,
-        validators=[MinValueValidator(1), MaxValueValidator(5)],
-        help_text="개입 후 긴장도 (1~5)",
+    anxiety_after = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(1),
+            MaxValueValidator(5),
+        ],
+        help_text="다음날 회상한 불안 정도 (1~5)",
     )
 
-    # 사운드/활동 도움 여부
-    helpfulness = models.CharField(
-        max_length=20, choices=SoundHelpfulness.choices, null=True, blank=True,
+    current_fatigue = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(1),
+            MaxValueValidator(5),
+        ],
+        help_text="현재 피로도 (1~5)",
     )
 
-    # 불편 요소 추가 피드백 (자유 텍스트, 선택 입력)
-    discomfort_feedback = models.TextField(null=True, blank=True)
+    note = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="한 줄 메모 (선택)",
+    )
+
+    # 이완 루틴 결과_이완 세션이 있었을 시에만 의미가 있다
+    routine_helpfulness = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(1),
+            MaxValueValidator(5),
+        ],
+        help_text="어젯밤 수면 준비가 도움이 된 정도 (1~5)",
+    )
+
+    # 사운드 결과_사운드가 있었을 시에만 의미가 있다
+    sound_reactions = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="SoundReaction 값의 리스트 (복수 선택 가능)",
+    )
 
     status = models.CharField(
         max_length=20,
-        choices=EvaluationStatus.choices,
-        default=EvaluationStatus.PENDING,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
     )
 
-    created_at = models.DateTimeField(auto_now_add=True)  # 평가 대상(=개입) row 생성 시각
-    evaluated_at = models.DateTimeField(null=True, blank=True) #실제로 사용자가 입력(스킵 포함) 완료한 시각 
+    # 평가 row가 생성된 시각
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    # 사용자가 실제로 결과 기록을 제출한 시각
+    evaluated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
 
     class Meta:
-        # 하나의 개입에 하나의 평가만 가능
-        constraints = [
-            models.UniqueConstraint(
-                fields=["user", "intervention_type", "session_id"],
-                name="feedback_one_evaluation_per_session",
-            )
-        ]
         indexes = [
-            models.Index(fields=["user", "status"]),
+            models.Index(
+                fields=[
+                    "user",
+                    "status",
+                ]
+            ),
+            models.Index(
+                fields=[
+                    "user",
+                    "-for_date",
+                ]
+            ),
+            models.Index(
+                fields=[
+                    "sound_session_id",
+                ]
+            ),
+            models.Index(
+                fields=[
+                    "relaxation_session_id",
+                ]
+            ),
         ]
-        verbose_name = "개입 후 피드백"
-        verbose_name_plural = "개입 후 피드백"
+
+        ordering = [
+            "-created_at",
+        ]
+
+        verbose_name = "세션 결과 평가"
+        verbose_name_plural = "세션 결과 평가 목록"
 
     def __str__(self):
         return (
-            f"Evaluation({self.intervention_type}#{self.session_id}, "
-            f"user={self.user_id}, status={self.status})"
+            f"NightlyEvaluation("
+            f"{self.for_date}, "
+            f"status={self.status})"
         )
 
-    # 소프트 참조 위해 작성_추후 삭제 예정
-    def get_session(self):
-        model_label = {
-            InterventionType.SOUND: "sound.SoundSession",
-            InterventionType.RELAXATION: "relaxation.RelaxationSession",
-        }[self.intervention_type]
-        Model = apps.get_model(model_label)
-        return Model.objects.filter(pk=self.session_id).first()
+    # 소프트 참조 헬퍼
+    # sound / relaxation을 실제 FK로 전환하면 삭제 예정
+    def get_sound_session(self):
+        if not self.sound_session_id:
+            return None
+
+        Model = apps.get_model(
+            "sound",
+            "SoundSession",
+        )
+
+        return Model.objects.filter(
+            pk=self.sound_session_id
+        ).first()
+
+    def get_relaxation_session(self):
+        if not self.relaxation_session_id:
+            return None
+
+        try:
+            Model = apps.get_model(
+                "relaxtion",
+                "RelaxationSession",
+            )
+        except LookupError:
+            return None
+
+        return Model.objects.filter(
+            pk=self.relaxation_session_id
+        ).first()
