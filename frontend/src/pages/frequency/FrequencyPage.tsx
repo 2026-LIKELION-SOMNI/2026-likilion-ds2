@@ -1482,10 +1482,11 @@ const handlePreviousStep =
         <section className="pt-12">
           <h1
             className="
-              text-[1.25rem]
-              leading-[1.75rem]
+              font-sans
+              text-[24px]
               font-bold
-              text-text-primary
+              leading-[36px]
+              text-[#ECF3F2]
             "
           >
             마지막으로 확인할게요.
@@ -1493,10 +1494,12 @@ const handlePreviousStep =
 
           <p
             className="
-              mt-2
-              text-[0.75rem]
-              leading-5
-              text-text-secondary
+              mt-[2px]
+              font-sans
+              text-[13px]
+              font-normal
+              leading-normal
+              text-[#809EA8]
             "
           >
             비슷하게 느껴지는 높이 중
@@ -1693,9 +1696,11 @@ const handlePreviousStep =
           <p
             className="
               mt-8
-              text-[0.6875rem]
-              leading-5
-              text-text-secondary
+              font-sans
+              text-[11px]
+              font-normal
+              leading-normal
+              text-[#809EA8]
             "
           >
             지원 범위를 벗어나는 후보는
@@ -1759,10 +1764,11 @@ const handlePreviousStep =
       <section className="pt-16">
         <h1
           className="
-            text-[1.25rem]
-            leading-[1.75rem]
+            font-sans
+            text-[24px]
             font-bold
-            text-text-primary
+            leading-[36px]
+            text-[#ECF3F2]
           "
         >
           이명과 가까운 음역을 찾았어요

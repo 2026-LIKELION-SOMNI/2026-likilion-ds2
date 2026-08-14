@@ -115,10 +115,11 @@ function NatureSoundPage() {
       <section className="pt-8">
         <h1
           className="
+            font-sans
             text-[24px]
-            leading-[30px]
             font-bold
-            text-text-primary
+            leading-[36px]
+            text-[#ECF3F2]
           "
         >
           어떤 배경 소리가

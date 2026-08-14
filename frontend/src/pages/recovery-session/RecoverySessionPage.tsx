@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import arrowLeftIcon from "../../assets/icons/ArrowClockwise-left.svg";
 import arrowRightIcon from "../../assets/icons/ArrowClockwise-right.svg";
@@ -40,6 +40,72 @@ function RecoverySessionPage() {
 
     const [selectedFeedback, setSelectedFeedback] =
         useState<string[]>([]);
+
+    useEffect(() => {
+        if (screen === "safety") {
+            window.dispatchEvent(
+            new CustomEvent("recovery-header", {
+                detail: {
+                title: "세션 마치기",
+                showBackButton: true,
+                showStopButton: false,
+                },
+            }),
+            );
+
+            return;
+        }
+
+    window.dispatchEvent(
+        new CustomEvent("recovery-header", {
+        detail: {
+            title: "회복 세션",
+            showBackButton: false,
+            showStopButton: true,
+        },
+        }),
+    );
+    }, [screen]);
+
+    useEffect(() => {
+    const handleStop = () => {
+        setScreen("feedback");
+    };
+
+    const handleRecoveryBack = () => {
+        if (
+        screen === "safety" ||
+        screen === "feedback"
+        ) {
+        setScreen("session");
+        return;
+        }
+
+        navigate(-1);
+    };
+
+    window.addEventListener(
+        "recovery-stop",
+        handleStop,
+    );
+
+    window.addEventListener(
+        "recovery-back",
+        handleRecoveryBack,
+    );
+
+    return () => {
+        window.removeEventListener(
+        "recovery-stop",
+        handleStop,
+        );
+
+        window.removeEventListener(
+        "recovery-back",
+        handleRecoveryBack,
+        );
+    };
+    }, [screen, navigate]);
 
     const toggleFeedback = (reason: string) => {
         setSelectedFeedback((previous) =>
@@ -92,37 +158,6 @@ function RecoverySessionPage() {
     return (
         <div className="hide-scrollbar relative flex min-h-full 
         flex-col overflow-y-auto px-5 pb-6">
-        {/* 자체 헤더 */}
-        <div className="relative flex h-16 shrink-0 items-center justify-center">
-        <h1
-            className="
-            text-center
-            font-sans
-            text-[20px]
-            leading-[23px]
-            font-bold
-            text-[#ECF3F2]
-            "
-        >
-            회복 세션
-        </h1>
-
-        <button
-            type="button"
-            onClick={() => setScreen("feedback")}
-            className="
-            absolute
-            right-0
-            font-sans
-            text-[16px]
-            leading-[18px]
-            font-medium
-            text-[#87CBE6]
-            "
-        >
-            중단
-        </button>
-        </div>
 
         {/* 원형 그래픽 */}
         <div className="mt-12 flex justify-center">
@@ -456,43 +491,45 @@ function RecoverySessionPage() {
             </div>
 
             <div
-                className="
+            className="
                 mt-7
                 flex
+                w-full
                 flex-col
                 items-start
+                justify-center
+                gap-[13px]
                 rounded-[18px]
                 border border-[#24464E]
                 bg-[#0F2B2C]
                 px-[16px]
-                pt-[14px]
-                pb-[39px]
+                pt-[24px]
+                pb-[25px]
+            "
+            >
+            <p
+                className="
+                font-sans
+                text-[13px]
+                font-bold
+                leading-normal
+                text-[#61DBB8]
                 "
             >
-                <p
-                className="
-                    font-sans
-                    text-[13px]
-                    font-bold
-                    leading-normal
-                    text-[#61DBB8]
-                "
-                >
                 지금 바로 바꿀 수 있어요.
-                </p>
+            </p>
 
-                <p
+            <p
                 className="
-                    mt-[19px]
-                    font-sans
-                    text-[12px]
-                    font-normal
-                    leading-normal
-                    text-[#F0F7FA]
+                font-sans
+                text-[12px]
+                font-normal
+                leading-normal
+                text-[#F0F7FA]
                 "
-                >
+            >
                 오늘 상태는 유지하고 불편 요인만 제외해 다시 준비해요.
-                </p>
+            </p>
             </div>
 
             <button
@@ -552,38 +589,7 @@ function RecoverySessionPage() {
     };
 
     return (
-        <div className="relative min-h-full px-5 pb-[96px]">
-        {/* 헤더 */}
-        <div className="relative flex h-16 shrink-0 items-center justify-center">
-            <button
-            type="button"
-            onClick={handleBack}
-            aria-label="이전 화면"
-            className="
-                absolute left-[-8px]
-                flex h-10 w-10
-                items-center justify-center
-                text-[1.8rem]
-                font-light
-                text-[#ECF3F2]
-            "
-            >
-            ‹
-            </button>
-
-            <h1
-            className="
-                text-center
-                font-sans
-                text-[20px]
-                leading-[23px]
-                font-bold
-                text-[#ECF3F2]
-            "
-            >
-            세션 마치기
-            </h1>
-        </div>
+        <div className="flex min-h-dvh flex-col px-5 pb-6">
 
         {/* 내용 */}
         <section className="pt-10">
@@ -648,8 +654,8 @@ function RecoverySessionPage() {
                         px-[20px]
                         py-[10px]
                         font-sans
-                        text-[13px]
-                        font-normal
+                        text-[12px]
+                        font-medium
                         leading-normal
                         whitespace-nowrap
                         transition-colors
@@ -685,8 +691,8 @@ function RecoverySessionPage() {
                         px-[20px]
                         py-[10px]
                         font-sans
-                        text-[13px]
-                        font-normal
+                        text-[12px]
+                        font-medium
                         leading-normal
                         whitespace-nowrap
                         transition-colors
@@ -710,16 +716,18 @@ function RecoverySessionPage() {
         {/* 확인 버튼 */}
         <div
         className="
-            absolute
-            bottom-6
-            left-5
-            right-5
+            sticky
+            bottom-0
+            mt-auto
+            bg-[#07191D]
+            pt-4
+            pb-6
         "
         >
         <button
             type="button"
             onClick={handleSafetyConfirm}
-            className={`
+            className="
             h-14
             w-full
             rounded-[12px]
@@ -727,13 +735,12 @@ function RecoverySessionPage() {
             font-sans
             text-[14px]
             font-bold
-            transition-colors
-            `}
+            text-[#07100D]
+            "
         >
             확인
         </button>
         </div>
-
         </div>
     );
     }

@@ -323,10 +323,11 @@ function SoundSetupPage() {
         <section className="pt-8">
           <h1
             className="
-              text-[1.25rem]
-              leading-[1.75rem]
+              font-sans
+              text-[24px]
               font-bold
-              text-text-primary
+              leading-[36px]
+              text-[#ECF3F2]
             "
           >
             이명 대역을 참고하여
@@ -506,18 +507,19 @@ function SoundSetupPage() {
 
   return (
     <div className="flex min-h-full flex-col px-5 pb-6">
-      <section className="pt-16">
+      <section className="pt-8">
         <h1
           className="
-            text-[1.25rem]
-            leading-[1.75rem]
+            font-sans
+            text-[24px]
             font-bold
-            text-text-primary
+            leading-[36px]
+            text-[#ECF3F2]
           "
         >
-          이명이 완전히 사라지지 않는
+          이명이 노이즈랑 자연스럽게
           <br />
-          지점을 찾아볼게요.
+          어울리는 지점을 찾아보세요.
         </h1>
 
         <div
