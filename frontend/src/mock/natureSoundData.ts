@@ -1,3 +1,8 @@
+import rainAudio from "../assets/audio/nature/rain.mp3";
+import airAudio from "../assets/audio/nature/air.mp3";
+import oceanAudio from "../assets/audio/nature/ocean.mp3";
+import streamAudio from "../assets/audio/nature/stream.mp3";
+
 export type NatureSoundCategory =
   | "추천"
   | "비"
@@ -9,9 +14,15 @@ export interface NatureSound {
   id: number;
   title: string;
   description: string;
-  category: Exclude<NatureSoundCategory, "추천">;
+  category: Exclude<
+    NatureSoundCategory,
+    "추천"
+  >;
   recommended: boolean;
   keywords: string[];
+
+  // 실제 재생할 mp3
+  audio: string;
 }
 
 export const natureSoundCategories: NatureSoundCategory[] = [
@@ -29,7 +40,13 @@ export const natureSounds: NatureSound[] = [
     description: "고른 빗방울",
     category: "비",
     recommended: true,
-    keywords: ["비", "빗소리", "물", "빗방울"],
+    keywords: [
+      "비",
+      "빗소리",
+      "물",
+      "빗방울",
+    ],
+    audio: rainAudio,
   },
   {
     id: 2,
@@ -37,7 +54,12 @@ export const natureSounds: NatureSound[] = [
     description: "시원하고 맑은 시냇물",
     category: "물",
     recommended: true,
-    keywords: ["물", "시냇물", "계곡"],
+    keywords: [
+      "물",
+      "시냇물",
+      "계곡",
+    ],
+    audio: streamAudio,
   },
   {
     id: 3,
@@ -45,14 +67,24 @@ export const natureSounds: NatureSound[] = [
     description: "넓고 부드러운 파도",
     category: "물",
     recommended: true,
-    keywords: ["물", "파도", "바다"],
+    keywords: [
+      "물",
+      "파도",
+      "바다",
+    ],
+    audio: oceanAudio,
   },
   {
     id: 4,
-    title: "숲",
-    description: "바람과 풀벌레 소리",
-    category: "숲",
+    title: "공기음",
+    description: "잔잔하게 흐르는 공기 소리",
+    category: "생활 소리",
     recommended: true,
-    keywords: ["숲", "바람", "풀벌레", "자연"],
+    keywords: [
+      "공기",
+      "공기음",
+      "바람",
+    ],
+    audio: airAudio,
   },
 ];

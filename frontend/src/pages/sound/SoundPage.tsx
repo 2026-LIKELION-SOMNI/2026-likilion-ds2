@@ -1,33 +1,43 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import BottomNav from "../../components/navigation/BottomNav";
 
 import playIcon from "../../assets/icons/Play.svg";
 import pauseIcon from "../../assets/icons/Pause.svg";
+import rainAudio from "../../assets/audio/nature/rain.mp3";
+import airAudio from "../../assets/audio/nature/air.mp3";
+import oceanAudio from "../../assets/audio/nature/ocean.mp3";
+import streamAudio from "../../assets/audio/nature/stream.mp3";
 
-const PREVIEW_SOUNDS = [
-  {
-    id: 1,
-    title: "비",
-    heights: [17, 22, 24, 22, 19, 16, 14, 13],
-  },
-  {
-    id: 2,
-    title: "시냇물",
-    heights: [23, 20, 18, 16, 15, 14, 13, 12],
-  },
-  {
-    id: 3,
-    title: "파도",
-    heights: [23, 20, 17, 15, 14, 15, 17, 20],
-  },
-  {
-    id: 4,
-    title: "공기음",
-    heights: [17, 15, 14, 15, 17, 20, 22, 24],
-  },
-];
+import { playNatureAudio, stopNatureAudio, } from "../../audio/natureAudio";
+
+  const PREVIEW_SOUNDS = [
+    {
+      id: 1,
+      title: "비",
+      audio: rainAudio,
+      heights: [17, 22, 24, 22, 19, 16, 14, 13],
+    },
+    {
+      id: 2,
+      title: "시냇물",
+      audio: streamAudio,
+      heights: [23, 20, 18, 16, 15, 14, 13, 12],
+    },
+    {
+      id: 3,
+      title: "파도",
+      audio: oceanAudio,
+      heights: [23, 20, 17, 15, 14, 15, 17, 20],
+    },
+    {
+      id: 4,
+      title: "공기음",
+      audio: airAudio,
+      heights: [17, 15, 14, 15, 17, 20, 22, 24],
+    },
+  ];
 
 const MAIN_WAVE_HEIGHTS = [
   48, 44, 36, 28, 22, 20, 24, 32, 42, 48,
@@ -38,6 +48,12 @@ const MAIN_WAVE_HEIGHTS = [
 
 function SoundPage() {
   const navigate = useNavigate();
+  
+  useEffect(() => {
+    return () => {
+      stopNatureAudio();
+    };
+  }, []);
 
   // 상단 개인화 사운드 재생 상태
   const [playing, setPlaying] = useState(false);
@@ -53,13 +69,32 @@ function SoundPage() {
     setPlaying((previous) => !previous);
   };
 
-  const handlePreviewPlay = (soundId: number) => {
-    setPreviewPlayingId((previous) =>
-      previous === soundId ? null : soundId,
+  const handlePreviewPlay = async (
+    soundId: number,
+  ) => {
+    const sound = PREVIEW_SOUNDS.find(
+      (item) => item.id === soundId,
     );
 
-    // TODO:
-    // soundId에 맞는 실제 자연음 재생
+    if (!sound) {
+      return;
+    }
+
+    if (previewPlayingId === soundId) {
+      stopNatureAudio();
+      setPreviewPlayingId(null);
+      return;
+    }
+
+    try {
+      await playNatureAudio(sound.audio);
+      setPreviewPlayingId(soundId);
+    } catch (error) {
+      console.error(
+        "자연음 재생 실패",
+        error,
+      );
+    }
   };
 
   return (

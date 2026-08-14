@@ -1,16 +1,18 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import NatureSoundCard from "../../components/nature-sound/NatureSoundCard";
 
-import {
-  natureSoundCategories,
-  natureSounds,
-  type NatureSoundCategory,
-} from "../../mock/natureSoundData";
+import { natureSoundCategories, natureSounds, type NatureSoundCategory,} from "../../mock/natureSoundData";
+import { playNatureAudio, stopNatureAudio,} from "../../audio/natureAudio";
 
 function ChangeNatureSoundPage() {
   const navigate = useNavigate();
+  useEffect(() => {
+    return () => {
+      stopNatureAudio();
+    };
+  }, []);
 
   const [selectedCategory, setSelectedCategory] =
     useState<NatureSoundCategory>("추천");
@@ -52,10 +54,33 @@ function ChangeNatureSoundPage() {
     });
   }, [searchQuery, selectedCategory]);
 
-  const handleSoundPlay = (soundId: number) => {
-    setPlayingSoundId((previous) =>
-      previous === soundId ? null : soundId,
+  const handleSoundPlay = async (
+    soundId: number,
+  ) => {
+    const sound = natureSounds.find(
+      (item) => item.id === soundId,
     );
+
+    if (!sound) {
+      return;
+    }
+
+    if (playingSoundId === soundId) {
+      stopNatureAudio();
+      setPlayingSoundId(null);
+      return;
+    }
+
+    try {
+      await playNatureAudio(sound.audio);
+
+      setPlayingSoundId(soundId);
+    } catch (error) {
+      console.error(
+        "자연음 재생 실패",
+        error,
+      );
+    }
   };
 
   const handleApply = () => {
