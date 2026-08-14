@@ -89,6 +89,8 @@ class MatchingSelectView(APIView):
             "selected": selected,
             "freq_a": session.freq_a,
             "freq_b": session.freq_b,
+            "range_min_before": session.range_min,
+            "range_max_before": session.range_max,
         })
 
         new_min, new_max = pm.next_round_range(session.range_min, session.range_max, selected)
@@ -104,6 +106,40 @@ class MatchingSelectView(APIView):
         else:
             session.freq_a = new_min
             session.freq_b = new_max
+
+        session.save()
+        return Response(PitchMatchSessionSerializer(session).data, status=status.HTTP_200_OK)
+
+
+# - A/B 라운드 중: 직전 라운드의 A/B와 범위로 돌아감
+# - Octave Confusion Test: 마지막 A/B 라운드(7/7)로 돌아감
+class MatchingPreviousView(APIView):
+
+    def post(self, request, session_id):
+        session = get_object_or_404(
+            PitchMatchSession, pk=session_id, done=False, abandoned=False
+        )
+
+        if not session.rounds:
+            return Response(
+                {"detail": "더 이상 되돌아갈 라운드가 없습니다."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        last_round = session.rounds.pop()
+
+        # 옥타브 테스트 단계에서 이전으로 가는 경우 -> 마지막 A/B 라운드로 복귀
+        if session.octave_test_started:
+            session.octave_test_started = False
+            session.octave_selection = None
+            session.octave_check_limited = False
+            session.provisional_center = None
+
+        session.round_number = last_round["round"]
+        session.range_min = last_round["range_min_before"]
+        session.range_max = last_round["range_max_before"]
+        session.freq_a = last_round["freq_a"]
+        session.freq_b = last_round["freq_b"]
 
         session.save()
         return Response(PitchMatchSessionSerializer(session).data, status=status.HTTP_200_OK)
@@ -167,9 +203,8 @@ class MatchingResultView(APIView):
 # F-311~312: 매칭 초기 음량 설정 조회
 class MatchingVolumeConfigView(APIView):
 
-    # TODO: 음향 파트에서 안전한 값 확정되면 settings로 분리
     INITIAL_VOLUME = 0.3
-    MAX_VOLUME = 0.7
+    MAX_VOLUME = 0.6
 
     def get(self, request):
         return Response({"initial_volume": self.INITIAL_VOLUME, "max_volume": self.MAX_VOLUME})
