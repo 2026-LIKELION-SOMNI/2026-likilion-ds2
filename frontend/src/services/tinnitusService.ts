@@ -253,7 +253,7 @@ export async function goBackPitchMatch(
   sessionId: number,
 ): Promise<PitchMatchSession> {
   const response = await fetch(
-    `/api/tinnitus/matching/back/${sessionId}/`,
+    `/api/tinnitus/matching/previous/${sessionId}/`,
     {
       method: "POST",
     },
