@@ -1,8 +1,10 @@
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 interface HeaderInfo {
   title: string;
   showBackButton: boolean;
+  showLaterButton?: boolean;
 }
 
 const HEADER_INFO: Record<string, HeaderInfo> = {
@@ -18,13 +20,29 @@ const HEADER_INFO: Record<string, HeaderInfo> = {
     title: "음역 매칭",
     showBackButton: true,
   },
+  "/nature-sound": {
+    title: "자연음 선택",
+    showBackButton: true,
+    showLaterButton: true,
+  },
   "/check-in": {
     title: "오늘의 체크인",
     showBackButton: true,
   },
-
   "/sound": {
     title: "맞춤 수면 사운드",
+    showBackButton: true,
+  },
+    "/sound/my-sound": {
+    title: "나만의 사운드",
+    showBackButton: true,
+  },
+  "/sound/change-nature": {
+    title: "자연음 선택",
+    showBackButton: true,
+  },
+  "/sound-setup": {
+    title: "음역 매칭",
     showBackButton: true,
   },
 };
@@ -32,16 +50,17 @@ const HEADER_INFO: Record<string, HeaderInfo> = {
 function BackIcon() {
   return (
     <svg
-      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
       viewBox="0 0 24 24"
       fill="none"
+      xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
-      className="size-6"
     >
       <path
-        d="M15 19.5L7.5 12L15 4.5"
-        stroke="#ECF3F2"
-        strokeWidth="2"
+        d="M15 18L9 12L15 6"
+        stroke="currentColor"
+        strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -53,19 +72,91 @@ function Header() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const [frequencyTitle, setFrequencyTitle] =
+    useState("음역 매칭");
+
   const headerInfo = HEADER_INFO[location.pathname] ?? {
     title: "Somni",
     showBackButton: true,
   };
 
+  // FrequencyPage가 보내는 헤더 제목 받기
+  useEffect(() => {
+    const handleFrequencyTitle = (event: Event) => {
+      const customEvent = event as CustomEvent<string>;
+
+      setFrequencyTitle(customEvent.detail);
+    };
+
+    window.addEventListener(
+      "frequency-title",
+      handleFrequencyTitle,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "frequency-title",
+        handleFrequencyTitle,
+      );
+    };
+  }, []);
+
+  const handleBack = () => {
+    // 음역 매칭 내부 단계
+    if (location.pathname === "/frequency") {
+      window.dispatchEvent(
+        new Event("frequency-back"),
+      );
+      return;
+    }
+
+    // 자연음 선택 → 음역 매칭 결과 화면
+    if (location.pathname === "/nature-sound") {
+      navigate("/frequency", {
+        state: { screen: "result" },
+      });
+      return;
+    }
+
+    // 사운드 준비 / 혼합점 내부 단계
+    if (location.pathname === "/sound-setup") {
+      window.dispatchEvent(
+        new Event("sound-setup-back"),
+      );
+      return;
+    }
+
+    navigate(-1);
+  };
+
+  const handleLater = () => {
+    if (location.pathname === "/nature-sound") {
+      navigate("/sound-setup");
+    }
+  };
+
+  const title =
+    location.pathname === "/frequency"
+      ? frequencyTitle
+      : headerInfo.title;
+
   return (
-    <header className="safe-area-top shrink-0 bg-app-background">
-      <div className="relative flex h-14 items-center px-6 pt-[1.91rem]">
+    <header className="safe-area-top shrink-0">
+      <div
+        className="
+          relative
+          flex
+          h-16
+          items-center
+          justify-center
+          px-3
+        "
+      >
         {headerInfo.showBackButton && (
           <button
             type="button"
             aria-label="이전 화면으로 이동"
-            onClick={() => navigate(-1)}
+            onClick={handleBack}
             className="
               absolute
               left-3
@@ -98,7 +189,7 @@ function Header() {
               not-italic
             "
           >
-            {headerInfo.title}
+            {title}
           </h1>
         ) : (
           <h1
@@ -113,6 +204,27 @@ function Header() {
           >
             Somni
           </h1>
+        )}
+
+        {headerInfo.showLaterButton && (
+          <button
+            type="button"
+            onClick={handleLater}
+            className="
+              absolute
+              right-6
+              font-sans
+              text-[16px]
+              leading-[18px]
+              font-medium
+              text-right
+              text-[#87CBE6]
+              transition-opacity
+              active:opacity-60
+            "
+          >
+            나중에
+          </button>
         )}
       </div>
     </header>

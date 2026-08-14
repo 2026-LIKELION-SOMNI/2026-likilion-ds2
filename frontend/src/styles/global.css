@@ -75,7 +75,7 @@
 
 @layer components {
   .app-container {
-    @apply mx-auto grid w-full max-w-[480px] grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-app-background text-text-primary md:my-4 md:border md:border-gray-600 md:shadow-[0_0_80px_rgba(255,255,255,0.4)];
+    @apply relative mx-auto grid w-full max-w-[480px] grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-app-background text-text-primary md:my-4 md:border md:border-gray-600 md:shadow-[0_0_80px_rgba(255,255,255,0.4)];
     aspect-ratio: 9 / 20;
   }
 }
@@ -88,4 +88,26 @@
   .safe-area-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
+}
+
+/* 스크롤은 가능하지만 스크롤바는 숨김 */
+/* 실제로 스크롤되는 요소는 속성에 scrollbar-hide 붙이면 됨  */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+
+/* 스크롤은 유지하고 스크롤바만 숨김 */
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
 }
