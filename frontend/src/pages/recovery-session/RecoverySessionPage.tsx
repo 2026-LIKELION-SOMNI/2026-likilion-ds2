@@ -123,19 +123,6 @@ function RecoverySessionPage() {
     );
   };
 
-  const handleBack = () => {
-    if (screen === "safety") {
-      setScreen("session");
-      return;
-    }
-
-    if (screen === "feedback") {
-      setScreen("session");
-      return;
-    }
-
-    navigate(-1);
-  };
   const handleChangeSound = () => {
     if (selectedFeedback.length === 0) {
         return;
