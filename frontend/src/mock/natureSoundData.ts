@@ -21,6 +21,12 @@ export interface NatureSound {
   recommended: boolean;
   keywords: string[];
 
+  backendValue:
+  | "rain"
+  | "stream"
+  | "ocean"
+  | "wind";
+
   // 실제 재생할 mp3
   audio: string;
 }
@@ -46,8 +52,10 @@ export const natureSounds: NatureSound[] = [
       "물",
       "빗방울",
     ],
+    backendValue: "rain",
     audio: rainAudio,
   },
+
   {
     id: 2,
     title: "시냇물 소리",
@@ -59,8 +67,10 @@ export const natureSounds: NatureSound[] = [
       "시냇물",
       "계곡",
     ],
+    backendValue: "stream",
     audio: streamAudio,
   },
+
   {
     id: 3,
     title: "느린 파도",
@@ -72,19 +82,22 @@ export const natureSounds: NatureSound[] = [
       "파도",
       "바다",
     ],
+    backendValue: "ocean",
     audio: oceanAudio,
   },
+
   {
     id: 4,
     title: "공기음",
-    description: "잔잔하게 흐르는 공기 소리",
+    description: "잔잔한 공기 소리",
     category: "생활 소리",
     recommended: true,
     keywords: [
       "공기",
-      "공기음",
       "바람",
+      "공기음",
     ],
+    backendValue: "wind",
     audio: airAudio,
   },
 ];

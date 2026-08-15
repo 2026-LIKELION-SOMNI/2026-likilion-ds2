@@ -130,6 +130,67 @@ function RecoverySessionPage() {
    * 시간 계산
    * =========================
    */
+  const activeSoundParams =
+    soundSession?.final_params ??
+    soundSession?.generated_params ??
+    null;
+
+  const getRecoverySoundLabel = () => {
+    if (!activeSoundParams) {
+      return "사운드 준비 중";
+    }
+
+    const centerHz =
+      activeSoundParams
+        .frequency_bands?.[0]
+        ?.center_hz;
+
+    const backgroundSource =
+      activeSoundParams.sources?.find(
+        (source) =>
+          source.role === "ambient" ||
+          source.type === "background",
+      );
+
+  const backgroundLabelMap: Record<
+    string,
+    string
+  > = {
+    rain: "빗소리",
+    stream: "시냇물 소리",
+    ocean: "파도",
+    wind: "공기음",
+    white_noise: "화이트노이즈",
+  };
+
+    const backgroundLabel =
+      backgroundSource?.asset_tag
+        ? backgroundLabelMap[
+            backgroundSource.asset_tag
+          ]
+        : null;
+
+    if (
+      backgroundLabel &&
+      centerHz
+    ) {
+      return `${backgroundLabel} + ${Math.round(
+        centerHz,
+      )}Hz 노이즈`;
+    }
+
+    if (backgroundLabel) {
+      return backgroundLabel;
+    }
+
+    if (centerHz) {
+      return `개인화 노이즈 ${Math.round(
+        centerHz,
+      )}Hz`;
+    }
+
+    return "개인화 사운드";
+  };
 
   const totalSeconds =
     (soundSession
@@ -225,6 +286,12 @@ function RecoverySessionPage() {
 
           setSoundSession(session);
 
+          sessionStorage.setItem(
+            "somni-current-sound-session-id",
+            session.session_id,
+          );
+
+          
           if (
             session.status ===
             "generation_failed"
@@ -605,8 +672,7 @@ function RecoverySessionPage() {
     async () => {
       if (
         !soundSession ||
-        !soundSession
-          .generated_params
+        !activeSoundParams
       ) {
         return;
       }
@@ -624,7 +690,7 @@ function RecoverySessionPage() {
          */
         if (!hasStarted) {
           await playRecoveryAudio(
-            soundSession.generated_params,
+            activeSoundParams,
           );
 
           await updateSoundPlayback(
@@ -774,6 +840,16 @@ function RecoverySessionPage() {
           newSession,
         );
 
+        sessionStorage.setItem(
+          "somni-current-sound-session-id",
+          newSession.session_id,
+        );
+
+        setSoundSession(
+          newSession,
+        );
+
+
         setSoundSession(
           newSession,
         );
@@ -807,8 +883,7 @@ function RecoverySessionPage() {
     async () => {
       if (
         !soundSession ||
-        !soundSession
-          .generated_params
+        !activeSoundParams
       ) {
         return;
       }
@@ -822,7 +897,7 @@ function RecoverySessionPage() {
 
       try {
         await playRecoveryAudio(
-          soundSession.generated_params,
+          activeSoundParams,
         );
 
         await updateSoundPlayback(
@@ -1858,16 +1933,7 @@ function RecoverySessionPage() {
             text-[#ECF3F2]
           "
         >
-          {soundSession
-            ?.generated_params
-            ?.frequency_bands?.[0]
-            ?.center_hz
-            ? `개인화 노이즈 ${Math.round(
-                soundSession.generated_params
-                  .frequency_bands[0]
-                  .center_hz,
-              )}Hz`
-            : "사운드 준비 중"}
+          {getRecoverySoundLabel()}
         </p>
 
         {/* 진행바 */}
@@ -1924,10 +1990,10 @@ function RecoverySessionPage() {
         >
           <button
             type="button"
-            disabled={
-              !soundSession?.generated_params ||
-              isSoundLoading
-            }
+              disabled={
+                !activeSoundParams ||
+                isSoundLoading
+              }
             aria-label={
               playing
                 ? "일시정지"

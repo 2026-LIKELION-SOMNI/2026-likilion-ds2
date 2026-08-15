@@ -73,13 +73,11 @@ export interface SoundSession {
     | "stopped_early"
     | "discomfort_stopped";
 
-  generated_params:
-    | GeneratedSoundParams
-    | null;
+  generated_params: GeneratedSoundParams | null;
 
-  recommended_duration_minutes:
-    | number
-    | null;
+  final_params: GeneratedSoundParams | null;
+
+  recommended_duration_minutes: number | null;
 
   is_fallback: boolean;
 
@@ -305,6 +303,31 @@ export async function reportSoundDiscomfort(
                 followUpAction,
             }
           : {}),
+      }),
+    },
+  );
+}
+
+/*
+ * 최종 선택한 배경 자연음 저장
+ */
+export type SoundBackground =
+  | "rain"
+  | "white_noise"
+  | "ocean"
+  | "wind";
+
+export async function updateSoundBackground(
+  uuid: string,
+  sessionId: string,
+  background: SoundBackground,
+) {
+  return request<SoundSession>(
+    `/api/sound/${uuid}/sessions/${sessionId}/background/`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        background,
       }),
     },
   );
