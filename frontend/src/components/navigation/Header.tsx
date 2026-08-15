@@ -27,39 +27,48 @@ const HEADER_INFO: Record<
     title: "Somni",
     showBackButton: false,
   },
+
   "/onboarding": {
     title: "시작하기",
     showBackButton: true,
   },
+
   "/frequency": {
     title: "음역 매칭",
     showBackButton: true,
   },
+
   "/nature-sound": {
     title: "자연음 선택",
     showBackButton: true,
     showLaterButton: true,
   },
+
   "/check-in": {
     title: "오늘의 체크인",
     showBackButton: true,
   },
+
   "/sound": {
     title: "맞춤 수면 사운드",
     showBackButton: true,
   },
+
   "/sound/my-sound": {
     title: "나만의 사운드",
     showBackButton: true,
   },
+
   "/sound/change-nature": {
     title: "자연음 선택",
     showBackButton: true,
   },
+
   "/sound-setup": {
     title: "음역 매칭",
     showBackButton: true,
   },
+
   "/recovery-session": {
     title: "회복 세션",
     showBackButton: false,
@@ -91,11 +100,26 @@ function Header() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  /*
+   * 음역 매칭 내부 화면 제목
+   */
   const [
     frequencyTitle,
     setFrequencyTitle,
   ] = useState("음역 매칭");
 
+  /*
+   * 회복 세션 내부 화면 헤더 상태
+   *
+   * session
+   * → 회복 세션 / 중단
+   *
+   * end-confirm
+   * → 뒤로가기 / 종료
+   *
+   * end-complete
+   * → 종료
+   */
   const [
     recoveryHeader,
     setRecoveryHeader,
@@ -106,14 +130,16 @@ function Header() {
   });
 
   const headerInfo =
-    HEADER_INFO[location.pathname] ?? {
+    HEADER_INFO[
+      location.pathname
+    ] ?? {
       title: "Somni",
       showBackButton: true,
     };
 
   /*
    * FrequencyPage가 보내는
-   * 동적 헤더 제목
+   * 제목 변경 이벤트
    */
   useEffect(() => {
     const handleFrequencyTitle = (
@@ -142,7 +168,7 @@ function Header() {
 
   /*
    * RecoverySessionPage가 보내는
-   * 동적 헤더 상태
+   * 헤더 상태 변경 이벤트
    */
   useEffect(() => {
     const handleRecoveryHeader = (
@@ -173,18 +199,28 @@ function Header() {
     location.pathname ===
     "/recovery-session";
 
+  /*
+   * 실제 표시할 제목
+   */
   const title =
-    location.pathname === "/frequency"
+    location.pathname ===
+    "/frequency"
       ? frequencyTitle
       : isRecoverySession
         ? recoveryHeader.title
         : headerInfo.title;
 
+  /*
+   * 실제 표시할 뒤로가기 버튼
+   */
   const showBackButton =
     isRecoverySession
       ? recoveryHeader.showBackButton
       : headerInfo.showBackButton;
 
+  /*
+   * 뒤로가기
+   */
   const handleBack = () => {
     /*
      * 음역 매칭 내부 단계
@@ -194,7 +230,9 @@ function Header() {
       "/frequency"
     ) {
       window.dispatchEvent(
-        new Event("frequency-back"),
+        new Event(
+          "frequency-back",
+        ),
       );
 
       return;
@@ -208,36 +246,42 @@ function Header() {
       location.pathname ===
       "/nature-sound"
     ) {
-      navigate("/frequency", {
-        state: {
-          screen: "result",
+      navigate(
+        "/frequency",
+        {
+          state: {
+            screen: "result",
+          },
         },
-      });
-
-      return;
-    }
-
-    /*
-     * 사운드 준비 / 혼합점
-     * 내부 단계
-     */
-    if (
-      location.pathname ===
-      "/sound-setup"
-    ) {
-      window.dispatchEvent(
-        new Event("sound-setup-back"),
       );
 
       return;
     }
 
     /*
-     * 회복 세션 내부 단계
+     * 사운드 준비 / 혼합점
+     */
+    if (
+      location.pathname ===
+      "/sound-setup"
+    ) {
+      window.dispatchEvent(
+        new Event(
+          "sound-setup-back",
+        ),
+      );
+
+      return;
+    }
+
+    /*
+     * 회복 세션 내부 화면
      */
     if (isRecoverySession) {
       window.dispatchEvent(
-        new Event("recovery-back"),
+        new Event(
+          "recovery-back",
+        ),
       );
 
       return;
@@ -246,20 +290,31 @@ function Header() {
     navigate(-1);
   };
 
+  /*
+   * 자연음 선택 - 나중에
+   */
   const handleLater = () => {
     if (
       location.pathname ===
       "/nature-sound"
     ) {
-      navigate("/sound-setup");
+      navigate(
+        "/sound-setup",
+      );
     }
   };
 
-  const handleRecoveryStop = () => {
-    window.dispatchEvent(
-      new Event("recovery-stop"),
-    );
-  };
+  /*
+   * 회복 세션 - 중단
+   */
+  const handleRecoveryStop =
+    () => {
+      window.dispatchEvent(
+        new Event(
+          "recovery-stop",
+        ),
+      );
+    };
 
   return (
     <header className="safe-area-top shrink-0">
@@ -324,7 +379,7 @@ function Header() {
           {title}
         </h1>
 
-        {/* 자연음 - 나중에 */}
+        {/* 자연음 선택 - 나중에 */}
         {headerInfo.showLaterButton && (
           <button
             type="button"
