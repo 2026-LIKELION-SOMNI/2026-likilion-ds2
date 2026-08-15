@@ -12,6 +12,7 @@ urlpatterns = [
     path("api/tinnitus/", include("tinnitus.urls")),
     path("api/sound/", include("sound.urls")),
     path("api/data/", include("data.urls")),
+    path("api/relaxtion/", include("relaxtion.urls")),
 ]
 
 if settings.DEBUG:
