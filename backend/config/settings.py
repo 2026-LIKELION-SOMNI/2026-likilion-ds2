@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'tinnitus',
     'sound',
     'data',
+    'relaxtion',
 ]
 
 MIDDLEWARE = [

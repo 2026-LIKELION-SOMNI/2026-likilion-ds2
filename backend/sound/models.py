@@ -65,6 +65,13 @@ class SoundSession(models.Model):
         ),
     )
 
+    # 사용자가 변경한 내용을 포함해 실제 최종 재생된 사운드 설정
+    final_params = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="사용자가 최종적으로 재생한 사운드 설정",
+    )
+
     # 권장 재생시간
     recommended_duration_minutes = models.PositiveSmallIntegerField(
         null=True,

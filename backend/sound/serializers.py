@@ -19,6 +19,7 @@ class FallbackSoundSerializer(serializers.ModelSerializer):
             "tags",
         ]
 
+
 # 사운드 세션 결과 응답
 class SoundSessionResultSerializer(serializers.ModelSerializer):
 
@@ -34,6 +35,10 @@ class SoundSessionResultSerializer(serializers.ModelSerializer):
 
             # 개인화 사운드 생성 결과
             "generated_params",
+
+            # 사용자가 변경한 내용을 포함한 실제 최종 재생 설정
+            "final_params",
+
             "recommended_duration_minutes",
 
             # fallback
@@ -48,6 +53,7 @@ class SoundSessionResultSerializer(serializers.ModelSerializer):
             "created_at",
         ]
 
+
 # 오늘의 사운드 생성 요청
 class GenerateTodaySoundRequestSerializer(serializers.Serializer):
 
@@ -55,6 +61,21 @@ class GenerateTodaySoundRequestSerializer(serializers.Serializer):
         default=False,
         required=False,
     )
+
+
+# 사용자가 최종 선택한 배경 자연음
+# 실제 오디오 변경은 프론트(Web Audio API)에서 수행
+class SoundBackgroundUpdateSerializer(serializers.Serializer):
+
+    background = serializers.ChoiceField(
+        choices=[
+            "rain",
+            "white_noise",
+            "ocean",
+            "wind",
+        ]
+    )
+
 
 # 재생 시작 / 일시정지 / 재개 / 종료 상태 갱신.
 class SoundPlaybackUpdateSerializer(serializers.Serializer):
@@ -81,6 +102,7 @@ class SoundPlaybackUpdateSerializer(serializers.Serializer):
         allow_blank=True,
     )
 
+
 #사용자가 요청한 볼륨 값 검증 (상한 적용)
 class SoundVolumeUpdateSerializer(serializers.Serializer):
 
@@ -89,10 +111,10 @@ class SoundVolumeUpdateSerializer(serializers.Serializer):
         max_value=1.0,
     )
 
+
 # 사운드 불편 이유와 사용자가 선택한 후속 행동
 class SoundDiscomfortReportSerializer(serializers.ModelSerializer):
-
-
+    # 후속 행동
     follow_up_action = serializers.ChoiceField(
         choices=SoundDiscomfortReport.FollowUpAction.choices,
         required=False,
@@ -113,7 +135,7 @@ class SoundDiscomfortReportSerializer(serializers.ModelSerializer):
             "id",
             "reported_at",
         ]
-
+    # 불편 이유
     def validate_reasons(self, value):
         valid = {
             choice
@@ -131,4 +153,3 @@ class SoundDiscomfortReportSerializer(serializers.ModelSerializer):
             )
 
         return value
-
