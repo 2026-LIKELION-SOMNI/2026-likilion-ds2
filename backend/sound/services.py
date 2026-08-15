@@ -25,7 +25,6 @@ MODULATION_LEVELS = (
 )
 
 
-
 # 노치 필터 설계 상수
 
 HALF_OCTAVE_RATIO = 2 ** 0.25
@@ -40,9 +39,11 @@ MIXING_POINT_RAMP_RANGE_DB = 40
 # feedback 연동
 COMFORTABLE_REACTION_TAG = "comfortable"
 
+
 # Exception
 class MatchingNotCompletedError(Exception):
     """음역 매칭이 완료되지 않아 사운드를 생성할 수 없을 때."""
+
 
 # 사운드 생성 입력값
 @dataclasses.dataclass
@@ -156,7 +157,6 @@ def build_mixing_point_ramp_spec(
     range_db: float = MIXING_POINT_RAMP_RANGE_DB,
 ) -> dict:
 
-
     return {
         "curve": "log_db",
         "duration_seconds": duration_seconds,
@@ -173,11 +173,13 @@ def build_mixing_point_ramp_spec(
 def decide_parameters(
     gi: GenerationInput,
 ) -> dict:
+
     frequency_bands = [
         build_notch_filter_spec(
             gi.tinnitus_center_hz
         )
     ]
+
     avoided = set()
 
     if "too_similar" in gi.past_discomfort_reasons:
@@ -227,7 +229,6 @@ def decide_parameters(
             }
         )
 
-
     # 혼합 비율
     # 현재는 임시 규칙이며 personalization 구현 후 arm 선택 결과로 대체 예정.
 
@@ -260,7 +261,6 @@ def decide_parameters(
     else:
         modulation_intensity = "low"
 
-
     #권장 재생시간_현재는 임시 규칙이며 personalization 구현 후 arm 선택 결과로 대체 예정.
     duration = 45
 
@@ -282,10 +282,9 @@ def decide_parameters(
     )
 
     target_volume = min(
-    gi.mixing_point_gain,
-    SAFE_MAX_VOLUME,
-)
-
+        gi.mixing_point_gain,
+        SAFE_MAX_VOLUME,
+    )
 
     # 프론트로 전달할 최종 사운드 설계 파라미터
 
@@ -308,9 +307,90 @@ def decide_parameters(
     }
 
 
+# 최초 생성된 사운드 설정을 실제 재생 설정의 초기값으로 저장
+def initialize_final_params(
+    session: SoundSession,
+) -> SoundSession:
+
+    if session.generated_params is None:
+        return session
+
+    session.final_params = {
+        **session.generated_params,
+        "sources": [
+            dict(source)
+            for source in session.generated_params.get(
+                "sources",
+                [],
+            )
+        ],
+    }
+
+    session.save(
+        update_fields=[
+            "final_params",
+            "updated_at",
+        ]
+    )
+
+    return session
+
+
+# 사용자가 배경 자연음을 변경했을 때 최종 사운드 설정에 반영
+# 실제 오디오 변경은 프론트(Web Audio API)에서 수행하고,
+# 백엔드는 사용자가 최종적으로 선택한 설정만 기록한다.
+def update_background_sound(
+    session: SoundSession,
+    background: str,
+) -> SoundSession:
+
+    params = dict(
+        session.final_params
+        or session.generated_params
+        or {}
+    )
+
+    sources = [
+        dict(source)
+        for source in params.get(
+            "sources",
+            [],
+        )
+    ]
+
+    background_updated = False
+
+    for source in sources:
+        if source.get("type") == "background":
+            source["asset_tag"] = background
+            background_updated = True
+            break
+
+    # 기존에 background 레이어가 없었던 경우 새로 추가
+    if not background_updated:
+        sources.append(
+            {
+                "type": "background",
+                "asset_tag": background,
+                "role": "ambient",
+            }
+        )
+
+    params["sources"] = sources
+
+    session.final_params = params
+
+    session.save(
+        update_fields=[
+            "final_params",
+            "updated_at",
+        ]
+    )
+
+    return session
+
 
 # 생성 실패 시 사용할 예비 사운드 "후보" 선택
-
 def select_fallback_sound(
     gi: GenerationInput,
 ) -> Optional[FallbackSound]:
@@ -361,7 +441,6 @@ def select_fallback_sound(
         # 3. 과거 불편 사유
         # 현재는 단순 태그 비교 방식 추후 personalization 구현 시 학습 결과로 대체 가능.
 
-
         has_avoided_tag = any(
             reason in fallback.tags
             for reason in gi.past_discomfort_reasons
@@ -386,35 +465,27 @@ def select_fallback_sound(
     )
 
 
-
-
 # 이전에 '편안했어요' 평가를 받은 사운드 조회
 def list_comfortable_sessions(
     user,
 ) -> list["SoundSession"]:
 
+    from feedback.models import NightlyEvaluation
 
-    from feedback.models import (
-        InterventionEvaluation,
-        InterventionType,
+    evaluations = NightlyEvaluation.objects.filter(
+        user=user,
+        status=NightlyEvaluation.Status.EVALUATED,
+        sound_session_id__isnull=False,
     )
-
-    evaluations = (
-        InterventionEvaluation.objects.filter(
-            user=user,
-            intervention_type=InterventionType.SOUND,
-        )
-    )
-
 
     comfortable_pks = [
-        evaluation.session_id
+        evaluation.sound_session_id
         for evaluation in evaluations
         if COMFORTABLE_REACTION_TAG
-        in (evaluation.reactions or [])
+        in (evaluation.sound_reactions or [])
     ]
 
-# 명시적인 "편안했어요" 평가가 존재하는 경우
+    # 명시적인 "편안했어요" 평가가 존재하는 경우
     if comfortable_pks:
         return list(
             SoundSession.objects.filter(
@@ -424,6 +495,7 @@ def list_comfortable_sessions(
                 "-created_at"
             )
         )
+
     # 명시적인 '편안했어요' 평가가 없는 경우의 임시 대체 기준
     # 정상적으로 끝까지 재생되었으며 불편 신고가 없었던 사운드 세션을 후보로 사용한다.
     return list(
@@ -438,3 +510,68 @@ def list_comfortable_sessions(
             "-created_at"
         )
     )
+
+
+# 과거 "편안했어요" 평가를 받은 세션들의 배경음 태그 수집
+# 과거 "편안했어요" 평가를 받은 세션들의 배경음 태그 수집
+# GenerationInput.past_helpful_tags를 채우는 데 사용 (현재 decide_parameters는
+# 아직 이 값을 직접 소비하지 않음 - personalization 구현 후 반영 예정)
+def collect_past_helpful_background_tags(user, limit: int = 20) -> list[str]:
+
+    from feedback.models import NightlyEvaluation
+
+    evaluations = (
+        NightlyEvaluation.objects.filter(
+            user=user,
+            status=NightlyEvaluation.Status.EVALUATED,
+            sound_session_id__isnull=False,
+        )
+        .exclude(sound_reactions=[])
+        .order_by("-evaluated_at")
+        .values_list("sound_session_id", "sound_reactions")
+    )
+
+    session_ids = [
+        session_id
+        for session_id, reactions in evaluations
+        if COMFORTABLE_REACTION_TAG in (reactions or [])
+    ][:limit]
+
+    if not session_ids:
+        return []
+
+    tags: list[str] = []
+
+    sessions = SoundSession.objects.filter(
+        pk__in=session_ids
+    )
+
+    for session in sessions:
+
+        # 사용자가 변경한 최종 설정이 있으면 최종 설정을 우선 사용
+        params = (
+            session.final_params
+            or session.generated_params
+            or {}
+        )
+
+        sources = params.get(
+            "sources",
+            []
+        )
+
+        for source in sources:
+
+            # 현재 구조의 dict 형식
+            if isinstance(source, dict):
+                if source.get("type") == "background":
+                    tag = source.get("asset_tag")
+
+                    if tag:
+                        tags.append(tag)
+
+            # 이전 데이터가 문자열로 저장된 경우도 대응
+            elif isinstance(source, str):
+                tags.append(source)
+
+    return tags
