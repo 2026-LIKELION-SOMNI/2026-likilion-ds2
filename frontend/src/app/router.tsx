@@ -13,6 +13,8 @@ import RecoverySessionPage from "../pages/recovery-session/RecoverySessionPage";
 import SoundPage from "../pages/sound/SoundPage";
 import MySoundPage from "../pages/sound/MySoundPage";
 import ChangeNatureSoundPage from "../pages/sound/ChangeNatureSoundPage";
+import MyPage from "../pages/my/MyPage";
+import NotificationSettingsPage from "../pages/my/NotificationSettingsPage";
 
 
 const router = createBrowserRouter([
@@ -64,6 +66,14 @@ const router = createBrowserRouter([
       {
         path: "/sound/change-nature",
         element: <ChangeNatureSoundPage />,
+      },
+      {
+        path: "/my",
+        element: <MyPage />,
+      },
+      {
+        path: "/my/notifications",
+        element: <NotificationSettingsPage />,
       },
     ],
   },

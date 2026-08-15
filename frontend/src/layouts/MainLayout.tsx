@@ -7,7 +7,8 @@ function MainLayout() {
 
   const hideHeader =
     location.pathname === "/recovery-session" ||
-    location.pathname === "/sound";
+    location.pathname === "/sound" ||
+    location.pathname === "/my";
   return (
     <div
       className="

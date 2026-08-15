@@ -45,6 +45,11 @@ const HEADER_INFO: Record<string, HeaderInfo> = {
     title: "음역 매칭",
     showBackButton: true,
   },
+  "/my/notifications": {
+    title: "알림 설정",
+    showBackButton: true,
+  },
+
 };
 
 function BackIcon() {
