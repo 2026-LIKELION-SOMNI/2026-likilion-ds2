@@ -15,6 +15,7 @@ from . import services
 from .models import SoundDiscomfortReport, SoundSession
 from .serializers import (
     GenerateTodaySoundRequestSerializer,
+    SoundBackgroundUpdateSerializer,
     SoundDiscomfortReportSerializer,
     SoundPlaybackUpdateSerializer,
     SoundSessionResultSerializer,
@@ -26,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 # 사운드 파라미터 결정 제한시간
 GENERATION_TIMEOUT_SECONDS = 8
+
 
 # 사운드 생성에 필요한 사용자 데이터 수집
 def _gather_generation_input(
@@ -50,10 +52,11 @@ def _gather_generation_input(
         raise services.MatchingNotCompletedError(
             "완료된 음역 매칭 결과가 없어 사운드를 생성할 수 없습니다."
         )
+
     if matching_session.mixing_point_gain is None:
         raise services.MatchingNotCompletedError(
-        "혼합점 측정이 완료되지 않아 사운드를 생성할 수 없습니다."
-    )
+            "혼합점 측정이 완료되지 않아 사운드를 생성할 수 없습니다."
+        )
 
     # 최근 checkin
     latest_checkin = (
@@ -72,19 +75,13 @@ def _gather_generation_input(
         None,
     )
 
-    # 과거 도움 평가
-    # feedback 구조 확정 전까지 방어적으로 조회
-    past_helpful_tags = []
-
-    if hasattr(user, "feedback_entries"):
-        past_helpful_tags = list(
-            user.feedback_entries
-            .filter(helped=True)
-            .values_list(
-                "sound_tag",
-                flat=True,
-            )[:20]
+    # 과거 도움 평가 - feedback.NightlyEvaluation 기준
+    # "comfortable"(편안했어요) 평가를 받은 세션들의 배경음 태그 수집
+    past_helpful_tags = (
+        services.collect_past_helpful_background_tags(
+            user
         )
+    )
 
     # 최근 사운드 불편 신고
     past_discomfort_reasons = []
@@ -110,13 +107,18 @@ def _gather_generation_input(
         tinnitus_center_hz=(
             matching_session.center_frequency
         ),
+
         tinnitus_freq_min_hz=(
             matching_session.lower_bound
         ),
+
         tinnitus_freq_max_hz=(
             matching_session.upper_bound
         ),
-        mixing_point_gain=matching_session.mixing_point_gain,
+
+        mixing_point_gain=(
+            matching_session.mixing_point_gain
+        ),
 
         sound_preferences=getattr(
             personalization,
@@ -168,10 +170,15 @@ class GenerateTodaySoundView(APIView):
         req = GenerateTodaySoundRequestSerializer(
             data=request.data
         )
-        req.is_valid(raise_exception=True)
+
+        req.is_valid(
+            raise_exception=True
+        )
 
         try:
-            gi = _gather_generation_input(user)
+            gi = _gather_generation_input(
+                user
+            )
 
         except services.MatchingNotCompletedError as exc:
             return Response(
@@ -182,7 +189,9 @@ class GenerateTodaySoundView(APIView):
             )
 
         input_snapshot = (
-            services.build_input_snapshot(gi)
+            services.build_input_snapshot(
+                gi
+            )
         )
 
         # 생성 시도 기록을 먼저 생성
@@ -193,7 +202,9 @@ class GenerateTodaySoundView(APIView):
         )
 
         try:
-            params = self._decide_with_timeout(gi)
+            params = self._decide_with_timeout(
+                gi
+            )
 
             session.generated_params = params
 
@@ -209,12 +220,18 @@ class GenerateTodaySoundView(APIView):
                 SoundSession.Status.READY
             )
 
-
             session.fallback_sound = (
-                services.select_fallback_sound(gi)
+                services.select_fallback_sound(
+                    gi
+                )
             )
 
             session.save()
+
+            # 최초 생성된 사운드 설정을 실제 재생 설정의 초기값으로 저장
+            services.initialize_final_params(
+                session
+            )
 
         except (
             TimeoutError,
@@ -273,7 +290,9 @@ class GenerateTodaySoundView(APIView):
     ):
 
         fallback = (
-            services.select_fallback_sound(gi)
+            services.select_fallback_sound(
+                gi
+            )
         )
 
         session.fallback_sound = fallback
@@ -368,8 +387,10 @@ class UseFallbackSoundView(APIView):
             status=status.HTTP_200_OK,
         )
 
+
 # 사운드 다시 생성하기
 class RegenerateSoundView(APIView):
+
     def post(
         self,
         request,
@@ -421,7 +442,9 @@ class RegenerateSoundView(APIView):
         new_session = SoundSession.objects.create(
             user=user,
             input_snapshot=(
-                services.build_input_snapshot(gi)
+                services.build_input_snapshot(
+                    gi
+                )
             ),
             status=SoundSession.Status.GENERATING,
             regenerated_from=prev,
@@ -430,7 +453,9 @@ class RegenerateSoundView(APIView):
         try:
             params = (
                 GenerateTodaySoundView
-                ._decide_with_timeout(gi)
+                ._decide_with_timeout(
+                    gi
+                )
             )
 
             new_session.generated_params = params
@@ -449,10 +474,17 @@ class RegenerateSoundView(APIView):
 
             # 성공해도 fallback 후보 미리 저장
             new_session.fallback_sound = (
-                services.select_fallback_sound(gi)
+                services.select_fallback_sound(
+                    gi
+                )
             )
 
             new_session.save()
+
+            # 재생성된 사운드도 실제 재생 설정의 초기값 저장
+            services.initialize_final_params(
+                new_session
+            )
 
         except (
             TimeoutError,
@@ -484,9 +516,9 @@ class RegenerateSoundView(APIView):
         )
 
 
-
 # SoundSession 조회
 class SoundSessionDetailView(APIView):
+
     def get(
         self,
         request,
@@ -509,6 +541,49 @@ class SoundSessionDetailView(APIView):
                 session
             ).data
         )
+
+
+# 배경 자연음 변경
+# 실제 오디오 변경은 프론트(Web Audio API)에서 수행하고 백엔드는 사용자가 최종적으로 선택한 배경음만 저장
+class SoundBackgroundView(APIView):
+
+    def patch(
+        self,
+        request,
+        uuid,
+        session_id,
+    ):
+        user = get_object_or_404(
+            AnonymousUser,
+            uuid=uuid,
+        )
+
+        session = get_object_or_404(
+            SoundSession,
+            session_id=session_id,
+            user=user,
+        )
+
+        body = SoundBackgroundUpdateSerializer(
+            data=request.data
+        )
+
+        body.is_valid(
+            raise_exception=True
+        )
+
+        session = services.update_background_sound(
+            session,
+            body.validated_data["background"],
+        )
+
+        return Response(
+            SoundSessionResultSerializer(
+                session
+            ).data,
+            status=status.HTTP_200_OK,
+        )
+
 
 # 사운드 재생 상태 관리
 class SoundPlaybackView(APIView):
@@ -533,7 +608,10 @@ class SoundPlaybackView(APIView):
         body = SoundPlaybackUpdateSerializer(
             data=request.data
         )
-        body.is_valid(raise_exception=True)
+
+        body.is_valid(
+            raise_exception=True
+        )
 
         action = body.validated_data["action"]
 
@@ -647,6 +725,7 @@ class SoundPlaybackView(APIView):
             ).data
         )
 
+
 # 볼륨 조절(사용자가 보낸 gain값에 서비스 상한 적용)
 class SoundVolumeView(APIView):
 
@@ -670,7 +749,10 @@ class SoundVolumeView(APIView):
         body = SoundVolumeUpdateSerializer(
             data=request.data
         )
-        body.is_valid(raise_exception=True)
+
+        body.is_valid(
+            raise_exception=True
+        )
 
         requested = (
             body.validated_data["volume"]
@@ -701,8 +783,11 @@ class SoundVolumeView(APIView):
                 ),
             }
         )
+
+
 # 불편 신고
 class SoundDiscomfortReportView(APIView):
+
     def post(
         self,
         request,
@@ -719,6 +804,7 @@ class SoundDiscomfortReportView(APIView):
             session_id=session_id,
             user=user,
         )
+
         # 현재 사운드 즉시 중지
         session.status = (
             SoundSession.Status.DISCOMFORT_STOPPED
@@ -785,6 +871,7 @@ class SoundDiscomfortReportView(APIView):
                     many=True,
                 ).data
             )
+
         # 다른 사운드로 바꾸기
         elif (
             report.follow_up_action

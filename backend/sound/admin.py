@@ -27,6 +27,7 @@ class SoundSessionAdmin(admin.ModelAdmin):
         "session_id",
         "input_snapshot",
         "generated_params",
+        "final_params",
         "generation_error_code",
         "created_at",
         "updated_at",
@@ -40,6 +41,12 @@ class SoundSessionAdmin(admin.ModelAdmin):
         (
             "생성 입력/결과 (REQ-F-16)",
             {"fields": ("input_snapshot", "generated_params", "recommended_duration_minutes")},
+        ),
+        (
+            # 사용자가 배경 자연음 등을 바꾼 뒤 실제로 재생 중인 최종 설정.
+            # generated_params는 최초 생성 결과 그대로, final_params는 사용자가 조정한 결과.
+            "최종 재생 설정",
+            {"fields": ("final_params",)},
         ),
         (
             "생성 실패/예비 사운드 (REQ-F-18/F-612/F-613)",
@@ -57,8 +64,8 @@ class SoundSessionAdmin(admin.ModelAdmin):
             },
         ),
         (
-            "안전 음량 / 혼합점 (REQ-F-20)",
-            {"fields": ("initial_volume", "max_volume_applied", "mixing_point_gain")},
+            "안전 음량 (REQ-F-20)",
+            {"fields": ("initial_volume", "max_volume_applied")},
         ),
         ("재생성 이력", {"fields": ("regenerated_from",)}),
         ("타임스탬프", {"fields": ("created_at", "updated_at")}),
