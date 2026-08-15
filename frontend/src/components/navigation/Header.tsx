@@ -10,7 +10,6 @@ import {
 interface HeaderInfo {
   title: string;
   showBackButton: boolean;
-  showLaterButton?: boolean;
 }
 
 interface RecoveryHeaderState {
@@ -41,7 +40,6 @@ const HEADER_INFO: Record<
   "/nature-sound": {
     title: "자연음 선택",
     showBackButton: true,
-    showLaterButton: true,
   },
 
   "/check-in": {
@@ -265,12 +263,7 @@ function Header() {
       location.pathname ===
       "/sound-setup"
     ) {
-      window.dispatchEvent(
-        new Event(
-          "sound-setup-back",
-        ),
-      );
-
+      navigate("/nature-sound");
       return;
     }
 
@@ -290,19 +283,6 @@ function Header() {
     navigate(-1);
   };
 
-  /*
-   * 자연음 선택 - 나중에
-   */
-  const handleLater = () => {
-    if (
-      location.pathname ===
-      "/nature-sound"
-    ) {
-      navigate(
-        "/sound-setup",
-      );
-    }
-  };
 
   /*
    * 회복 세션 - 중단
@@ -379,27 +359,6 @@ function Header() {
           {title}
         </h1>
 
-        {/* 자연음 선택 - 나중에 */}
-        {headerInfo.showLaterButton && (
-          <button
-            type="button"
-            onClick={handleLater}
-            className="
-              absolute
-              right-6
-              font-sans
-              text-[16px]
-              leading-[18px]
-              font-medium
-              text-right
-              text-[#87CBE6]
-              transition-opacity
-              active:opacity-60
-            "
-          >
-            나중에
-          </button>
-        )}
 
         {/* 회복 세션 - 중단 */}
         {isRecoverySession &&

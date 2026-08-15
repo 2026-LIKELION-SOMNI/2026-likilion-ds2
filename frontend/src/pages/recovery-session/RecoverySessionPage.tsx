@@ -456,7 +456,6 @@ function RecoverySessionPage() {
 
       return;
     }
-
     /*
     * 기본 회복 세션 /
     * 불편 신고 모달
@@ -991,24 +990,43 @@ function RecoverySessionPage() {
       stopRecoveryAudio();
       setPlaying(false);
 
-      /*
-       * TODO:
-       * 백엔드 수정본 확인 후
-       * 수동 종료 API 최종 연결
-       *
-       * 예상:
-       * updateSoundPlayback(
-       *   uuid,
-       *   sessionId,
-       *   "stop",
-       *   playedSeconds,
-       *   "user_stop",
-       * )
-       */
+      if (!soundSession) {
+        setScreen(
+          "end-complete",
+        );
 
-      setScreen(
-        "end-complete",
-      );
+        return;
+      }
+
+      const uuid =
+        getUserUuid();
+
+      if (!uuid) {
+        setScreen(
+          "end-complete",
+        );
+
+        return;
+      }
+
+      try {
+        await updateSoundPlayback(
+          uuid,
+          soundSession.session_id,
+          "stop",
+          elapsedSeconds,
+          "user_stop",
+        );
+      } catch (error) {
+        console.error(
+          "수동 세션 종료 저장 실패",
+          error,
+        );
+      } finally {
+        setScreen(
+          "end-complete",
+        );
+      }
     };
 
     if (screen === "change-select") {
@@ -2659,17 +2677,28 @@ function RecoverySessionPage() {
 
               <button
                 type="button"
+                disabled={
+                  selectedFeedback.length === 0 ||
+                  isSoundLoading
+                }
                 onClick={
                   handleMoveToEndConfirm
                 }
-                className="
+                className={`
                   mt-5
                   w-full
                   text-center
-                  text-[12px]
+                  font-sans
+                  text-[13px]
                   font-medium
-                  text-[#87CBE6]
-                "
+                  leading-normal
+                  ${
+                    selectedFeedback.length === 0 ||
+                    isSoundLoading
+                      ? "cursor-not-allowed text-[#1F4047]"
+                      : "text-[#87CBE6]"
+                  }
+                `}
               >
                 오늘은 세션 마치기
               </button>
@@ -2771,22 +2800,25 @@ function RecoverySessionPage() {
             pt-6
           "
         >
-          <button
-            type="button"
-            onClick={handleEndSession}
-            className="
-              h-14
-              w-full
-              rounded-[12px]
-              bg-[#60CEA7]
-              font-sans
-              text-[14px]
-              font-bold
-              text-[#07100D]
-            "
-          >
-            오늘 세션 마치기
-          </button>
+
+        <button
+          type="button"
+          onClick={
+            handleEndSession
+          }
+          className="
+            h-14
+            w-full
+            rounded-[12px]
+            bg-[#60CEA7]
+            font-sans
+            text-[14px]
+            font-bold
+            text-[#07100D]
+          "
+        >
+          오늘 세션 마치기
+        </button>
 
           <button
             type="button"
@@ -2814,104 +2846,69 @@ function RecoverySessionPage() {
     );
   }
 
-  /*
-   * =========================
-   * 3. 종료 완료
-   * =========================
-   */
+/*
+ * =========================
+ * 3. 종료 완료
+ * =========================
+ */
 
-  if (
-    screen === "end-complete"
-  ) {
+  if (screen === "end-complete") {
     return (
       <div
         className="
           flex
-          min-h-full
+          h-full
+          min-h-0
           flex-col
           px-5
           pb-6
         "
       >
-        {/* 원형 그래픽 */}
+        {/*
+          end-confirm과 완전히 동일
+          - 위치
+          - 이미지
+          - 이미지 크기
+        */}
         <div
           className="
-            mt-[150px]
+            mt-[97px]
             flex
+            shrink-0
             justify-center
           "
         >
-          <div
+          <img
+            src={recoveryEndRings}
+            alt=""
+            aria-hidden="true"
             className="
-              flex
-              h-[170px]
-              w-[170px]
-              items-center
-              justify-center
-              rounded-full
-              border
-              border-[#163B39]
+              h-[220px]
+              w-[220px]
+              shrink-0
             "
-          >
-            <div
-              className="
-                flex
-                h-[138px]
-                w-[138px]
-                items-center
-                justify-center
-                rounded-full
-                border
-                border-[#20534D]
-              "
-            >
-              <div
-                className="
-                  flex
-                  h-[106px]
-                  w-[106px]
-                  items-center
-                  justify-center
-                  rounded-full
-                  border
-                  border-[#2B7467]
-                "
-              >
-                <div
-                  className="
-                    flex
-                    h-[74px]
-                    w-[74px]
-                    items-center
-                    justify-center
-                    rounded-full
-                    border
-                    border-[#3B9F8B]
-                  "
-                >
-                  <div
-                    className="
-                      h-[42px]
-                      w-[42px]
-                      rounded-full
-                      border
-                      border-[#60CEA7]
-                    "
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+          />
         </div>
 
-        {/* 문구 */}
-        <div className="mt-14 text-center">
+        {/*
+          end-confirm과 완전히 동일
+          - 원 → 제목 간격
+          - 제목 크기
+          - 설명 위치
+        */}
+        <div
+          className="
+            mt-[34px]
+            shrink-0
+            text-center
+          "
+        >
           <h2
             className="
               font-sans
-              text-[24px]
-              font-bold
+              text-[28px]
               leading-normal
+              font-bold
               text-[#F0F7FA]
             "
           >
@@ -2920,40 +2917,47 @@ function RecoverySessionPage() {
 
           <p
             className="
-              mt-4
+              mt-[13px]
+              text-center
               font-sans
-              text-[12px]
-              font-normal
+              text-[13px]
               leading-normal
+              font-light
               text-[#809EA8]
             "
           >
-            이제 화면을 보지 않고
-            쉬어도 괜찮아요.
+            이제 화면을 보지 않고 쉬어도 괜찮아요.
           </p>
         </div>
 
-        {/* 홈 */}
-        <button
-          type="button"
-          onClick={() => {
-            stopRecoveryAudio();
-            navigate("/");
-          }}
+        {/* 여기부터만 end-confirm과 다름 */}
+        <div
           className="
             mt-auto
-            h-14
-            w-full
-            rounded-[12px]
-            bg-[#60CEA7]
-            font-sans
-            text-[14px]
-            font-bold
-            text-[#07100D]
+            shrink-0
+            pt-6
           "
         >
-          홈으로 돌아가기
-        </button>
+          <button
+            type="button"
+            onClick={() => {
+              stopRecoveryAudio();
+              navigate("/");
+            }}
+            className="
+              h-14
+              w-full
+              rounded-[12px]
+              bg-[#60CEA7]
+              font-sans
+              text-[14px]
+              font-bold
+              text-[#07100D]
+            "
+          >
+            홈으로 돌아가기
+          </button>
+        </div>
       </div>
     );
   }
