@@ -313,6 +313,7 @@ export async function reportSoundDiscomfort(
  */
 export type SoundBackground =
   | "rain"
+  | "stream"
   | "white_noise"
   | "ocean"
   | "wind";
