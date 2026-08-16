@@ -1,11 +1,90 @@
 import {
+  useEffect,
+  useState,
+} from "react";
+import {
   useNavigate,
 } from "react-router-dom";
 
 import soundProfileWave from "../../assets/icons/sound-profile-wave.svg";
 
+import {
+  getMyPageProfileSummary,
+  type MyPageProfileSummary,
+} from "../../api/mypage";
+
+import {
+  getUserUuid,
+} from "../../utils/userStorage";
+
+const TEXTURE_LABEL: Record<
+  string,
+  string
+> = {
+  soft: "부드러운 질감",
+  balanced: "균형 있는 질감",
+  clear: "선명한 질감",
+};
+
+const LAYER_MIX_LABEL: Record<
+  string,
+  string
+> = {
+  low: "자연음 중심",
+  medium: "균형",
+  high: "노이즈 중심",
+};
+
 function SoundProfilePage() {
   const navigate = useNavigate();
+
+  const [
+    profileSummary,
+    setProfileSummary,
+  ] =
+    useState<MyPageProfileSummary | null>(
+      null,
+    );
+
+  useEffect(() => {
+    const uuid = getUserUuid();
+
+    if (!uuid) {
+      return;
+    }
+
+    const loadProfile = async () => {
+      try {
+        const data =
+          await getMyPageProfileSummary(
+            uuid,
+          );
+
+        setProfileSummary(data);
+      } catch (error) {
+        console.error(
+          "사운드 프로필 조회 실패",
+          error,
+        );
+      }
+    };
+
+    void loadProfile();
+  }, []);
+
+  const textureLabel =
+    profileSummary?.texture
+      ? TEXTURE_LABEL[
+          profileSummary.texture
+        ] ?? "-"
+      : "-";
+
+  const layerMixLabel =
+    profileSummary?.layer_mix
+      ? LAYER_MIX_LABEL[
+          profileSummary.layer_mix
+        ] ?? "-"
+      : "-";
 
   return (
     <div
@@ -45,7 +124,6 @@ function SoundProfilePage() {
           마이페이지에서도 확인할 수 있어요.
         </p>
 
-        {/* 사운드 프로필 카드 */}
         <div
           className="
             mt-[40px]
@@ -85,7 +163,7 @@ function SoundProfilePage() {
                 text-[#F0F7FA]
               "
             >
-              부드러운 질감
+              {textureLabel}
             </p>
 
             <p
@@ -98,11 +176,10 @@ function SoundProfilePage() {
                 text-[#F0F7FA]
               "
             >
-              자연음 중심
+              {layerMixLabel}
             </p>
           </div>
 
-          {/* 네가 새로 보낸 100×70 파형 SVG */}
           <img
             src={soundProfileWave}
             alt=""

@@ -1,8 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import BottomNav from "../../components/navigation/BottomNav";
 import ExclamationMark from "../../assets/icons/ExclamationMark.svg";
+
+import { getMyPageProfileSummary, type MyPageProfileSummary, } from "../../api/mypage";
+
+import { getUserUuid } from "../../utils/userStorage";
 
 function ChevronRight() {
   return (
@@ -29,6 +33,39 @@ function MyPage() {
 
   const [showDeleteModal, setShowDeleteModal] =
     useState(false);
+
+  const [
+    profileSummary,
+    setProfileSummary,
+  ] = useState<MyPageProfileSummary | null>(
+    null,
+  );
+
+  useEffect(() => {
+    const uuid = getUserUuid();
+
+    if (!uuid) {
+      return;
+    }
+
+    const loadProfileSummary = async () => {
+      try {
+        const data =
+          await getMyPageProfileSummary(
+            uuid,
+          );
+
+        setProfileSummary(data);
+      } catch (error) {
+        console.error(
+          "마이페이지 프로필 조회 실패",
+          error,
+        );
+      }
+    };
+
+    void loadProfileSummary();
+  }, []);
 
   return (
     <div className="flex min-h-full flex-col px-5 pb-[94px]">      {/* 마이 */}
@@ -122,7 +159,11 @@ function MyPage() {
             text-[#E8F5F2]
         "
         >
-        853Hz
+        {profileSummary?.center_frequency != null
+          ? `${Math.round(
+              profileSummary.center_frequency,
+            )}Hz`
+          : "-"}
         </strong>
     </div>
 
@@ -158,7 +199,14 @@ function MyPage() {
             text-[#759CA3]
         "
         >
-        842–863Hz
+        {profileSummary?.lower_bound != null &&
+          profileSummary?.upper_bound != null
+            ? `${Math.round(
+                profileSummary.lower_bound,
+              )}–${Math.round(
+                profileSummary.upper_bound,
+              )}Hz`
+            : "-"}
         </span>
     </div>
 

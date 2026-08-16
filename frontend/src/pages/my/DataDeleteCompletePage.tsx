@@ -84,17 +84,18 @@ function DataDeleteCompletePage() {
       </div>
 
       {/* 화면 하단 고정 버튼 */}
-      <div
-        className="
-          fixed
-          bottom-[40px]
-          left-1/2
-          w-full
-          max-w-[480px]
-          -translate-x-1/2
-          px-5
-        "
-      >
+    <div
+    className="
+        fixed
+        bottom-0
+        left-1/2
+        w-full
+        max-w-[480px]
+        -translate-x-1/2
+        px-5
+        pb-[40px]
+    "
+    >
         <button
           type="button"
           onClick={() => navigate("/onboarding")}
