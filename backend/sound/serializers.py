@@ -70,9 +70,9 @@ class SoundBackgroundUpdateSerializer(serializers.Serializer):
     background = serializers.ChoiceField(
         choices=[
             "rain",
-            "white_noise",
+            "stream",
             "ocean",
-            "wind",
+            "air",
         ]
     )
 
