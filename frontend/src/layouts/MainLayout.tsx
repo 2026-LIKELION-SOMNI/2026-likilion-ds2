@@ -14,6 +14,7 @@ function MainLayout() {
     <div
       className="
         app-container
+        relative
         grid
         h-dvh
         w-full

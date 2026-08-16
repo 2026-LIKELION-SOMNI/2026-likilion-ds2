@@ -46,18 +46,17 @@ function BottomNav() {
 return (
   <nav
     className="
-      fixed
+      absolute
       bottom-0
-      left-1/2
+      left-0
       z-50
       flex
       w-full
-      max-w-[480px]
-      -translate-x-1/2
       items-center
       justify-center
       gap-[48px]
-      border-t border-[#24464E]
+      border-t
+      border-[#24464E]
       bg-[#071114]
       px-[24px]
       py-[8px]
