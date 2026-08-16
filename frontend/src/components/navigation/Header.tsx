@@ -51,7 +51,10 @@ const HEADER_INFO: Record<
     title: "맞춤 수면 사운드",
     showBackButton: true,
   },
-
+    "/sound-fit/nature-changed": {
+    title: "AI Sound Fit",
+    showBackButton: true,
+  },
   "/sound/my-sound": {
     title: "나만의 사운드",
     showBackButton: true,

@@ -18,6 +18,9 @@ import NotificationSettingsPage from "../pages/my/NotificationSettingsPage";
 import SoundProfilePage from "../pages/my/SoundProfilePage";
 import ConnectedDataPage from "../pages/my/ConnectedDataPage";
 import DataDeleteCompletePage from "../pages/my/DataDeleteCompletePage";
+import AISoundFitPage from "../pages/sound-fit/AISoundFitPage";
+import NatureChangedSoundFitPage from "../pages/sound-fit/NatureChangedSoundFitPage";
+
 
 const router = createBrowserRouter([
   {
@@ -88,6 +91,14 @@ const router = createBrowserRouter([
       {
         path: "/my/delete-complete",
         element: <DataDeleteCompletePage />,
+      },
+      {
+        path: "/sound-fit",
+        element: <AISoundFitPage />,
+      },
+      {
+        path: "/sound-fit/nature-changed",
+        element: <NatureChangedSoundFitPage />,
       },
     ],
   },

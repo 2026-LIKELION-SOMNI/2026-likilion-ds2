@@ -125,20 +125,18 @@ function SoundProfilePage() {
         </p>
 
         <div
-          className="
+        className="
+            relative
             mt-[40px]
-            flex
             h-[125px]
             w-full
-            items-start
-            justify-between
             rounded-[20px]
             border
             border-[#2B8E78]
             bg-[#12382E]
             px-[16px]
-            py-[16px]
-          "
+            pt-[16px]
+        "
         >
           <div>
             <p
@@ -180,17 +178,18 @@ function SoundProfilePage() {
             </p>
           </div>
 
-          <img
+            <img
             src={soundProfileWave}
             alt=""
             aria-hidden="true"
             className="
-              mt-[19px]
-              h-[70px]
-              w-[100px]
-              shrink-0
+                absolute
+                right-[16px]
+                top-[39px]
+                h-[70px]
+                w-[100px]
             "
-          />
+            />
         </div>
       </section>
 
@@ -215,8 +214,11 @@ function SoundProfilePage() {
         </button>
 
         <button
-          type="button"
-          className="
+        type="button"
+        onClick={() =>
+            navigate("/sound-fit")
+        }
+        className="
             mt-[20px]
             w-full
             text-center
@@ -224,9 +226,9 @@ function SoundProfilePage() {
             text-[13px]
             font-medium
             text-[#87CBE6]
-          "
+        "
         >
-          다시 측정하기
+        다시 측정하기
         </button>
       </div>
     </div>

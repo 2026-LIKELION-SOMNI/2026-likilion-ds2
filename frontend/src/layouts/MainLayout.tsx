@@ -8,7 +8,8 @@ function MainLayout() {
   const hideHeader =
     location.pathname === "/sound" ||
     location.pathname === "/my" ||
-    location.pathname === "/my/delete-complete";
+    location.pathname === "/my/delete-complete" ||
+    location.pathname === "/sound-fit";
   return (
     <div
       className="

@@ -103,7 +103,27 @@ function NatureSoundPage() {
       return;
     }
 
-    // TODO: 선택한 자연음 서버 저장
+    const selectedSound =
+      natureSounds.find(
+        (sound) =>
+          sound.id === selectedSoundId,
+      );
+
+    if (!selectedSound) {
+      return;
+    }
+
+    /*
+    * AI Sound Fit 등에서
+    * 현재 선택한 자연음을 사용할 수 있도록 저장
+    */
+    sessionStorage.setItem(
+      "somni-selected-nature-sound",
+      selectedSound.backendValue,
+    );
+
+    stopNatureAudio();
+
     navigate("/sound-setup");
   };
 
