@@ -25,7 +25,7 @@ export interface NatureSound {
   | "rain"
   | "stream"
   | "ocean"
-  | "wind";
+  | "air";
 
   // 실제 재생할 mp3
   audio: string;
@@ -73,7 +73,7 @@ export const natureSounds: NatureSound[] = [
 
   {
     id: 3,
-    title: "느린 파도",
+    title: "파도",
     description: "넓고 부드러운 파도",
     category: "물",
     recommended: true,
@@ -97,7 +97,7 @@ export const natureSounds: NatureSound[] = [
       "바람",
       "공기음",
     ],
-    backendValue: "wind",
+    backendValue: "air",
     audio: airAudio,
   },
 ];

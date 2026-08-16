@@ -6,9 +6,9 @@ function MainLayout() {
   const location = useLocation();
 
   const hideHeader =
-    location.pathname === "/recovery-session" ||
     location.pathname === "/sound" ||
-    location.pathname === "/my";
+    location.pathname === "/my" ||
+    location.pathname === "/my/delete-complete";
   return (
     <div
       className="
@@ -24,8 +24,7 @@ function MainLayout() {
     >
       {!hideHeader && <Header />}
 
-      <main className="min-h-0 overflow-y-auto overscroll-y-contain">
-        <Outlet />
+    <main className="hide-scrollbar min-h-0 overflow-y-auto overscroll-y-contain">        <Outlet />
       </main>
     </div>
   );

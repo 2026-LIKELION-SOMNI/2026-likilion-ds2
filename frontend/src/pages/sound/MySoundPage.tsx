@@ -160,10 +160,8 @@ function MySoundPage() {
       > = {
         rain: "잔잔한 빗소리",
         stream: "시냇물 소리",
-        ocean: "느린 파도",
-        wind: "공기음",
-        white_noise:
-          "화이트 노이즈",
+        ocean: "파도",
+        air: "공기음",
       };
 
       if (!background) {

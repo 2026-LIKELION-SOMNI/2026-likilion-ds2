@@ -192,8 +192,7 @@ function RecoverySessionPage() {
     rain: "빗소리",
     stream: "시냇물 소리",
     ocean: "파도",
-    wind: "공기음",
-    white_noise: "화이트노이즈",
+    air: "공기음",
   };
 
     const backgroundLabel =
@@ -2043,7 +2042,7 @@ function RecoverySessionPage() {
             "ocean"
           ? "파도 소리"
           : ambient?.asset_tag ===
-              "wind"
+              "air"
             ? "공기음"
             : ambient
               ? "배경 사운드"

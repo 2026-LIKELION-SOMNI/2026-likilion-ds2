@@ -71,9 +71,21 @@ const HEADER_INFO: Record<
     showBackButton: true,
   },
 
+  "/my/sound-profile": {
+    title: "사운드 프로필",
+    showBackButton: true,
+  },
 
+  "/my/connected-data": {
+    title: "연결된 데이터",
+    showBackButton: true,
+  },
   "/recovery-session": {
     title: "회복 세션",
+    showBackButton: false,
+  },
+    "/my/delete-complete": {
+    title: "",
     showBackButton: false,
   },
 };
