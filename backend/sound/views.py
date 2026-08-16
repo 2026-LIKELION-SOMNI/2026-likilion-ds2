@@ -75,6 +75,13 @@ def _gather_generation_input(
         None,
     )
 
+    # [추가] soundfit 앱은 존재할 경우에만 값을 가져온다 (없으면 None -> services에서 기존 임시 규칙으로 폴백)
+    sound_fit_profile = getattr(
+        user,
+        "soundfit_profile",
+        None,
+    )
+
     # 과거 도움 평가 - feedback.NightlyEvaluation 기준
     # "comfortable"(편안했어요) 평가를 받은 세션들의 배경음 태그 수집
     past_helpful_tags = (
@@ -154,6 +161,19 @@ def _gather_generation_input(
 
         past_discomfort_reasons=(
             past_discomfort_reasons
+        ),
+
+        # [추가] soundfit 결과 (없으면 None)
+        sound_fit_texture=getattr(
+            sound_fit_profile,
+            "texture",
+            None,
+        ),
+
+        sound_fit_layer_mix=getattr(
+            sound_fit_profile,
+            "layer_mix",
+            None,
         ),
     )
 
