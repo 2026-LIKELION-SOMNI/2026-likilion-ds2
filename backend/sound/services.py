@@ -234,12 +234,12 @@ def decide_parameters(
                 if preference
                 in (
                     "rain",
-                    "white_noise",
+                    "stream",
                     "ocean",
-                    "wind",
+                    "air",
                 )
             ),
-            "white_noise",
+            "rain",
         )
 
         sources.append(
