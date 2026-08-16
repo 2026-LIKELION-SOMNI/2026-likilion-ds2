@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'sound',
     'data',
     'relaxtion',
+    'soundfit',
 ]
 
 MIDDLEWARE = [
