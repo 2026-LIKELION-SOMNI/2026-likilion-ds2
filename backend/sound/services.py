@@ -39,6 +39,23 @@ MIXING_POINT_RAMP_RANGE_DB = 40
 # feedback 연동
 COMFORTABLE_REACTION_TAG = "comfortable"
 
+# [추가] soundfit 연동 매핑 상수
+# layer_mix(자연음:보조레이어 비율) -> masking_ratio(0~1, 이명 마스킹 노이즈 비중)
+# low(자연음 위주) -> 마스킹 비중 낮게, high(노이즈 위주) -> 마스킹 비중 높게
+LAYER_MIX_TO_MASKING_RATIO = {
+    "low": 0.45,
+    "medium": 0.60,
+    "high": 0.75,
+}
+
+# texture(질감) -> modulation_intensity(변화 강도)
+# soft(부드럽게) -> 변화 적게(low), clear(선명하게) -> 변화 크게(high)
+TEXTURE_TO_MODULATION = {
+    "soft": "low",
+    "balanced": "medium",
+    "clear": "high",
+}
+
 
 # Exception
 class MatchingNotCompletedError(Exception):
@@ -68,6 +85,10 @@ class GenerationInput:
     # 과거 결과
     past_helpful_tags: list[str]
     past_discomfort_reasons: list[str]
+
+    # [추가] soundfit 결과 (없으면 None -> 기존 임시 규칙으로 폴백)
+    sound_fit_texture: Optional[str] = None
+    sound_fit_layer_mix: Optional[str] = None
 
 
 def build_input_snapshot(gi: GenerationInput) -> dict:
@@ -230,9 +251,10 @@ def decide_parameters(
         )
 
     # 혼합 비율
-    # 현재는 임시 규칙이며 personalization 구현 후 arm 선택 결과로 대체 예정.
-
-    if gi.current_discomfort >= 4:
+    # [수정] soundfit(layer_mix) 결과가 있으면 그걸로 결정, 없으면 기존 임시 규칙으로 폴백
+    if gi.sound_fit_layer_mix and gi.sound_fit_layer_mix in LAYER_MIX_TO_MASKING_RATIO:
+        masking_ratio = LAYER_MIX_TO_MASKING_RATIO[gi.sound_fit_layer_mix]
+    elif gi.current_discomfort >= 4:
         masking_ratio = 0.75
     else:
         masking_ratio = 0.60
@@ -246,14 +268,16 @@ def decide_parameters(
     }
 
     # 변화 강도
-    # 현재는 임시 규칙이며 personalization 구현 후 arm 선택 결과로 대체 예정.
-
+    # [수정] soundfit(texture) 결과가 있으면 그걸로 결정, 없으면 기존 임시 규칙으로 폴백
+    # 단, 긴장도가 높거나 "변화가 많음" 불편 신고 이력이 있으면 soundfit 결과보다 안전(low)을 우선함
     if (
         gi.current_tension >= 4
-        or "too_much_variation"
-        in gi.past_discomfort_reasons
+        or "too_much_variation" in gi.past_discomfort_reasons
     ):
         modulation_intensity = "low"
+
+    elif gi.sound_fit_texture and gi.sound_fit_texture in TEXTURE_TO_MODULATION:
+        modulation_intensity = TEXTURE_TO_MODULATION[gi.sound_fit_texture]
 
     elif gi.current_tension >= 3:
         modulation_intensity = "medium"
@@ -512,7 +536,6 @@ def list_comfortable_sessions(
     )
 
 
-# 과거 "편안했어요" 평가를 받은 세션들의 배경음 태그 수집
 # 과거 "편안했어요" 평가를 받은 세션들의 배경음 태그 수집
 # GenerationInput.past_helpful_tags를 채우는 데 사용 (현재 decide_parameters는
 # 아직 이 값을 직접 소비하지 않음 - personalization 구현 후 반영 예정)
