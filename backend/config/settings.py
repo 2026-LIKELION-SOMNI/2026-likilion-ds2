@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'data',
     'relaxtion',
     'soundfit',
+    'mypage',
 ]
 
 MIDDLEWARE = [
