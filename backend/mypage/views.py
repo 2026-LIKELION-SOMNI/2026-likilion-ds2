@@ -6,7 +6,11 @@ from accounts.models import AnonymousUser
 from tinnitus.models import PitchMatchSession
 from soundfit.models import SoundFitProfile
 
-from .serializers import TinnitusProfileSummarySerializer
+from .models import NotificationSettings
+from .serializers import (
+    NotificationSettingsSerializer,
+    TinnitusProfileSummarySerializer,
+)
 
 
 # 마이페이지 "내 이명 프로필" 카드 - tinnitus 결과 + soundfit 결과 통합 조회
@@ -22,7 +26,7 @@ class TinnitusProfileSummaryView(APIView):
             .first()
         )
 
-        # soundfit 진행 안 한 경우 고려 -> 없으면 None 처리 (에러 아님)
+        # soundfit은 완성 안 했을 수도 있으니 없으면 None 처리 (에러 아님)
         soundfit_profile = SoundFitProfile.objects.filter(user=user).first()
 
         data = {
@@ -35,3 +39,21 @@ class TinnitusProfileSummaryView(APIView):
         }
 
         return Response(TinnitusProfileSummarySerializer(data).data)
+
+
+# F-1207~1208: 알림 설정 조회/저장
+# 설정값 저장까지만 함 - 실제 알림 발송은 미구현
+class NotificationSettingsView(APIView):
+
+    def get(self, request, uuid):
+        user = get_object_or_404(AnonymousUser, uuid=uuid)
+        settings_obj, _ = NotificationSettings.objects.get_or_create(user=user)
+        return Response(NotificationSettingsSerializer(settings_obj).data)
+
+    def put(self, request, uuid):
+        user = get_object_or_404(AnonymousUser, uuid=uuid)
+        settings_obj, _ = NotificationSettings.objects.get_or_create(user=user)
+        serializer = NotificationSettingsSerializer(settings_obj, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
