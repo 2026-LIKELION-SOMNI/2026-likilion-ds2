@@ -20,7 +20,8 @@ import ConnectedDataPage from "../pages/my/ConnectedDataPage";
 import DataDeleteCompletePage from "../pages/my/DataDeleteCompletePage";
 import AISoundFitPage from "../pages/sound-fit/AISoundFitPage";
 import NatureChangedSoundFitPage from "../pages/sound-fit/NatureChangedSoundFitPage";
-
+import RoutineReadyPage from "../pages/routine/RoutineReadyPage";
+import MixingPointPage from "../pages/sound-setup/MixingPointPage";
 
 const router = createBrowserRouter([
   {
@@ -99,6 +100,13 @@ const router = createBrowserRouter([
       {
         path: "/sound-fit/nature-changed",
         element: <NatureChangedSoundFitPage />,
+      },{
+        path: "/routine-ready",
+        element: <RoutineReadyPage />,
+      },
+      {
+        path: "/mixing-point",
+        element: <MixingPointPage />,
       },
     ],
   },

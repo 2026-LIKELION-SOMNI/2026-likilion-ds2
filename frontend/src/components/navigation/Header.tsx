@@ -55,6 +55,15 @@ const HEADER_INFO: Record<
     title: "AI Sound Fit",
     showBackButton: true,
   },
+  "/routine-ready": {
+    title: "오늘의 루틴",
+    showBackButton: true,
+  },
+
+  "/mixing-point": {
+    title: "오늘의 루틴",
+    showBackButton: true,
+  },
   "/sound/my-sound": {
     title: "나만의 사운드",
     showBackButton: true,

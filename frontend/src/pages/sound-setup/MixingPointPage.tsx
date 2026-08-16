@@ -2,7 +2,6 @@ import {
   useEffect,
   useState,
 } from "react";
-import { useNavigate } from "react-router-dom";
 
 import plusIcon from "../../assets/icons/Plus.svg";
 import minusIcon from "../../assets/icons/Minus.svg";
@@ -12,10 +11,6 @@ import {
   setMixingPointGain,
   stopTinnitusAudio,
 } from "../../audio/tinnitusAudio";
-
-import {
-  saveMixingPoint,
-} from "../../services/tinnitusService";
 
 import {
   getPitchMatchSession,
@@ -42,17 +37,10 @@ function volumeToGain(
 }
 
 function MixingPointPage() {
-  const navigate = useNavigate();
-
   const [
     volume,
     setVolume,
   ] = useState(22);
-
-  const [
-    isSaving,
-    setIsSaving,
-  ] = useState(false);
 
   const [
     errorMessage,
@@ -161,72 +149,6 @@ function MixingPointPage() {
       updateVolume(value);
     };
 
-  /*
-   * 최종 혼합점 저장
-   */
-  const handleSave =
-    async () => {
-      if (
-        !pitchMatchSession
-      ) {
-        setErrorMessage(
-          "음역 매칭 정보를 찾지 못했어요.",
-        );
-
-        return;
-      }
-
-      if (isSaving) {
-        return;
-      }
-
-      const mixingPointGain =
-        volumeToGain(
-          volume,
-        );
-
-      try {
-        setIsSaving(true);
-        setErrorMessage("");
-
-        stopTinnitusAudio();
-
-        await saveMixingPoint(
-          pitchMatchSession.id,
-          mixingPointGain,
-        );
-
-        sessionStorage.setItem(
-          "somni-sound-setup-completed",
-          "true",
-        );
-
-        /*
-         * 이 페이지는 현재 초기 플로우에서는
-         * 사용하지 않음.
-         *
-         * 나중에 설정에서 호출했을 때
-         * 저장 후 sound 화면으로 돌아가도록 설정.
-         */
-        navigate(
-          "/sound",
-          {
-            replace: true,
-          },
-        );
-      } catch (error) {
-        console.error(
-          "혼합점 저장 실패",
-          error,
-        );
-
-        setErrorMessage(
-          "볼륨 설정을 저장하지 못했어요.",
-        );
-      } finally {
-        setIsSaving(false);
-      }
-    };
 
   return (
     <div className="flex min-h-full flex-col px-5 pb-6">
@@ -417,26 +339,22 @@ function MixingPointPage() {
       <div className="mt-auto pt-10">
         <button
           type="button"
-          disabled={isSaving}
-          onClick={
-            handleSave
-          }
-          className={`
+          onClick={() => {
+            console.log(
+              "야간 세션 시작 연동 예정",
+            );
+          }}
+          className="
             h-14
             w-full
             rounded-[0.75rem]
+            bg-[#60CEA7]
             text-[0.875rem]
             font-bold
-            ${
-              isSaving
-                ? "bg-[#214750] text-[#0D1719]"
-                : "bg-[#60CEA7] text-[#07100D]"
-            }
-          `}
+            text-[#07100D]
+          "
         >
-          {isSaving
-            ? "저장 중..."
-            : "저장하기"}
+          시작하기
         </button>
       </div>
     </div>
