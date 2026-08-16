@@ -13,6 +13,13 @@ import RecoverySessionPage from "../pages/recovery-session/RecoverySessionPage";
 import SoundPage from "../pages/sound/SoundPage";
 import MySoundPage from "../pages/sound/MySoundPage";
 import ChangeNatureSoundPage from "../pages/sound/ChangeNatureSoundPage";
+import MyPage from "../pages/my/MyPage";
+import NotificationSettingsPage from "../pages/my/NotificationSettingsPage";
+import SoundProfilePage from "../pages/my/SoundProfilePage";
+import ConnectedDataPage from "../pages/my/ConnectedDataPage";
+import DataDeleteCompletePage from "../pages/my/DataDeleteCompletePage";
+import AISoundFitPage from "../pages/sound-fit/AISoundFitPage";
+import NatureChangedSoundFitPage from "../pages/sound-fit/NatureChangedSoundFitPage";
 
 
 const router = createBrowserRouter([
@@ -64,6 +71,34 @@ const router = createBrowserRouter([
       {
         path: "/sound/change-nature",
         element: <ChangeNatureSoundPage />,
+      },
+      {
+        path: "/my",
+        element: <MyPage />,
+      },
+      {
+        path: "/my/notifications",
+        element: <NotificationSettingsPage />,
+      },
+      {
+        path: "/my/sound-profile",
+        element: <SoundProfilePage />,
+      },
+      {
+        path: "/my/connected-data",
+        element: <ConnectedDataPage />,
+      },
+      {
+        path: "/my/delete-complete",
+        element: <DataDeleteCompletePage />,
+      },
+      {
+        path: "/sound-fit",
+        element: <AISoundFitPage />,
+      },
+      {
+        path: "/sound-fit/nature-changed",
+        element: <NatureChangedSoundFitPage />,
       },
     ],
   },

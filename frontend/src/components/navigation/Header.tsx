@@ -51,7 +51,10 @@ const HEADER_INFO: Record<
     title: "맞춤 수면 사운드",
     showBackButton: true,
   },
-
+    "/sound-fit/nature-changed": {
+    title: "AI Sound Fit",
+    showBackButton: true,
+  },
   "/sound/my-sound": {
     title: "나만의 사운드",
     showBackButton: true,
@@ -66,9 +69,26 @@ const HEADER_INFO: Record<
     title: "음역 매칭",
     showBackButton: true,
   },
+  "/my/notifications": {
+    title: "알림 설정",
+    showBackButton: true,
+  },
 
+  "/my/sound-profile": {
+    title: "사운드 프로필",
+    showBackButton: true,
+  },
+
+  "/my/connected-data": {
+    title: "연결된 데이터",
+    showBackButton: true,
+  },
   "/recovery-session": {
     title: "회복 세션",
+    showBackButton: false,
+  },
+    "/my/delete-complete": {
+    title: "",
     showBackButton: false,
   },
 };

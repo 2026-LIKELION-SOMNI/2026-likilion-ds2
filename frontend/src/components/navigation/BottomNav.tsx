@@ -44,23 +44,25 @@ function BottomNav() {
   const navigate = useNavigate();
 
 return (
-    <nav
+  <nav
     className="
-        absolute
-        bottom-0
-        left-0
-        right-0
-        z-50
-        flex
-        items-center
-        justify-center
-        gap-[48px]
-        border-t border-[#24464E]
-        bg-[#071114]
-        px-[24px]
-        py-[8px]
+      fixed
+      bottom-0
+      left-1/2
+      z-50
+      flex
+      w-full
+      max-w-[480px]
+      -translate-x-1/2
+      items-center
+      justify-center
+      gap-[48px]
+      border-t border-[#24464E]
+      bg-[#071114]
+      px-[24px]
+      py-[8px]
     "
-    >
+  >
     {NAV_ITEMS.map((item) => {
       const isActive =
         item.path === "/"
