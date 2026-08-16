@@ -1,49 +1,75 @@
-import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import {
+  useEffect,
+  useState,
+} from "react";
+import {
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 
 interface HeaderInfo {
   title: string;
   showBackButton: boolean;
-  showLaterButton?: boolean;
 }
 
-const HEADER_INFO: Record<string, HeaderInfo> = {
+interface RecoveryHeaderState {
+  title: string;
+  showBackButton: boolean;
+  showStopButton: boolean;
+}
+
+const HEADER_INFO: Record<
+  string,
+  HeaderInfo
+> = {
   "/": {
     title: "Somni",
     showBackButton: false,
   },
+
   "/onboarding": {
     title: "시작하기",
     showBackButton: true,
   },
+
   "/frequency": {
     title: "음역 매칭",
     showBackButton: true,
   },
+
   "/nature-sound": {
     title: "자연음 선택",
     showBackButton: true,
-    showLaterButton: true,
   },
+
   "/check-in": {
     title: "오늘의 체크인",
     showBackButton: true,
   },
+
   "/sound": {
     title: "맞춤 수면 사운드",
     showBackButton: true,
   },
-    "/sound/my-sound": {
+
+  "/sound/my-sound": {
     title: "나만의 사운드",
     showBackButton: true,
   },
+
   "/sound/change-nature": {
     title: "자연음 선택",
     showBackButton: true,
   },
+
   "/sound-setup": {
     title: "음역 매칭",
     showBackButton: true,
+  },
+
+  "/recovery-session": {
+    title: "회복 세션",
+    showBackButton: false,
   },
 };
 
@@ -72,20 +98,57 @@ function Header() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [frequencyTitle, setFrequencyTitle] =
-    useState("음역 매칭");
+  /*
+   * 음역 매칭 내부 화면 제목
+   */
+  const [
+    frequencyTitle,
+    setFrequencyTitle,
+  ] = useState("음역 매칭");
 
-  const headerInfo = HEADER_INFO[location.pathname] ?? {
-    title: "Somni",
-    showBackButton: true,
-  };
+  /*
+   * 회복 세션 내부 화면 헤더 상태
+   *
+   * session
+   * → 회복 세션 / 중단
+   *
+   * end-confirm
+   * → 뒤로가기 / 종료
+   *
+   * end-complete
+   * → 종료
+   */
+  const [
+    recoveryHeader,
+    setRecoveryHeader,
+  ] = useState<RecoveryHeaderState>({
+    title: "회복 세션",
+    showBackButton: false,
+    showStopButton: true,
+  });
 
-  // FrequencyPage가 보내는 헤더 제목 받기
+  const headerInfo =
+    HEADER_INFO[
+      location.pathname
+    ] ?? {
+      title: "Somni",
+      showBackButton: true,
+    };
+
+  /*
+   * FrequencyPage가 보내는
+   * 제목 변경 이벤트
+   */
   useEffect(() => {
-    const handleFrequencyTitle = (event: Event) => {
-      const customEvent = event as CustomEvent<string>;
+    const handleFrequencyTitle = (
+      event: Event,
+    ) => {
+      const customEvent =
+        event as CustomEvent<string>;
 
-      setFrequencyTitle(customEvent.detail);
+      setFrequencyTitle(
+        customEvent.detail,
+      );
     };
 
     window.addEventListener(
@@ -101,44 +164,137 @@ function Header() {
     };
   }, []);
 
+  /*
+   * RecoverySessionPage가 보내는
+   * 헤더 상태 변경 이벤트
+   */
+  useEffect(() => {
+    const handleRecoveryHeader = (
+      event: Event,
+    ) => {
+      const customEvent =
+        event as CustomEvent<RecoveryHeaderState>;
+
+      setRecoveryHeader(
+        customEvent.detail,
+      );
+    };
+
+    window.addEventListener(
+      "recovery-header",
+      handleRecoveryHeader,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "recovery-header",
+        handleRecoveryHeader,
+      );
+    };
+  }, []);
+
+  const isRecoverySession =
+    location.pathname ===
+    "/recovery-session";
+
+  /*
+   * 실제 표시할 제목
+   */
+  const title =
+    location.pathname ===
+    "/frequency"
+      ? frequencyTitle
+      : isRecoverySession
+        ? recoveryHeader.title
+        : headerInfo.title;
+
+  /*
+   * 실제 표시할 뒤로가기 버튼
+   */
+  const showBackButton =
+    isRecoverySession
+      ? recoveryHeader.showBackButton
+      : headerInfo.showBackButton;
+
+  /*
+   * 뒤로가기
+   */
   const handleBack = () => {
-    // 음역 매칭 내부 단계
-    if (location.pathname === "/frequency") {
+    /*
+     * 음역 매칭 내부 단계
+     */
+    if (
+      location.pathname ===
+      "/frequency"
+    ) {
       window.dispatchEvent(
-        new Event("frequency-back"),
+        new Event(
+          "frequency-back",
+        ),
       );
+
       return;
     }
 
-    // 자연음 선택 → 음역 매칭 결과 화면
-    if (location.pathname === "/nature-sound") {
-      navigate("/frequency", {
-        state: { screen: "result" },
-      });
+    /*
+     * 자연음 선택
+     * → 음역 매칭 결과
+     */
+    if (
+      location.pathname ===
+      "/nature-sound"
+    ) {
+      navigate(
+        "/frequency",
+        {
+          state: {
+            screen: "result",
+          },
+        },
+      );
+
       return;
     }
 
-    // 사운드 준비 / 혼합점 내부 단계
-    if (location.pathname === "/sound-setup") {
+    /*
+     * 사운드 준비 / 혼합점
+     */
+    if (
+      location.pathname ===
+      "/sound-setup"
+    ) {
+      navigate("/nature-sound");
+      return;
+    }
+
+    /*
+     * 회복 세션 내부 화면
+     */
+    if (isRecoverySession) {
       window.dispatchEvent(
-        new Event("sound-setup-back"),
+        new Event(
+          "recovery-back",
+        ),
       );
+
       return;
     }
 
     navigate(-1);
   };
 
-  const handleLater = () => {
-    if (location.pathname === "/nature-sound") {
-      navigate("/sound-setup");
-    }
-  };
 
-  const title =
-    location.pathname === "/frequency"
-      ? frequencyTitle
-      : headerInfo.title;
+  /*
+   * 회복 세션 - 중단
+   */
+  const handleRecoveryStop =
+    () => {
+      window.dispatchEvent(
+        new Event(
+          "recovery-stop",
+        ),
+      );
+    };
 
   return (
     <header className="safe-area-top shrink-0">
@@ -152,7 +308,8 @@ function Header() {
           px-3
         "
       >
-        {headerInfo.showBackButton && (
+        {/* 뒤로가기 */}
+        {showBackButton && (
           <button
             type="button"
             aria-label="이전 화면으로 이동"
@@ -174,58 +331,58 @@ function Header() {
           </button>
         )}
 
-        {headerInfo.showBackButton ? (
-          <h1
-            className="
-              absolute
-              left-1/2
-              -translate-x-1/2
-              text-center
-              font-sans
-              text-[1.25rem]
-              leading-[1.4375rem]
-              font-bold
-              text-[#ECF3F2]
-              not-italic
-            "
-          >
-            {title}
-          </h1>
-        ) : (
-          <h1
-            className="
-              font-sans
-              text-[1.125rem]
-              leading-[1.6875rem]
-              font-bold
-              text-[#60CEA7]
-              not-italic
-            "
-          >
-            Somni
-          </h1>
-        )}
+        {/* 제목 */}
+        <h1
+          className={`
+            font-sans
+            font-bold
+            not-italic
+            ${
+              location.pathname === "/"
+                ? `
+                  text-[1.125rem]
+                  leading-[1.6875rem]
+                  text-[#60CEA7]
+                `
+                : `
+                  absolute
+                  left-1/2
+                  -translate-x-1/2
+                  text-center
+                  text-[1.25rem]
+                  leading-[1.4375rem]
+                  text-[#ECF3F2]
+                `
+            }
+          `}
+        >
+          {title}
+        </h1>
 
-        {headerInfo.showLaterButton && (
-          <button
-            type="button"
-            onClick={handleLater}
-            className="
-              absolute
-              right-6
-              font-sans
-              text-[16px]
-              leading-[18px]
-              font-medium
-              text-right
-              text-[#87CBE6]
-              transition-opacity
-              active:opacity-60
-            "
-          >
-            나중에
-          </button>
-        )}
+
+        {/* 회복 세션 - 중단 */}
+        {isRecoverySession &&
+          recoveryHeader.showStopButton && (
+            <button
+              type="button"
+              onClick={
+                handleRecoveryStop
+              }
+              className="
+                absolute
+                right-6
+                font-sans
+                text-[16px]
+                leading-[18px]
+                font-medium
+                text-[#87CBE6]
+                transition-opacity
+                active:opacity-60
+              "
+            >
+              중단
+            </button>
+          )}
       </div>
     </header>
   );

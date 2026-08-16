@@ -253,7 +253,7 @@ export async function goBackPitchMatch(
   sessionId: number,
 ): Promise<PitchMatchSession> {
   const response = await fetch(
-    `/api/tinnitus/matching/back/${sessionId}/`,
+    `/api/tinnitus/matching/previous/${sessionId}/`,
     {
       method: "POST",
     },
@@ -314,6 +314,36 @@ export async function saveMixingPoint(
 
     throw new Error(
       "혼합점 저장에 실패했습니다.",
+    );
+  }
+
+  return response.json();
+}
+
+/*
+ * 완료된 최신 음역 매칭 결과 조회
+ */
+export async function getMatchingResult(): Promise<PitchMatchSession> {
+  const uuid = requireUuid();
+
+  const response = await fetch(
+    `/api/tinnitus/matching/result/${uuid}/`,
+  );
+
+  if (!response.ok) {
+    const errorData =
+      await response.json().catch(
+        () => null,
+      );
+
+    console.error(
+      "음역 매칭 결과 조회 실패 응답:",
+      errorData,
+    );
+
+    throw new Error(
+      errorData?.detail ??
+        "음역 매칭 결과를 불러오지 못했습니다.",
     );
   }
 
