@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
+    'corsheaders',
 
     # 🚨 여기에 생성할 앱 이름을 추가해 주시면 됩니다! (예: 'users', 'posts')
     'accounts',
@@ -46,6 +47,9 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+
+    'corsheaders.middleware.CorsMiddleware',
+
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',  # MTV 구조에서 CSRF 보완용 필수!
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -59,6 +63,11 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [],
     'DEFAULT_PERMISSION_CLASSES': [],
 }
+
+# 로컬 프론트엔드 CORS 허용
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:5273',
+]
 
 ROOT_URLCONF = 'config.urls'
 
