@@ -8,7 +8,6 @@ class RelaxationRecapSerializer(serializers.Serializer):
     activity_type = serializers.CharField()
     activity_type_display = serializers.CharField()
     started_at = serializers.DateTimeField(allow_null=True)
-    actual_duration_seconds = serializers.IntegerField(allow_null=True)
     status = serializers.CharField()
 
 
@@ -50,7 +49,7 @@ class NightlyEvaluationSerializer(serializers.ModelSerializer):
 
     # 실제 relaxtion 세션을 조회해서 요약 정보 반환
     def get_relaxation_recap(self, obj):
-        session = obj.get_relaxation_session()
+        session = obj.relaxation_session
 
         # 해당 밤에 이완 활동을 하지 않았다면 null 반환
         if session is None:
@@ -61,14 +60,13 @@ class NightlyEvaluationSerializer(serializers.ModelSerializer):
                 "activity_type": session.activity_type,
                 "activity_type_display": session.get_activity_type_display(),
                 "started_at": session.started_at,
-                "actual_duration_seconds": session.actual_duration_seconds,
                 "status": session.status,
             }
         ).data
 
     # 실제 사운드 세션을 조회해서 요약 정보 반환
     def get_sound_recap(self, obj):
-        session = obj.get_sound_session()
+        session = obj.sound_session
 
         # 해당 밤에 사운드 세션이 없다면 null 반환
         if session is None:

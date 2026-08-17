@@ -10,7 +10,7 @@ TEXTURE_OPTIONS = {
 LAYER_MIX_OPTIONS = {
     "A": LayerMix.LOW,
     "B": LayerMix.HIGH,
-}
+}   
 
 
 def start_session_options():

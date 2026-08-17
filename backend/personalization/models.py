@@ -19,6 +19,16 @@ class InterventionDecision(models.Model):
             "none",
             "개입 없음",
         )
+    # 선택된 개입이 규칙기반인지 개인화인지 구분
+    class RelaxationRecommendationSource(models.TextChoices):
+        RULE_BASED = (
+            "rule_based",
+            "규칙 기반",
+        )
+        PERSONALIZED = (
+            "personalized",
+            "개인화",
+        )
 
     user = models.ForeignKey(
         AnonymousUser,
@@ -81,6 +91,18 @@ class InterventionDecision(models.Model):
         ),
     )
 
+    # F-508 : 이완 활동 추천 출처
+    relaxation_recommendation_source = models.CharField(
+        max_length=16,
+        choices=RelaxationRecommendationSource.choices,
+        null=True,
+        blank=True,
+        help_text=(
+            "이완 활동이 현재 상태 규칙 그대로 선택되었는지, "
+            "과거 개인화 결과에 의해 보정되었는지 기록한다."
+        ),
+    )
+
     # F-509 : 개인화 결정 근거
     reason = models.TextField(
         blank=True,
@@ -90,16 +112,22 @@ class InterventionDecision(models.Model):
         ),
     )
 
-    # 실제 실행 세션 연결
-    # 현재는 소프트 참조, 추후 구조 확정 시 FK 전환 가능
-    sound_session_id = models.PositiveIntegerField(
+    # 실제 실행된 사운드 세션 연결
+    sound_session = models.ForeignKey(
+        "sound.SoundSession",
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        related_name="intervention_decisions",
     )
 
-    relaxation_session_id = models.PositiveIntegerField(
+    # 실제 실행된 이완 세션 연결
+    relaxation_session = models.ForeignKey(
+        "relaxtion.RelaxationSession",
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        related_name="intervention_decisions",
     )
 
     decided_at = models.DateTimeField(
