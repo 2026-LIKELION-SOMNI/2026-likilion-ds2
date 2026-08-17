@@ -12,7 +12,6 @@ class Texture(models.TextChoices):
 
 
 class LayerMix(models.TextChoices):
-    """2/2 라운드에서 결정되는 자연음:보조레이어 비율"""
     LOW = "low", "자연음 위주"
     MEDIUM = "medium", "균형"
     HIGH = "high", "노이즈 위주"
@@ -23,10 +22,11 @@ class FitAxis(models.TextChoices):
     LAYER_MIX = "layer_mix", "Layer Mix"
 
 
-TOTAL_ROUNDS = 2  # 1/2(Texture), 2/2(Layer Mix). "마지막 확인" 단계는 팀 답변 확인 후 별도 반영 예정
+TOTAL_ROUNDS = 2 # 2/2 단계로 확정
 
 
 class SoundFitSession(models.Model):
+    # AI Sound Fit 진행 세션 (1/2, 2/2 A/B 비교)
 
     session_id = models.UUIDField(
         default=uuid.uuid4,
@@ -51,7 +51,7 @@ class SoundFitSession(models.Model):
     texture = models.CharField(max_length=20, choices=Texture.choices, null=True, blank=True)
     layer_mix = models.CharField(max_length=20, choices=LayerMix.choices, null=True, blank=True)
 
-    # TODO: "마지막 확인" 단계 관련 필드 - 정확한 의미(조합 재확인 vs layer_mix 재확인)
+    # 이 필드 사용 안 하는데 마이그레이션 꼬일까 봐 남겨둠
     confirm_started = models.BooleanField(default=False)
 
     done = models.BooleanField(default=False)

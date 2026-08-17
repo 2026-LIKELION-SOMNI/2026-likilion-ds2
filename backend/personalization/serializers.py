@@ -36,6 +36,7 @@ class InterventionDecisionSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "intervention_type",
+            "state_snapshot",
             "relaxation_activity_type",
             "sound_strategy",
             "has_sufficient_data",
