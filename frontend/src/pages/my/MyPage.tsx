@@ -43,6 +43,16 @@ function MyPage() {
     null,
   );
 
+  const TONE_TYPE_LABEL: Record<
+    string,
+    string
+  > = {
+    high: "삐- 소리",
+    low: "윙- 소리",
+    wide: "쉬익- 소리",
+    multiple: "여러 소리",
+  };
+
   useEffect(() => {
     const uuid = getUserUuid();
 
@@ -204,7 +214,11 @@ function MyPage() {
               text-[#E8F5F2]
             "
           >
-            삐- 소리
+            {profileSummary?.tone_type
+              ? TONE_TYPE_LABEL[
+                  profileSummary.tone_type
+                ] ?? "-"
+              : "-"}
           </p>
 
           <div

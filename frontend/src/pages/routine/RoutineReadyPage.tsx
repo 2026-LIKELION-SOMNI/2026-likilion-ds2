@@ -359,25 +359,8 @@ function RoutineReadyPage() {
   /*
    * 오늘 상태
    */
-    const snapshot =
-    decision.state_snapshot ?? {
-        tinnitus_center_hz: null,
-        tinnitus_freq_min_hz: null,
-        tinnitus_freq_max_hz: null,
-        mixing_point_gain: null,
-
-        tinnitus_discomfort: 4,
-        anxiety: 2,
-        stress: false,
-        fatigue: null,
-        caffeine: false,
-
-        recent_sleep_hours: null,
-
-        sound_sample_count: 0,
-        relaxation_sample_count: 0,
-        evaluation_sample_count: 0,
-    };
+  const snapshot =
+    decision.state_snapshot;
 
   const frequency =
     snapshot
