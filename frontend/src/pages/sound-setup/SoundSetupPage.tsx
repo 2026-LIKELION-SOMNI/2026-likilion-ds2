@@ -88,7 +88,7 @@ function SoundSetupPage() {
 
     if (setupCompleted === "true") {
       navigate(
-        "/recovery-session",
+        "/sound-fit",
         {
           replace: true,
         },
@@ -137,7 +137,7 @@ function SoundSetupPage() {
         );
 
         navigate(
-          "/recovery-session",
+          "/sound-fit",
           {
             replace: true,
           },
@@ -339,7 +339,7 @@ function SoundSetupPage() {
         >
           {isSaving
             ? "준비 중..."
-            : "회복 세션 시작하기"}
+            : "다음"}
         </button>
       </div>
     </div>

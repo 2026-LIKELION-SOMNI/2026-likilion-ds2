@@ -1,20 +1,12 @@
-import {
-  useEffect,
-  useState,
-} from "react";
+import { useNavigate } from "react-router-dom";
+import { useEffect, useState, } from "react";
 
 import plusIcon from "../../assets/icons/Plus.svg";
 import minusIcon from "../../assets/icons/Minus.svg";
 
-import {
-  playMixingPointNoise,
-  setMixingPointGain,
-  stopTinnitusAudio,
-} from "../../audio/tinnitusAudio";
+import { playMixingPointNoise, setMixingPointGain, stopTinnitusAudio,} from "../../audio/tinnitusAudio";
 
-import {
-  getPitchMatchSession,
-} from "../../utils/pitchMatchStorage";
+import { getPitchMatchSession, } from "../../utils/pitchMatchStorage";
 
 const MIXING_WAVE_HEIGHTS = [
   48, 42, 34, 28, 24, 22, 24, 28,
@@ -37,6 +29,8 @@ function volumeToGain(
 }
 
 function MixingPointPage() {
+  const navigate = useNavigate();
+
   const [
     volume,
     setVolume,
@@ -340,10 +334,10 @@ function MixingPointPage() {
         <button
           type="button"
           onClick={() => {
-            console.log(
-              "야간 세션 시작 연동 예정",
-            );
+            stopTinnitusAudio();
+            navigate("/recovery-session");
           }}
+          
           className="
             h-14
             w-full

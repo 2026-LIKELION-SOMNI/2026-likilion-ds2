@@ -1,11 +1,6 @@
-import {
-  useEffect,
-  useState,
-} from "react";
-import {
-  useLocation,
-  useNavigate,
-} from "react-router-dom";
+import { useEffect, useState, } from "react";
+import { useLocation, useNavigate, } from "react-router-dom";
+import { stopTinnitusAudio } from "../../audio/tinnitusAudio";
 
 interface HeaderInfo {
   title: string;
@@ -293,6 +288,15 @@ function Header() {
       "/sound-setup"
     ) {
       navigate("/nature-sound");
+      return;
+    }
+
+    if (
+      location.pathname ===
+      "/mixing-point"
+    ) {
+      stopTinnitusAudio();
+      navigate(-1);
       return;
     }
 
