@@ -34,6 +34,7 @@ DISCOMFORT_SHARP = "sharp"
 DISCOMFORT_TOO_SIMILAR = "too_similar"
 DISCOMFORT_TOO_MUCH_VARIATION = "too_much_variation"
 DISCOMFORT_BACKGROUND = "dislike_background"
+DISCOMFORT_OTHER = "other"
 
 # 사운드 기본 설정
 BACKGROUND_CANDIDATES = (
@@ -449,7 +450,7 @@ def decide_intervention_type(
 # 상태 규칙으로 결정. 충분한 평가 축적 뒤 해당 활동이 반복적으로 별로 였다면 다른 활동으로 보정
 def decide_relaxation_activity_type(
     state: CurrentState,
-) -> Optional[str]:
+) -> tuple[Optional[str], Optional[str]]:
 
     # 기본 규칙
     if state.anxiety >= HIGH_ANXIETY_THRESHOLD:
@@ -465,21 +466,31 @@ def decide_relaxation_activity_type(
         rule_based = "attention_shift"
 
     else:
-        return None
+        return None, None
 
     # 데이터가 적으면 규칙 그대로 사용
     if (
         state.relaxation_sample_count
         < MIN_SAMPLES_FOR_PERSONALIZATION
     ):
-        return rule_based
+        return (
+            rule_based,
+            InterventionDecision
+            .RelaxationRecommendationSource
+            .RULE_BASED,
+        )
 
-    # 해당 활동이 반복적으로 나쁘지 않았다면 유지
+    # 해당 활동이 반복적으로 나쁘지 않았다면 규칙 그대로 유지
     if (
         rule_based
         not in state.discouraged_relaxation_types
     ):
-        return rule_based
+        return (
+            rule_based,
+            InterventionDecision
+            .RelaxationRecommendationSource
+            .RULE_BASED,
+        )
 
     # 다른 이완 활동 중 가중치가 높은 것 선택
     alternatives = {
@@ -499,12 +510,24 @@ def decide_relaxation_activity_type(
         )
     }
 
+    # 대체 가능한 활동이 없으면 원래 규칙 유지
     if not alternatives:
-        return rule_based
+        return (
+            rule_based,
+            InterventionDecision
+            .RelaxationRecommendationSource
+            .RULE_BASED,
+        )
 
-    return max(
-        alternatives,
-        key=alternatives.get,
+    # 과거 개인화 결과에 따라 다른 활동으로 보정
+    return (
+        max(
+            alternatives,
+            key=alternatives.get,
+        ),
+        InterventionDecision
+        .RelaxationRecommendationSource
+        .PERSONALIZED,
     )
 
 # F-507 : masking level 결정
@@ -514,8 +537,13 @@ def decide_relaxation_activity_type(
 def decide_masking_ratio(
     state: CurrentState,
     discomfort_context: dict,
+    immediate_discomfort_reasons: Optional[list[str]] = None,
 ) -> float:
 
+    immediate_reasons = set(
+        immediate_discomfort_reasons
+        or []
+    )
 
     reason_counts = (
         discomfort_context.get(
@@ -538,6 +566,14 @@ def decide_masking_ratio(
         SOUND_REACTION_NOISE_WEAK,
         0,
     )
+
+    # 방금 날카롭거나 이명과 너무 비슷하다고 신고한 경우
+    # 재생성 사운드에서는 즉시 강한 마스킹을 피한다.
+    if (
+        DISCOMFORT_SHARP in immediate_reasons
+        or DISCOMFORT_TOO_SIMILAR in immediate_reasons
+    ):
+        return 0.60
 
     # 날카롭거나 이명과 너무 비슷하다는 불편이 반복됨 → 강한 마스킹 피하기
     if (
@@ -568,7 +604,13 @@ def decide_masking_ratio(
 def decide_modulation_intensity(
     state: CurrentState,
     discomfort_context: dict,
+    immediate_discomfort_reasons: Optional[list[str]] = None,
 ) -> str:
+
+    immediate_reasons = set(
+        immediate_discomfort_reasons
+        or []
+    )
 
     reason_counts = (
         discomfort_context.get(
@@ -581,6 +623,16 @@ def decide_modulation_intensity(
         DISCOMFORT_TOO_MUCH_VARIATION,
         0,
     )
+
+    # 방금 변화가 많거나 날카롭다고 신고한 경우
+    # 재생성 사운드는 즉시 변화 강도를 낮춘다.
+    if (
+        DISCOMFORT_TOO_MUCH_VARIATION
+        in immediate_reasons
+        or DISCOMFORT_SHARP
+        in immediate_reasons
+    ):
+        return "low"
 
     # 변화가 너무 많았다는 불편이 반복됨
     if (
@@ -659,6 +711,7 @@ def _select_background(
     *,
     state: CurrentState,
     discomfort_context: dict,
+    excluded_background: Optional[str] = None,
 ) -> tuple[str, list[dict]]:
 
     dislike_counts = (
@@ -674,10 +727,19 @@ def _select_background(
         if (
             tag
             not in state.excluded_sound_tags
+            and tag != excluded_background
         )
     ]
 
     # 모든 후보가 제외된 경우 복구
+    if not candidates:
+        candidates = [
+            tag
+            for tag in BACKGROUND_CANDIDATES
+            if tag != excluded_background
+        ]
+
+    # 그래도 후보가 없는 예외 상황
     if not candidates:
         candidates = list(
             BACKGROUND_CANDIDATES
@@ -788,6 +850,8 @@ def decide_intervention(
     *,
     user,
     state: CurrentState,
+    immediate_discomfort_reasons: Optional[list[str]] = None,
+    previous_background: Optional[str] = None,
 ) -> dict:
 
     discomfort_context = (
@@ -803,6 +867,7 @@ def decide_intervention(
     )
     # 2. 이완 활동
     relaxation_activity_type = None
+    relaxation_recommendation_source = None
 
     if (
         intervention_type
@@ -810,10 +875,11 @@ def decide_intervention(
         .InterventionType
         .SOUND_WITH_RELAXATION
     ):
-        relaxation_activity_type = (
-            decide_relaxation_activity_type(
-                state
-            )
+        (
+            relaxation_activity_type,
+            relaxation_recommendation_source,
+        ) = decide_relaxation_activity_type(
+            state
         )
     # 3. 자연음
     (
@@ -822,6 +888,7 @@ def decide_intervention(
     ) = _select_background(
         state=state,
         discomfort_context=discomfort_context,
+        excluded_background=previous_background,
     )
 
     # 4. masking
@@ -829,6 +896,9 @@ def decide_intervention(
         decide_masking_ratio(
             state,
             discomfort_context,
+            immediate_discomfort_reasons=(
+                immediate_discomfort_reasons
+            ),
         )
     )
     # 5. variation
@@ -836,6 +906,9 @@ def decide_intervention(
         decide_modulation_intensity(
             state,
             discomfort_context,
+            immediate_discomfort_reasons=(
+                immediate_discomfort_reasons
+            ),
         )
     )
     # 6. mixing point
@@ -875,6 +948,11 @@ def decide_intervention(
             f"{relaxation_activity_type}"
         )
 
+        reason_parts.append(
+            "relaxation_recommendation_source="
+            f"{relaxation_recommendation_source}"
+        )
+
     if state.missing_data_sources:
         reason_parts.append(
             "missing_data_sources="
@@ -884,6 +962,9 @@ def decide_intervention(
     return {
         "intervention_type": intervention_type,
         "relaxation_activity_type": relaxation_activity_type,
+        "relaxation_recommendation_source": (
+            relaxation_recommendation_source
+        ),
         "sound_strategy": sound_strategy,
         "background_candidates": background_candidates,
         "reason": " / ".join(
@@ -917,6 +998,11 @@ def record_decision(
                 decision[
                     "relaxation_activity_type"
                 ]
+            ),
+            relaxation_recommendation_source=(
+                decision.get(
+                    "relaxation_recommendation_source"
+                )
             ),
             sound_strategy=(
                 decision["sound_strategy"]

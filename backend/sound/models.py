@@ -48,8 +48,8 @@ class SoundSession(models.Model):
     # 사운드 생성 당시 사용된 사용자 상태를 그대로 보관
     input_snapshot = models.JSONField(
         help_text=(
-            "이명 음역, 사운드 선호, 현재 불편도/긴장도, "
-            "최근 수면·스트레스, 과거 도움/불편 평가 등"
+    "이명 음역 및 혼합점, personalization 사운드 전략, "
+    "Sound Fit fallback 값, 과거 불편 사유 등"
         )
     )
 
@@ -90,7 +90,7 @@ class SoundSession(models.Model):
         on_delete=models.SET_NULL,
         related_name="+",
         help_text=(
-            "사용자 음역·선호와 가장 가까운 예비 사운드 후보. "
+            "사용자 음역 및 과거 불편 사유를 기준으로 선택한 예비 사운드 후보 "
             "is_fallback=True인 경우 실제 재생에 사용되는 예비 사운드."
         ),
     )
@@ -241,6 +241,11 @@ class SoundDiscomfortReport(models.Model):
             "dislike_background",
             "배경음 불호",
         )
+        OTHER = (
+        "other",
+        "기타",
+        )
+
     # 후속 행동 선택
     class FollowUpAction(models.TextChoices):
         REGENERATE = (
