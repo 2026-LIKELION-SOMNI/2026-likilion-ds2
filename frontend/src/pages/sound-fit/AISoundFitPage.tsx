@@ -1151,7 +1151,7 @@ function AISoundFitPage() {
               text-[#809EA8]
             "
           >
-            {visibleRound}/3
+            {visibleRound}/2
           </p>
 
           <h2
