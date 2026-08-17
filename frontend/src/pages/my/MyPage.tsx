@@ -462,9 +462,12 @@ function MyPage() {
 
           <div className="h-px w-full bg-[#1F3D45]" />
 
-          {/* 나의 사운드 - 아직 연결 X */}
+          {/* 나의 사운드 */}
           <button
             type="button"
+              onClick={() =>
+                navigate("/my/sounds")
+              }
             className="
               flex
               w-full

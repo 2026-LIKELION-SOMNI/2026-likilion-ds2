@@ -22,6 +22,8 @@ import AISoundFitPage from "../pages/sound-fit/AISoundFitPage";
 import NatureChangedSoundFitPage from "../pages/sound-fit/NatureChangedSoundFitPage";
 import RoutineReadyPage from "../pages/routine/RoutineReadyPage";
 import MixingPointPage from "../pages/sound-setup/MixingPointPage";
+import MySoundsPage from "../pages/my/MySoundsPage";
+
 
 const router = createBrowserRouter([
   {
@@ -92,6 +94,10 @@ const router = createBrowserRouter([
       {
         path: "/my/delete-complete",
         element: <DataDeleteCompletePage />,
+      },
+      {
+        path: "/my/sounds",
+        element: <MySoundsPage />,
       },
       {
         path: "/sound-fit",

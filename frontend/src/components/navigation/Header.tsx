@@ -63,7 +63,10 @@ const HEADER_INFO: Record<
     title: "나만의 사운드",
     showBackButton: true,
   },
-
+    "/my/sounds": {
+    title: "나의 사운드",
+    showBackButton: true,
+  },
   "/sound/change-nature": {
     title: "자연음 선택",
     showBackButton: true,
