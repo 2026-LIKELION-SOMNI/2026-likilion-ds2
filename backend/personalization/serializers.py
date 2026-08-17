@@ -45,6 +45,7 @@ class InterventionDecisionSerializer(serializers.ModelSerializer):
             "sound_session_id",
             "relaxation_session_id",
             "decided_at",
+            "relaxation_recommendation_source",
         ]
 
         read_only_fields = fields

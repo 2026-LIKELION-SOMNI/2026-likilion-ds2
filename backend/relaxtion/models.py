@@ -103,7 +103,7 @@ class RelaxationSession(models.Model):
         auto_now_add=True,
     )
 
-    # 실제 음성 개입을 시작한 시각
+    # 실제 이완 개입을 시작한 시각
     started_at = models.DateTimeField(
         null=True,
         blank=True,
