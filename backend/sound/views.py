@@ -647,6 +647,44 @@ class RegenerateSoundView(APIView):
         )
 
 
+# 가장 최근 SoundSession 조회
+# 프론트가 저장해둔 session_id를 잃어버렸을 때, uuid만으로 최신 세션을 다시 불러오기 위함
+class LatestSoundSessionView(APIView):
+
+    def get(
+        self,
+        request,
+        uuid,
+    ):
+        user = get_object_or_404(
+            AnonymousUser,
+            uuid=uuid,
+        )
+
+        session = (
+            SoundSession.objects
+            .filter(user=user)
+            .order_by("-created_at")
+            .first()
+        )
+
+        if session is None:
+            return Response(
+                {
+                    "detail": (
+                        "생성된 사운드 세션이 없습니다."
+                    )
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(
+            SoundSessionResultSerializer(
+                session
+            ).data
+        )
+
+
 # SoundSession 조회
 class SoundSessionDetailView(APIView):
 
