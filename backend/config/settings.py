@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'soundfit',
     'mypage',
     'personalization',
+    'home',
 ]
 
 MIDDLEWARE = [
