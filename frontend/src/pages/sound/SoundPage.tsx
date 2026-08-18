@@ -521,45 +521,55 @@ function SoundPage() {
               </span>
             </div>
 
-            {/* 실제 현재 자연음 */}
+            {/* 개인화 사운드 상태 */}
             <p
               className="
                 mt-4
+                font-sans
                 text-[22px]
                 font-bold
                 text-text-primary
               "
             >
-              {getBackgroundSoundLabel()}
+              {!hasPersonalizedProfile
+                ? "개인화 회복 사운드가 없습니다."
+                : !canPlayPersonalizedSound
+                  ? "개인화 회복 사운드"
+                  : getBackgroundSoundLabel()}
             </p>
 
-            {/* 실제 노이즈 구성 */}
-            {getNoiseLabel() && (
+            {!canPlayPersonalizedSound ? (
               <p
                 className="
                   mt-1
+                  font-sans
                   text-[14px]
-                  text-[#87A3A7]
+                  font-medium
+                  leading-normal
+                  text-[#809EA8]
                 "
               >
-                {getNoiseLabel()}
+                {hasPersonalizedProfile
+                  ? "회복 세션 기록이 생기면 다시 들어볼 수 있어요."
+                  : "음역 매칭으로 개인화를 시작해보세요."}
               </p>
-            )}
-
-            {hasPersonalizedProfile &&
-              !canPlayPersonalizedSound && (
+            ) : (
+              getNoiseLabel() && (
                 <p
                   className="
-                    mt-2
-                    text-[11px]
-                    leading-[17px]
-                    text-[#87A3A7]
+                    mt-1
+                    font-sans
+                    text-[14px]
+                    font-medium
+                    leading-normal
+                    text-[#809EA8]
                   "
                 >
-                  회복 세션을 시작하면
-                  개인화 사운드를 재생할 수 있어요.
+                  {getNoiseLabel()}
                 </p>
-              )}
+              )
+            )}
+
           </button>
 
           <div

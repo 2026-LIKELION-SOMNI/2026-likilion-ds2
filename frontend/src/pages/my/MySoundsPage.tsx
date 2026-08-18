@@ -6,16 +6,42 @@ import {
 import playIcon from "../../assets/icons/my-sound-play.svg";
 import pauseIcon from "../../assets/icons/my-sound-pause.svg";
 import emptyIcon from "../../assets/icons/my-sound-empty.svg";
+import {
+  getComfortableSounds,
+  getSoundSession,
+  switchToComfortableSound,
+  type ComfortableSoundItem,
+} from "../../api/sound";
 
 import {
-  comfortableSounds,
-} from "../../mock/comfortableSoundData";
+  getUserUuid,
+} from "../../utils/userStorage";
+
+import {
+  playRecoveryAudio,
+  stopRecoveryAudio,
+} from "../../audio/recoveryAudio";
+
+import {
+  useNavigate,
+} from "react-router-dom";
 
 function MySoundsPage() {
+  const navigate = useNavigate();
+
+  const [
+    comfortableSounds,
+    setComfortableSounds,
+  ] = useState<ComfortableSoundItem[]>([]);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
   const [
     playingSoundId,
     setPlayingSoundId,
-  ] = useState<number | null>(
+  ] = useState<string | null>(
     null,
   );
 
@@ -29,28 +55,131 @@ function MySoundsPage() {
    * 여기서 오디오 stop도 같이 호출
    */
   useEffect(() => {
+    const loadSounds = async () => {
+      const uuid = getUserUuid();
+
+      if (!uuid) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const data =
+          await getComfortableSounds(
+            uuid,
+          );
+
+        setComfortableSounds(data);
+      } catch (error) {
+        console.error(
+          "편안했던 사운드 조회 실패",
+          error,
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadSounds();
+
     return () => {
-      setPlayingSoundId(null);
+      stopRecoveryAudio();
     };
   }, []);
 
-  const handlePlayToggle = (
-    soundId: number,
-  ) => {
-    setPlayingSoundId(
-      (current) =>
-        current === soundId
-          ? null
-          : soundId,
-    );
+  const handlePlayToggle =
+    async (
+      sessionId: string,
+    ) => {
+      const uuid = getUserUuid();
 
-    /*
-     * TODO:
-     * 백엔드에서 이전 SoundSession의
-     * 실제 재생 파라미터를 내려주면
-     * 여기서 playRecoveryAudio 연결.
-     */
-  };
+      if (!uuid) {
+        return;
+      }
+
+      /*
+      * 현재 재생 중인 사운드 다시 누름
+      */
+      if (
+        playingSoundId === sessionId
+      ) {
+        stopRecoveryAudio();
+        setPlayingSoundId(null);
+        return;
+      }
+
+      try {
+        stopRecoveryAudio();
+
+        const session =
+          await getSoundSession(
+            uuid,
+            sessionId,
+          );
+
+        const params =
+          session.final_params ??
+          session.generated_params;
+
+        if (!params) {
+          return;
+        }
+
+        await playRecoveryAudio(
+          params,
+        );
+
+        setPlayingSoundId(
+          sessionId,
+        );
+      } catch (error) {
+        console.error(
+          "저장된 사운드 재생 실패",
+          error,
+        );
+      }
+    };
+
+  const handleUseForRecovery =
+    async (
+      sessionId: string,
+    ) => {
+      const uuid =
+        getUserUuid();
+
+      if (!uuid) {
+        return;
+      }
+
+      try {
+        stopRecoveryAudio();
+
+        const newSession =
+          await switchToComfortableSound(
+            uuid,
+            sessionId,
+          );
+
+        /*
+        * RecoverySessionPage가
+        * 새 사운드를 또 생성하지 않고
+        * 이 세션을 사용하도록 전달
+        */
+        sessionStorage.setItem(
+          "somni-recovery-existing-session-id",
+          newSession.session_id,
+        );
+
+        navigate(
+          "/recovery-session",
+        );
+      } catch (error) {
+        console.error(
+          "편안했던 사운드 적용 실패",
+          error,
+        );
+      }
+    };
 
   /*
    * =========================
@@ -198,11 +327,11 @@ function MySoundsPage() {
               (sound) => {
                 const isPlaying =
                   playingSoundId ===
-                  sound.id;
+                  sound.session_id;
 
                 return (
                     <article
-                    key={sound.id}
+                    key={sound.session_id}
                     className="
                         w-full
                         shrink-0
@@ -225,7 +354,15 @@ function MySoundsPage() {
                           text-[#61DBB8]
                         "
                       >
-                        {sound.date}
+                        {new Date(
+                          sound.evaluated_at,
+                        ).toLocaleDateString(
+                          "ko-KR",
+                          {
+                            month: "long",
+                            day: "numeric",
+                          },
+                        )}
                       </p>
 
                       <p
@@ -238,7 +375,8 @@ function MySoundsPage() {
                           text-[#F0F7FA]
                         "
                       >
-                        {sound.title}
+                        {sound.sound_summary ??
+                          "개인화 사운드"}
                       </p>
                     </div>
 
@@ -254,8 +392,8 @@ function MySoundsPage() {
                       <button
                         type="button"
                         onClick={() =>
-                          handlePlayToggle(
-                            sound.id,
+                          void handlePlayToggle(
+                            sound.session_id,
                           )
                         }
                         className={`
@@ -309,6 +447,11 @@ function MySoundsPage() {
 
                       <button
                         type="button"
+                        onClick={() => {
+                          void handleUseForRecovery(
+                            sound.session_id,
+                          );
+                        }}
                         className="
                           flex
                           h-[30px]

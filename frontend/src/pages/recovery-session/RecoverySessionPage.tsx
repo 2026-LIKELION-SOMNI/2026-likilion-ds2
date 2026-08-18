@@ -9,12 +9,21 @@ import recoverySessionVisual from "../../assets/icons/recovery-session-visual.sv
 import { pauseRecoveryAudio, playRecoveryAudio, resumeRecoveryAudio,
   stopRecoveryAudio, } from "../../audio/recoveryAudio";
 
-import { generateTodaySound, regenerateSound, reportSoundDiscomfort,
-  updateSoundPlayback, useFallbackSound as requestFallbackSound,
-  type DiscomfortReason, type SoundSession, } from "../../api/sound";
+import {
+  generateTodaySound,
+  getSoundSession,
+  getComfortableSounds,
+  switchToComfortableSound,
+  regenerateSound,
+  reportSoundDiscomfort,
+  updateSoundPlayback,
+  useFallbackSound as requestFallbackSound,
+  type ComfortableSoundItem,
+  type DiscomfortReason,
+  type SoundSession,
+} from "../../api/sound";
 
 import { getUserUuid, } from "../../utils/userStorage";
-import { comfortableSounds, } from "../../mock/comfortableSoundData";
 import previousSoundEmptyIcon from "../../assets/icons/my-sound-empty.svg";
 
 type RecoveryScreen =
@@ -92,9 +101,16 @@ function RecoverySessionPage() {
   const [
     selectedPreviousSoundId,
     setSelectedPreviousSoundId,
-  ] = useState<number | null>(
+  ] = useState<string| null>(
     null,
   );
+  const [
+    previousSounds,
+    setPreviousSounds,
+  ] =
+    useState<ComfortableSoundItem[]>(
+      [],
+    );
 
   const [screen, setScreen] =
     useState<RecoveryScreen>(
@@ -287,10 +303,26 @@ function RecoverySessionPage() {
 
           setSoundError(null);
 
-          const session =
-            await generateTodaySound(
-              uuid,
+          const existingSessionId =
+            sessionStorage.getItem(
+              "somni-recovery-existing-session-id",
             );
+
+          const session =
+            existingSessionId
+              ? await getSoundSession(
+                  uuid,
+                  existingSessionId,
+                )
+              : await generateTodaySound(
+                  uuid,
+                );
+
+          if (existingSessionId) {
+            sessionStorage.removeItem(
+              "somni-recovery-existing-session-id",
+            );
+          }
 
           console.log(
             "오늘의 사운드 생성 결과:",
@@ -961,6 +993,56 @@ function RecoverySessionPage() {
       );
     };
 
+  const handleUsePreviousSound =
+    async () => {
+      if (
+        !selectedPreviousSoundId
+      ) {
+        return;
+      }
+
+      const uuid =
+        getUserUuid();
+
+      if (!uuid) {
+        return;
+      }
+
+      try {
+        stopRecoveryAudio();
+
+        const newSession =
+          await switchToComfortableSound(
+            uuid,
+            selectedPreviousSoundId,
+          );
+
+        setSoundSession(
+          newSession,
+        );
+
+        sessionStorage.setItem(
+          "somni-current-sound-session-id",
+          newSession.session_id,
+        );
+
+        setElapsedSeconds(0);
+        setHasStarted(false);
+        setPlaying(false);
+        setSelectedFeedback([]);
+        setSelectedPreviousSoundId(
+          null,
+        );
+
+        setScreen("session");
+      } catch (error) {
+        console.error(
+          "이전 사운드 전환 실패",
+          error,
+        );
+      }
+    };
+
   /*
    * =========================
    * 오늘 세션 종료 확정
@@ -1244,7 +1326,7 @@ function RecoverySessionPage() {
             <button
               type="button"
               disabled={!changeSoundOption}
-              onClick={() => {
+              onClick={async () => {
                 if (
                   changeSoundOption ===
                   "regenerate"
@@ -1257,8 +1339,48 @@ function RecoverySessionPage() {
                   changeSoundOption ===
                   "previous"
                 ) {
-                  setSelectedPreviousSoundId(null);
-                  setScreen("previous-sounds");
+                  const uuid =
+                    getUserUuid();
+
+                  if (!uuid) {
+                    return;
+                  }
+
+                  setSelectedPreviousSoundId(
+                    null,
+                  );
+
+                  /*
+                  * 기존 regenerating 화면을
+                  * 목록 로딩 화면으로도 사용
+                  */
+                  setScreen("regenerating");
+
+                  try {
+                    const data =
+                      await getComfortableSounds(
+                        uuid,
+                      );
+
+                    setPreviousSounds(data);
+
+                    setScreen(
+                      "previous-sounds",
+                    );
+                  } catch (error) {
+                    console.error(
+                      "이전 사운드 조회 실패",
+                      error,
+                    );
+
+                    setSoundError(
+                      "이전 사운드를 불러오지 못했어요.",
+                    );
+
+                    setScreen(
+                      "change-select",
+                    );
+                  }
                 }
               }}
               className="
@@ -1307,7 +1429,7 @@ function RecoverySessionPage() {
       */
 
       const hasPreviousSounds =
-        comfortableSounds.length > 0;
+        previousSounds.length > 0;
 
       /*
       * 1. 이전에 편안했던 사운드가 없는 경우
@@ -1483,19 +1605,19 @@ function RecoverySessionPage() {
                   gap-[15px]
                 "
               >
-                {comfortableSounds.map(
+                {previousSounds.map(
                   (sound) => {
                     const selected =
                       selectedPreviousSoundId ===
-                      sound.id;
+                      sound.session_id;
 
                     return (
                       <button
-                        key={sound.id}
+                        key={sound.session_id}
                         type="button"
                         onClick={() =>
                           setSelectedPreviousSoundId(
-                            sound.id,
+                            sound.session_id,
                           )
                         }
                         className={`
@@ -1571,7 +1693,8 @@ function RecoverySessionPage() {
                               text-[#F0F7FA]
                             "
                           >
-                            {sound.title}
+                            {sound.sound_summary ??
+                              "개인화 사운드"}
                           </span>
 
                           <span
@@ -1585,8 +1708,15 @@ function RecoverySessionPage() {
                               text-[#809EA8]
                             "
                           >
-                            {sound.date} ·{" "}
-                            {sound.durationMinutes}분
+                            {new Date(
+                              sound.evaluated_at,
+                            ).toLocaleDateString(
+                              "ko-KR",
+                              {
+                                month: "long",
+                                day: "numeric",
+                              },
+                            )}
                           </span>
                         </span>
                       </button>
@@ -1606,20 +1736,7 @@ function RecoverySessionPage() {
                 null
               }
               onClick={() => {
-                /*
-                * TODO:
-                * 백엔드 API 생기면
-                * 선택한 이전 SoundSession을
-                * 여기서 실제로 불러와 재생.
-                *
-                * 현재는 화면 흐름 확인용.
-                */
-
-                setElapsedSeconds(0);
-                setHasStarted(false);
-                setPlaying(false);
-
-                setScreen("session");
+                void handleUsePreviousSound();
               }}
               className="
                 h-14

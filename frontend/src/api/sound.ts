@@ -94,6 +94,11 @@ export interface SoundSession {
 
   created_at: string;
 }
+export interface ComfortableSoundItem {
+  session_id: string;
+  sound_summary: string | null;
+  evaluated_at: string;
+}
 
 export type PlaybackAction =
   | "start"
@@ -202,6 +207,33 @@ export async function getSoundSession(
     `/api/sound/${uuid}/sessions/${sessionId}/`,
   );
 }
+/*
+ * 편안했다고 평가한 사운드 목록
+ */
+export async function getComfortableSounds(
+  uuid: string,
+) {
+  return request<ComfortableSoundItem[]>(
+    `/api/sound/${uuid}/sessions/comfortable/`,
+  );
+}
+
+/*
+ * 이전에 편안했던 사운드를
+ * 새 회복 세션으로 사용
+ */
+export async function switchToComfortableSound(
+  uuid: string,
+  sessionId: string,
+) {
+  return request<SoundSession>(
+    `/api/sound/${uuid}/sessions/${sessionId}/switch-to-comfortable/`,
+    {
+      method: "POST",
+    },
+  );
+}
+
 /*
  * 가장 최근 사운드 세션 조회
  */
