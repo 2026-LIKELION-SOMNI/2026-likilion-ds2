@@ -1,9 +1,13 @@
+import type { ReactNode } from "react";
+
 interface ScaleSelectorProps {
   label: string;
   hint: string;
+  description?: string;
   value: number | null;
   onChange: (value: number) => void;
   hasError?: boolean;
+  footer?: ReactNode;
 }
 
 const SCALE_VALUES = [1, 2, 3, 4, 5];
@@ -11,9 +15,11 @@ const SCALE_VALUES = [1, 2, 3, 4, 5];
 function ScaleSelector({
   label,
   hint,
+  description,
   value,
   onChange,
   hasError = false,
+  footer,
 }: ScaleSelectorProps) {
   return (
     <div
@@ -53,6 +59,21 @@ function ScaleSelector({
         </span>
       </div>
 
+      {description && (
+        <p
+          className="
+            mt-[0.375rem]
+            font-sans
+            text-[0.6875rem]
+            font-normal
+            leading-[1.0625rem]
+            text-[#587176]
+          "
+        >
+          {description}
+        </p>
+      )}
+
       <div className="mt-[0.75rem] flex items-center justify-between">
         {SCALE_VALUES.map((scaleValue) => {
           const isSelected = value === scaleValue;
@@ -91,6 +112,12 @@ function ScaleSelector({
           );
         })}
       </div>
+
+      {footer && (
+        <div className="mt-[0.625rem] flex justify-end">
+          {footer}
+        </div>
+      )}
     </div>
   );
 }

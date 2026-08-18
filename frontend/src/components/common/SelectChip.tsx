@@ -1,14 +1,14 @@
-interface FactorChipProps {
+interface SelectChipProps {
   label: string;
   isSelected: boolean;
   onClick: () => void;
 }
 
-function FactorChip({
+function SelectChip({
   label,
   isSelected,
   onClick,
-}: FactorChipProps) {
+}: SelectChipProps) {
   return (
     <button
       type="button"
@@ -41,4 +41,4 @@ function FactorChip({
   );
 }
 
-export default FactorChip;
+export default SelectChip;

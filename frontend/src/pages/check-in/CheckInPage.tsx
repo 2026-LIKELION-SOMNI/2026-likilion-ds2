@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import Button from "../../components/common/Button";
-import FactorChip from "../../components/check-in/FactorChip";
-import ScaleSelector from "../../components/check-in/ScaleSelector";
+import ScaleSelector from "../../components/common/ScaleSelector";
+import SelectChip from "../../components/common/SelectChip";
 import { createCheckin } from "../../api/checkin";
 import type { DailyFactor } from "../../api/checkin";
 import { getUserUuid } from "../../utils/userStorage";
@@ -157,7 +157,7 @@ function CheckInPage() {
 
         <div className="mt-[0.875rem] flex flex-wrap gap-[0.5rem]">
           {FACTOR_OPTIONS.map((option) => (
-            <FactorChip
+            <SelectChip
               key={option.value}
               label={option.label}
               isSelected={factors.includes(
@@ -169,7 +169,7 @@ function CheckInPage() {
             />
           ))}
 
-          <FactorChip
+          <SelectChip
             label="특별한 요인 없음"
             isSelected={hasNoFactor}
             onClick={selectNoFactor}
