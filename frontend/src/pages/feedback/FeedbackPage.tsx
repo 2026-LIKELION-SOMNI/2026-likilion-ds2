@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import Button from "../../components/common/Button";
 import ScaleSelector from "../../components/common/ScaleSelector";
+import SectionTitle from "../../components/common/SectionTitle";
 import SelectChip from "../../components/common/SelectChip";
 import {
   getTodayEvaluation,
@@ -87,45 +88,6 @@ function formatStartedAt(value: string | null) {
     hour: "numeric",
     minute: "2-digit",
   });
-}
-
-function SectionTitle({
-  title,
-  description,
-}: {
-  title: string;
-  description?: string;
-}) {
-  return (
-    <div>
-      <p
-        className="
-          font-sans
-          text-[0.9375rem]
-          font-bold
-          leading-normal
-          text-[#F0F7FA]
-        "
-      >
-        {title}
-      </p>
-
-      {description && (
-        <p
-          className="
-            mt-[0.25rem]
-            font-sans
-            text-[0.6875rem]
-            font-normal
-            leading-normal
-            text-[#809EA8]
-          "
-        >
-          {description}
-        </p>
-      )}
-    </div>
-  );
 }
 
 function FeedbackPage() {

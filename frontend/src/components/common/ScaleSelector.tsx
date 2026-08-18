@@ -40,7 +40,7 @@ function ScaleSelector({
             text-[0.8125rem]
             font-bold
             leading-normal
-            text-[#F0F7F5]
+            text-[#F0F7FA]
           "
         >
           {label}
@@ -52,7 +52,7 @@ function ScaleSelector({
             text-[0.625rem]
             font-normal
             leading-normal
-            text-[#587176]
+            text-[#809EA8]
           "
         >
           {hint}
@@ -66,8 +66,8 @@ function ScaleSelector({
             font-sans
             text-[0.6875rem]
             font-normal
-            leading-[1.0625rem]
-            text-[#587176]
+            leading-normal
+            text-[#809EA8]
           "
         >
           {description}

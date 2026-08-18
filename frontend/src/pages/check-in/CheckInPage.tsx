@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import Button from "../../components/common/Button";
 import ScaleSelector from "../../components/common/ScaleSelector";
+import SectionTitle from "../../components/common/SectionTitle";
 import SelectChip from "../../components/common/SelectChip";
 import { createCheckin } from "../../api/checkin";
 import type { DailyFactor } from "../../api/checkin";
@@ -113,10 +114,10 @@ function CheckInPage() {
         className="
           pt-[1.75rem]
           font-sans
-          text-[1.25rem]
+          text-[1.75rem]
           font-bold
-          leading-[1.875rem]
-          text-[#F0F7F5]
+          leading-normal
+          text-[#F0F7FA]
         "
       >
         지금 이명은 얼마나
@@ -143,17 +144,7 @@ function CheckInPage() {
       </div>
 
       <section className="mt-[1.75rem]">
-        <p
-          className="
-            font-sans
-            text-[0.8125rem]
-            font-bold
-            leading-normal
-            text-[#F0F7F5]
-          "
-        >
-          오늘 하루는 어땠나요?
-        </p>
+        <SectionTitle title="오늘 하루는 어땠나요?" />
 
         <div className="mt-[0.875rem] flex flex-wrap gap-[0.5rem]">
           {FACTOR_OPTIONS.map((option) => (
@@ -196,7 +187,7 @@ function CheckInPage() {
             text-[0.6875rem]
             font-medium
             leading-[1.0625rem]
-            text-[#8DA2A6]
+            text-[#809EA8]
           "
         >
           한 줄 메모 (선택)
