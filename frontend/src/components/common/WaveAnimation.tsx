@@ -9,39 +9,48 @@ interface WaveAnimationProps {
 
 interface WaveBar {
   height: number;
-  opacity: number;
+  color: string;
   delay: number;
   duration: number;
   minScale: number;
 }
 
-const MAX_BAR_HEIGHT = 152;
+const MIN_BAR_HEIGHT = 1.25;
+const MAX_BAR_HEIGHT = 4.4;
+const BAR_COLOR_SOFT = "#389E82";
+const BAR_COLOR_STRONG = "#63E0B2";
+const STRONG_LEVEL = 0.82;
+
+function noise(index: number, seed: number): number {
+  const value = Math.sin(index * 12.9898 + seed * 78.233) * 43758.5453;
+
+  return value - Math.floor(value);
+}
 
 function createBars(barCount: number): WaveBar[] {
   return Array.from({ length: barCount }, (_, index) => {
     const ratio = barCount === 1 ? 0.5 : index / (barCount - 1);
-    const envelope = Math.pow(Math.sin(Math.PI * ratio), 0.55);
-    const texture =
-      0.5 +
-      0.5 *
-        Math.abs(
-          Math.sin(index * 1.73) * 0.62 +
-            Math.cos(index * 0.91) * 0.38,
-        );
-    const height = Math.max(0.08, envelope * texture);
+    const envelope = Math.min(1, Math.sin(Math.PI * ratio) * 2.6);
+    const level = envelope * (0.16 + 0.84 * noise(index, 1));
 
     return {
-      height: Math.round(height * MAX_BAR_HEIGHT),
-      opacity: Number((0.28 + 0.72 * envelope).toFixed(3)),
-      delay: Number((((index * 37) % 11) * 0.09).toFixed(2)),
-      duration: Number((1.05 + ((index * 13) % 5) * 0.14).toFixed(2)),
-      minScale: Number((0.32 + 0.24 * (1 - envelope)).toFixed(3)),
+      height: Number(
+        (
+          MIN_BAR_HEIGHT +
+          (MAX_BAR_HEIGHT - MIN_BAR_HEIGHT) * level
+        ).toFixed(4),
+      ),
+      color:
+        level > STRONG_LEVEL ? BAR_COLOR_STRONG : BAR_COLOR_SOFT,
+      delay: Number((noise(index, 2) * 1.2).toFixed(2)),
+      duration: Number((1.1 + noise(index, 3) * 0.9).toFixed(2)),
+      minScale: Number((0.42 + 0.2 * noise(index, 4)).toFixed(3)),
     };
   });
 }
 
 function WaveAnimation({
-  barCount = 54,
+  barCount = 38,
   isActive = true,
   showRings = true,
   className = "",
@@ -53,7 +62,7 @@ function WaveAnimation({
       className={`
         relative
         flex
-        h-[13rem]
+        h-[14.75rem]
         w-full
         items-center
         justify-center
@@ -73,18 +82,18 @@ function WaveAnimation({
           flex
           items-center
           justify-between
-          px-[18px]
+          px-[1.5rem]
         "
       >
         {bars.map((bar, index) => (
           <span
             key={index}
-            className={`w-[2px] shrink-0 rounded-full bg-[#61DBB8] ${
+            className={`w-[0.25rem] shrink-0 rounded-[0.125rem] ${
               isActive ? "somni-wave-bar" : ""
             }`}
             style={{
-              height: `${bar.height}px`,
-              opacity: bar.opacity,
+              height: `${bar.height}rem`,
+              backgroundColor: bar.color,
               animationDelay: `${bar.delay}s`,
               animationDuration: `${bar.duration}s`,
               ["--somni-wave-min" as string]: bar.minScale,
