@@ -564,3 +564,162 @@ def list_comfortable_sessions(
             "-created_at"
         )
     )
+
+# 이전에 편안했던 사운드 듣기
+def switch_to_comfortable_session(user, source_session: SoundSession) -> SoundSession:
+    params = source_session.final_params or source_session.generated_params or {}
+
+    new_session = SoundSession.objects.create(
+        user=user,
+        input_snapshot=source_session.input_snapshot,
+        generated_params=params,
+        final_params=params,
+        recommended_duration_minutes=source_session.recommended_duration_minutes,
+        initial_volume=source_session.initial_volume,
+        status=SoundSession.Status.READY,
+        regenerated_from=source_session,  
+    )
+    return new_session
+
+# 자연음 태그 -> 화면 표시용 라벨 (feedback 앱과 동일 매핑)
+BACKGROUND_LABELS = {
+    "rain": "잔잔한 빗소리",
+    "stream": "시냇물 소리",
+    "ocean": "느린 파도",
+    "air": "팬·공기음",
+}
+
+
+# 사운드 세션의 최종 설정을 이용해 "잔잔한 빗소리 + 노치 핑크노이즈" 형태의 요약 문구 생성
+def build_sound_summary_label(session: SoundSession) -> Optional[str]:
+    if session.is_fallback and session.fallback_sound:
+        return session.fallback_sound.name
+
+    params = session.final_params or session.generated_params or {}
+    sources = params.get("sources", [])
+
+    background_tag = None
+    has_pink_noise = False
+
+    for source in sources:
+        if not isinstance(source, dict):
+            continue
+        if source.get("type") == "background":
+            background_tag = source.get("asset_tag")
+        if (
+            source.get("role") == "tinnitus_masking"
+            and source.get("waveform") == "pink_noise"
+        ):
+            has_pink_noise = True
+
+    if background_tag is None:
+        return None
+
+    label = BACKGROUND_LABELS.get(background_tag, background_tag)
+    return f"{label} + 노치 핑크노이즈" if has_pink_noise else label
+
+# 홈 화면용: 아직 SoundSession이 없는 시점로부터 요약 라벨 생성
+# "오늘의 추천 루틴" 미리보기처럼 사운드 생성 전에 보여줄 때 사용
+def build_summary_label_from_strategy(sound_strategy: dict) -> Optional[str]:
+    if not sound_strategy:
+        return None
+
+    background_tag = sound_strategy.get("background")
+    if background_tag is None:
+        return None
+
+    label = BACKGROUND_LABELS.get(background_tag, background_tag)
+    # 노치 마스킹은 personalization 개입 시 항상 적용되므로 고정 표기
+    return f"{label} + 핑크노이즈"
+
+
+# 홈 화면용: 가장 최근 "편안했어요" 평가를 받은 사운드 1건 (평가 시점 포함)
+def get_latest_comfortable_session(user) -> Optional[dict]:
+    from feedback.models import NightlyEvaluation
+
+    evaluation = (
+        NightlyEvaluation.objects.filter(
+            user=user,
+            status=NightlyEvaluation.Status.EVALUATED,
+            sound_session_id__isnull=False,
+        )
+        .order_by("-evaluated_at")
+        .first()
+    )
+
+    # 최근 평가부터 훑되, comfortable 태그가 있는 첫 평가만 채택
+    while evaluation is not None:
+        if COMFORTABLE_REACTION_TAG in (evaluation.sound_reactions or []):
+            session = SoundSession.objects.filter(
+                pk=evaluation.sound_session_id, user=user
+            ).first()
+            if session is not None:
+                return {"session": session, "evaluated_at": evaluation.evaluated_at}
+            return None
+
+        evaluation = (
+            NightlyEvaluation.objects.filter(
+                user=user,
+                status=NightlyEvaluation.Status.EVALUATED,
+                sound_session_id__isnull=False,
+                evaluated_at__lt=evaluation.evaluated_at,
+            )
+            .order_by("-evaluated_at")
+            .first()
+        )
+
+    return None
+
+
+# 마이페이지 "나의 사운드" 목록용:
+# comfortable 세션 전체 + 가장 최근 평가일자
+def list_comfortable_sessions_with_meta(user) -> list[dict]:
+    from feedback.models import NightlyEvaluation
+
+    evaluations = (
+        NightlyEvaluation.objects.filter(
+            user=user,
+            status=NightlyEvaluation.Status.EVALUATED,
+            sound_session_id__isnull=False,
+        )
+        .order_by("-evaluated_at")
+    )
+
+    result = []
+    seen_session_ids = set()
+
+    for evaluation in evaluations:
+        if (
+            COMFORTABLE_REACTION_TAG
+            not in (evaluation.sound_reactions or [])
+        ):
+            continue
+
+        # 같은 사운드 세션은 가장 최근 평가 1건만 사용
+        if evaluation.sound_session_id in seen_session_ids:
+            continue
+
+        session = (
+            SoundSession.objects
+            .filter(
+                pk=evaluation.sound_session_id,
+                user=user,
+            )
+            .first()
+        )
+
+        if session is None:
+            continue
+
+        seen_session_ids.add(
+            evaluation.sound_session_id
+        )
+
+        result.append(
+            {
+                "session": session,
+                "evaluated_at": evaluation.evaluated_at,
+            }
+        )
+
+    return result
