@@ -111,3 +111,28 @@
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+@keyframes somni-wave {
+  0%,
+  100% {
+    transform: scaleY(var(--somni-wave-min, 0.35));
+  }
+
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.somni-wave-bar {
+  transform-origin: center;
+  animation-name: somni-wave;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .somni-wave-bar {
+    animation: none;
+    transform: scaleY(var(--somni-wave-min, 0.35));
+  }
+}
