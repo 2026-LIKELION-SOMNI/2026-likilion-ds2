@@ -202,7 +202,16 @@ export async function getSoundSession(
     `/api/sound/${uuid}/sessions/${sessionId}/`,
   );
 }
-
+/*
+ * 가장 최근 사운드 세션 조회
+ */
+export async function getLatestSoundSession(
+  uuid: string,
+) {
+  return request<SoundSession>(
+    `/api/sound/${uuid}/sessions/latest/`,
+  );
+}
 /*
  * 불편 신고 반영 후 새 사운드 생성
  */

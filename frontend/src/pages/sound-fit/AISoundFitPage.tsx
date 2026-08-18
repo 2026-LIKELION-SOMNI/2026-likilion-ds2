@@ -1022,7 +1022,7 @@ function AISoundFitPage() {
             <button
               type="button"
               onClick={() =>
-                navigate("/home")
+                navigate("/")
               }
               className="
                 h-[54px]

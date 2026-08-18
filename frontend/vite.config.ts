@@ -13,7 +13,7 @@ export default defineConfig({
       registerType: "autoUpdate",
 
       devOptions: {
-        enabled: true,
+        enabled: false,
       },
 
       manifest: {

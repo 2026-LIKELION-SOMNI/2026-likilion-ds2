@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-
+import { useLocation, useNavigate, } from "react-router-dom";
 import BottomNav from "../../components/navigation/BottomNav";
 import ExclamationMark from "../../assets/icons/ExclamationMark.svg";
 
@@ -32,6 +31,7 @@ function ChevronRight() {
 function MyPage() {
   const navigate = useNavigate();
 
+  const location = useLocation();
   const [showDeleteModal, setShowDeleteModal] =
     useState(false);
 
@@ -84,8 +84,8 @@ function MyPage() {
     };
 
     void loadProfileSummary();
-  }, []);
-
+  }, [location.key]);
+  
   const handleDeleteAllData =
     async () => {
       const uuid =
@@ -227,6 +227,10 @@ function MyPage() {
           <button
             type="button"
             onClick={() => {
+              localStorage.removeItem(
+                "somni-data-deleted",
+              );
+
               navigate("/frequency");
             }}
             className="
@@ -380,9 +384,33 @@ function MyPage() {
 
           <button
             type="button"
-            onClick={() =>
-              navigate("/frequency")
-            }
+            onClick={() => {
+              sessionStorage.removeItem(
+                "somni-current-sound-session-id",
+              );
+
+              sessionStorage.removeItem(
+                "somni-sound-setup-completed",
+              );
+
+              sessionStorage.removeItem(
+                "somni-pitch-match-session",
+              );
+
+              sessionStorage.removeItem(
+                "somni-selected-nature-sound",
+              );
+
+              sessionStorage.removeItem(
+                "somni-selected-nature-sound-label",
+              );
+
+              sessionStorage.removeItem(
+                "somni-previous-nature-sound-label",
+              );
+
+              navigate("/frequency");
+            }}
             className="
               absolute
               bottom-[10px]

@@ -1,17 +1,12 @@
 import { useEffect, useState, } from "react";
 
-import {
-  useNavigate,
-} from "react-router-dom";
+import { useNavigate, } from "react-router-dom";
 
-import {
-  getLatestInterventionDecision,
-  type InterventionDecision,
+import { getLatestInterventionDecision, type InterventionDecision,
 } from "../../api/personalization";
 
-import {
-  getUserUuid,
-} from "../../utils/userStorage";
+import { getUserUuid, } from "../../utils/userStorage";
+import { generateTodaySound, } from "../../api/sound";
 
 const RELAXATION_INFO = {
   thought_distancing: {
@@ -149,6 +144,45 @@ function RoutineReadyPage() {
         setLoading(false);
     }
     };
+    const handleStartRoutine =
+      async () => {
+        const uuid =
+          getUserUuid();
+
+        if (!uuid) {
+          setErrorMessage(
+            "사용자 정보를 찾지 못했어요.",
+          );
+          return;
+        }
+
+        try {
+          setErrorMessage("");
+
+          const soundSession =
+            await generateTodaySound(
+              uuid,
+            );
+
+          sessionStorage.setItem(
+            "somni-current-sound-session-id",
+            soundSession.session_id,
+          );
+
+          navigate(
+            "/mixing-point",
+          );
+        } catch (error) {
+          console.error(
+            "사운드 생성 실패",
+            error,
+          );
+
+          setErrorMessage(
+            "개인화 사운드를 준비하지 못했어요.",
+          );
+        }
+      };
 
   if (loading) {
     return (
@@ -665,11 +699,9 @@ function RoutineReadyPage() {
         >
           <button
             type="button"
-            onClick={() =>
-              navigate(
-                "/mixing-point",
-              )
-            }
+            onClick={() => {
+              void handleStartRoutine();
+            }}
             className="
               flex
               h-[54px]
