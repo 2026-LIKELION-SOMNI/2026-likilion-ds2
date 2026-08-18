@@ -16,6 +16,8 @@ urlpatterns = [
     path("api/soundfit/", include("soundfit.urls")),
     path("api/mypage/", include("mypage.urls")),
     path("api/personalization/", include("personalization.urls")),
+    path("api/home/", include("home.urls")),
+
 ]
 
 if settings.DEBUG:

@@ -153,3 +153,10 @@ class SoundDiscomfortReportSerializer(serializers.ModelSerializer):
             )
 
         return value
+
+
+# 편안했던 사운드 1건 요약 (홈 카드 / 마이페이지 목록 공용)
+class ComfortableSoundItemSerializer(serializers.Serializer):
+    session_id = serializers.UUIDField()
+    sound_summary = serializers.CharField(allow_null=True)
+    evaluated_at = serializers.DateTimeField()
