@@ -5,20 +5,10 @@ import FrequencyCard from "../../components/frequency/FrequencyCard";
 import { clearPitchMatchSession, getPitchMatchSession, savePitchMatchSession,} from "../../utils/pitchMatchStorage";import playIcon from "../../assets/icons/play.svg";
 import pauseIcon from "../../assets/icons/pause.svg";
 
-import {
-  saveTinnitusProfile,
-  startPitchMatching,
-  selectPitchMatch,
-  selectOctave,
-  type PitchMatchSession,
-  type ToneType,
-} from "../../services/tinnitusService";
+import { saveTinnitusProfile, startPitchMatching, selectPitchMatch, selectOctave, goBackPitchMatch,
+  type PitchMatchSession, type ToneType, } from "../../services/tinnitusService";
 
-import {
-  playMatchingNoise,
-  playTinnitusTypePreview,
-  stopTinnitusAudio,
-} from "../../audio/tinnitusAudio";
+import { playMatchingNoise, playTinnitusTypePreview, stopTinnitusAudio, } from "../../audio/tinnitusAudio";
 
 type FrequencyOptionId = "A" | "B";
 
@@ -354,6 +344,11 @@ function FrequencyPage() {
         sessionStorage.removeItem(
           "somni-sound-setup-completed",
         );
+
+        sessionStorage.removeItem(
+          "somni-octave-session",
+        );
+
         clearPitchMatchSession();
 
         const session =
@@ -473,6 +468,7 @@ function FrequencyPage() {
        * 7회 완료
        * → octave test
        */
+
       if (
         nextSession.octave_test_started
       ) {
@@ -555,6 +551,15 @@ function FrequencyPage() {
       stopTinnitusAudio();
       setPlayingOctave(null);
 
+      /*
+      * 결과 화면에서 뒤로 돌아올 때
+      * 옥타브 후보를 다시 표시하기 위해 저장
+      */
+      sessionStorage.setItem(
+        "somni-octave-session",
+        JSON.stringify(matchSession),
+      );
+
       try {
         setIsLoading(true);
 
@@ -628,49 +633,161 @@ function FrequencyPage() {
    * =========================
    * Header 뒤로가기
    * =========================
-   *
-   * 중요:
-   * A/B 매칭 도중 이전 라운드 이동은
-   * 백엔드 이전 단계 API가 생기기 전까지
-   * 프론트에서 임의로 구현하지 않음.
    */
 
-  const handlePreviousStep =
-    useCallback(() => {
-      stopTinnitusAudio();
+const handlePreviousStep =
+  useCallback(async () => {
+    stopTinnitusAudio();
 
+    if (screen === "representative") {
+      setRepresentativeType(null);
+      setPlayingTinnitusType(null);
+      setScreen("type");
+      return;
+    }
+
+    if (screen === "type") {
+      navigate(-1);
+      return;
+    }
+
+    if (
+      screen === "matching" &&
+      matchSession
+    ) {
       /*
-       * 대표 소리 선택
-       * → 유형 선택
+       * 1/7에서는 더 이전 A/B 라운드가 없으므로
+       * 대표 소리 선택 화면으로 이동
        */
-      if (
-        screen === "representative"
-      ) {
-        setRepresentativeType(null);
-        setPlayingTinnitusType(null);
-
-        setScreen("type");
-
+      if (matchSession.round_number === 1) {
+        setSelectedOptionId(null);
+        setPlayingOptionId(null);
+        setScreen("representative");
         return;
       }
 
-      /*
-       * 최초 유형 선택
-       * → 이전 페이지
-       */
-      if (screen === "type") {
-        navigate(-1);
+      try {
+        setIsLoading(true);
+        setErrorMessage("");
 
+        const previousSession =
+          await goBackPitchMatch(
+            matchSession.id,
+          );
+
+          sessionStorage.removeItem(
+            "somni-octave-session",
+          );
+        setMatchSession(previousSession);
+
+        setCurrentStep(
+          previousSession.round_number - 1,
+        );
+
+        setSelectedOptionId(null);
+        setPlayingOptionId(null);
+      } catch (error) {
+        console.error(
+          "이전 음역 단계 이동 실패",
+          error,
+        );
+
+        setErrorMessage(
+          "이전 단계로 이동하지 못했어요.",
+        );
+      } finally {
+        setIsLoading(false);
+      }
+
+      return;
+    }
+
+    if (screen === "result") {
+      const savedOctaveSession =
+        sessionStorage.getItem(
+          "somni-octave-session",
+        );
+
+      if (!savedOctaveSession) {
+        console.error(
+          "저장된 옥타브 세션이 없습니다.",
+        );
         return;
       }
 
-      /*
-       * matching / octave / result의
-       * 이전 단계 복원은
-       * 현재 백엔드 API가 없으므로
-       * 여기서 임의 처리하지 않음.
-       */
-    }, [screen, navigate]);
+      try {
+        const previousOctaveSession =
+          JSON.parse(
+            savedOctaveSession,
+          ) as PitchMatchSession;
+
+        setMatchSession(
+          previousOctaveSession,
+        );
+
+        setSelectedOctave(null);
+        setPlayingOctave(null);
+        setErrorMessage("");
+
+        setScreen("octave");
+      } catch (error) {
+        console.error(
+          "옥타브 세션 복원 실패",
+          error,
+        );
+      }
+
+      return;
+    }
+
+
+    if (
+      screen === "octave" &&
+      matchSession
+    ) {
+      try {
+        setIsLoading(true);
+        setErrorMessage("");
+
+        const previousSession =
+          await goBackPitchMatch(
+            matchSession.id,
+          );
+
+        setMatchSession(previousSession);
+
+        setCurrentStep(
+          previousSession.round_number - 1,
+        );
+
+        setSelectedOctave(null);
+        setPlayingOctave(null);
+
+        setSelectedOptionId(null);
+        setPlayingOptionId(null);
+
+        setScreen("matching");
+      } catch (error) {
+        console.error(
+          "옥타브 이전 단계 이동 실패",
+          error,
+        );
+
+        setErrorMessage(
+          "이전 단계로 이동하지 못했어요.",
+        );
+      } finally {
+        setIsLoading(false);
+      }
+
+      return;
+    }
+
+    }, [
+      screen,
+      navigate,
+      matchSession,
+    ]);
 
   useEffect(() => {
     window.addEventListener(
@@ -1365,10 +1482,11 @@ function FrequencyPage() {
         <section className="pt-12">
           <h1
             className="
-              text-[1.25rem]
-              leading-[1.75rem]
+              font-sans
+              text-[24px]
               font-bold
-              text-text-primary
+              leading-[36px]
+              text-[#ECF3F2]
             "
           >
             마지막으로 확인할게요.
@@ -1376,10 +1494,12 @@ function FrequencyPage() {
 
           <p
             className="
-              mt-2
-              text-[0.75rem]
-              leading-5
-              text-text-secondary
+              mt-[2px]
+              font-sans
+              text-[13px]
+              font-normal
+              leading-normal
+              text-[#809EA8]
             "
           >
             비슷하게 느껴지는 높이 중
@@ -1576,9 +1696,11 @@ function FrequencyPage() {
           <p
             className="
               mt-8
-              text-[0.6875rem]
-              leading-5
-              text-text-secondary
+              font-sans
+              text-[11px]
+              font-normal
+              leading-normal
+              text-[#809EA8]
             "
           >
             지원 범위를 벗어나는 후보는
@@ -1642,10 +1764,11 @@ function FrequencyPage() {
       <section className="pt-16">
         <h1
           className="
-            text-[1.25rem]
-            leading-[1.75rem]
+            font-sans
+            text-[24px]
             font-bold
-            text-text-primary
+            leading-[36px]
+            text-[#ECF3F2]
           "
         >
           이명과 가까운 음역을 찾았어요

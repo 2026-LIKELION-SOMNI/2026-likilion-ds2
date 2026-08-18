@@ -7,6 +7,8 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from personalization.models import InterventionDecision
+from personalization import services as personalization_services
 
 from accounts.models import AnonymousUser
 from tinnitus.models import PitchMatchSession
@@ -33,8 +35,11 @@ GENERATION_TIMEOUT_SECONDS = 8
 def _gather_generation_input(
     user,
     regenerate_avoid_reasons=None,
-) -> services.GenerationInput:
-
+    decision=None,
+) -> tuple[
+    services.GenerationInput,
+    InterventionDecision | None,
+]:
     # 가장 최근에 완료된 음역 매칭 결과
     matching_session = (
         PitchMatchSession.objects
@@ -58,32 +63,30 @@ def _gather_generation_input(
             "혼합점 측정이 완료되지 않아 사운드를 생성할 수 없습니다."
         )
 
-    # 최근 checkin
-    latest_checkin = (
-        user.checkins
-        .order_by("-created_at")
-        .first()
-        if hasattr(user, "checkins")
-        else None
-    )
+# 별도로 전달받은 personalization 결정이 없으면 가장 최근 결정 사용
+    if decision is None:
+        decision = (
+            InterventionDecision.objects
+            .filter(user=user)
+            .order_by("-decided_at")
+            .first()
+        )
 
-    # personalization 앱은 아직 구현 전이므로
-    # 존재할 경우에만 값을 가져온다.
-    personalization = getattr(
+    sound_strategy = (
+        decision.sound_strategy
+        if decision is not None
+        else {}
+    ) or {}
+
+    # soundfit 결과
+    # 이후 personalization이 SoundFitProfile까지 직접 반영하도록 구조를 변경하면 sound에서 직접 읽는 부분은 제거할 예정
+    sound_fit_profile = getattr(
         user,
-        "personalization_profile",
+        "soundfit_profile",
         None,
     )
 
-    # 과거 도움 평가 - feedback.NightlyEvaluation 기준
-    # "comfortable"(편안했어요) 평가를 받은 세션들의 배경음 태그 수집
-    past_helpful_tags = (
-        services.collect_past_helpful_background_tags(
-            user
-        )
-    )
-
-    # 최근 사운드 불편 신고
+    # 최근 사운드 불편 신고(고수준 결정에는 사용 x, 생성 실패 시 fallback sound 후보 선택에만 사용)
     past_discomfort_reasons = []
 
     recent_reports = (
@@ -95,6 +98,7 @@ def _gather_generation_input(
     for report in recent_reports:
         past_discomfort_reasons.extend(
             report.reasons
+            or []
         )
 
     # 재생성 시 바로 직전 불편 사유도 추가
@@ -103,7 +107,7 @@ def _gather_generation_input(
             regenerate_avoid_reasons
         )
 
-    return services.GenerationInput(
+    gi = services.GenerationInput(
         tinnitus_center_hz=(
             matching_session.center_frequency
         ),
@@ -120,42 +124,56 @@ def _gather_generation_input(
             matching_session.mixing_point_gain
         ),
 
-        sound_preferences=getattr(
-            personalization,
-            "sound_preferences",
-            [],
-        ) or [],
-
-        current_discomfort=getattr(
-            latest_checkin,
-            "discomfort",
-            3,
-        ),
-
-        current_tension=getattr(
-            latest_checkin,
-            "tension",
-            3,
-        ),
-
-        sleep_hours=getattr(
-            latest_checkin,
-            "sleep_hours",
-            None,
-        ),
-
-        daily_factors=getattr(
-            latest_checkin,
-            "daily_factors",
-            [],
-        ) or [],
-
-        past_helpful_tags=past_helpful_tags,
-
         past_discomfort_reasons=(
             past_discomfort_reasons
         ),
+
+        # soundfit 결과
+        sound_fit_texture=getattr(
+            sound_fit_profile,
+            "texture",
+            None,
+        ),
+
+        sound_fit_layer_mix=getattr(
+            sound_fit_profile,
+            "layer_mix",
+            None,
+        ),
+
+        # personalization이 결정한 오늘의 사운드 전략
+        personalization_background=(
+            sound_strategy.get(
+                "background"
+            )
+        ),
+
+        personalization_masking_ratio=(
+            sound_strategy.get(
+                "masking_ratio"
+            )
+        ),
+
+        personalization_modulation_intensity=(
+            sound_strategy.get(
+                "modulation_intensity"
+            )
+        ),
+
+        personalization_mixing_point_gain=(
+            sound_strategy.get(
+                "mixing_point_gain"
+            )
+        ),
+
+        personalization_duration_minutes=(
+            sound_strategy.get(
+                "duration_minutes"
+            )
+        ),
     )
+
+    return gi, decision
 
 
 # 오늘의 사운드 준비
@@ -176,8 +194,10 @@ class GenerateTodaySoundView(APIView):
         )
 
         try:
-            gi = _gather_generation_input(
-                user
+            gi, decision = (
+                _gather_generation_input(
+                    user
+                )
             )
 
         except services.MatchingNotCompletedError as exc:
@@ -201,6 +221,13 @@ class GenerateTodaySoundView(APIView):
             status=SoundSession.Status.GENERATING,
         )
 
+            # personalization 결정과 실제 sound session 연결
+        if decision is not None:
+            personalization_services.attach_sessions(
+                decision,
+                sound_session_id=session.pk,
+            )
+
         try:
             params = self._decide_with_timeout(
                 gi
@@ -220,6 +247,7 @@ class GenerateTodaySoundView(APIView):
                 SoundSession.Status.READY
             )
 
+            # 실시간 생성 실패에 대비한 fallback 후보
             session.fallback_sound = (
                 services.select_fallback_sound(
                     gi
@@ -420,14 +448,118 @@ class RegenerateSoundView(APIView):
         if last_report:
             avoid_reasons = (
                 last_report.reasons
+                or []
             )
 
-        try:
-            gi = _gather_generation_input(
-                user,
-                regenerate_avoid_reasons=(
+        # 직전 사운드를 만든 personalization 결정 조회
+        previous_decision = (
+            InterventionDecision.objects
+            .filter(
+                user=user,
+                sound_session_id=prev.pk,
+            )
+            .order_by("-decided_at")
+            .first()
+        )
+
+        # 과거 데이터 등으로 연결된 decision을 찾지 못한 경우
+        # 가장 최근 personalization 결정을 사용
+        if previous_decision is None:
+            previous_decision = (
+                InterventionDecision.objects
+                .filter(user=user)
+                .order_by("-decided_at")
+                .first()
+            )
+
+        if previous_decision is None:
+            return Response(
+                {
+                    "detail": (
+                        "재생성에 사용할 personalization "
+                        "결정을 찾을 수 없습니다."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # 기존 decision 당시의 현재 상태 복원
+        state = personalization_services.CurrentState(
+            **(
+                previous_decision.state_snapshot
+                or {}
+            )
+        )
+
+        # 사용자가 실제로 마지막에 들었던 자연음 확인
+        previous_params = (
+            prev.final_params
+            or prev.generated_params
+            or {}
+        )
+
+        previous_background = None
+
+        for source in previous_params.get(
+            "sources",
+            [],
+        ):
+            if (
+                isinstance(source, dict)
+                and source.get("type")
+                == "background"
+            ):
+                previous_background = (
+                    source.get("asset_tag")
+                )
+                break
+
+            # 이전 데이터 형식 대응
+            if (
+                isinstance(source, str)
+                and source
+                in personalization_services.BACKGROUND_CANDIDATES
+            ):
+                previous_background = source
+                break
+
+        # 기존 personalization 규칙을 그대로 사용하되
+        # 방금 불편했던 이유와 직전 자연음을 즉시 반영
+        regenerated_decision_data = (
+            personalization_services
+            .decide_intervention(
+                user=user,
+                state=state,
+                immediate_discomfort_reasons=(
                     avoid_reasons
                 ),
+                previous_background=(
+                    previous_background
+                ),
+            )
+        )
+
+        # 재생성 결과도 별도 personalization 결정으로 기록
+        decision = (
+            personalization_services
+            .record_decision(
+                user=user,
+                state=state,
+                decision=(
+                    regenerated_decision_data
+                ),
+            )
+        )
+
+        try:
+            gi, decision = (
+                _gather_generation_input(
+                    user,
+                    regenerate_avoid_reasons=(
+                        avoid_reasons
+                    ),
+                    decision=decision,
+                )
             )
 
         except services.MatchingNotCompletedError as exc:
@@ -448,6 +580,12 @@ class RegenerateSoundView(APIView):
             ),
             status=SoundSession.Status.GENERATING,
             regenerated_from=prev,
+        )
+
+        # 새 personalization 결정과 새 sound session 연결
+        personalization_services.attach_sessions(
+            decision,
+            sound_session_id=new_session.pk,
         )
 
         try:
@@ -544,7 +682,8 @@ class SoundSessionDetailView(APIView):
 
 
 # 배경 자연음 변경
-# 실제 오디오 변경은 프론트(Web Audio API)에서 수행하고 백엔드는 사용자가 최종적으로 선택한 배경음만 저장
+# 실제 오디오 변경은 프론트(Web Audio API)에서 수행하고
+# 백엔드는 사용자가 최종적으로 선택한 배경음만 저장
 class SoundBackgroundView(APIView):
 
     def patch(
@@ -726,7 +865,8 @@ class SoundPlaybackView(APIView):
         )
 
 
-# 볼륨 조절(사용자가 보낸 gain값에 서비스 상한 적용)
+# 볼륨 조절
+# 사용자가 보낸 gain값에 서비스 상한 적용
 class SoundVolumeView(APIView):
 
     def patch(

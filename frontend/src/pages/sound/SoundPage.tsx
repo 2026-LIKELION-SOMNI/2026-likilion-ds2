@@ -1,4 +1,7 @@
-import { useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 
 import BottomNav from "../../components/navigation/BottomNav";
@@ -6,61 +9,400 @@ import BottomNav from "../../components/navigation/BottomNav";
 import playIcon from "../../assets/icons/Play.svg";
 import pauseIcon from "../../assets/icons/Pause.svg";
 
+import rainAudio from "../../assets/audio/nature/rain.mp3";
+import airAudio from "../../assets/audio/nature/air.mp3";
+import oceanAudio from "../../assets/audio/nature/ocean.mp3";
+import streamAudio from "../../assets/audio/nature/stream.mp3";
+
+import {
+  playNatureAudio,
+  stopNatureAudio,
+} from "../../audio/natureAudio";
+
+import {
+  pauseRecoveryAudio,
+  playRecoveryAudio,
+  resumeRecoveryAudio,
+  stopRecoveryAudio,
+} from "../../audio/recoveryAudio";
+
+import {
+  getSoundSession,
+  type SoundSession,
+} from "../../api/sound";
+
+import {
+  getUserUuid,
+} from "../../utils/userStorage";
+
 const PREVIEW_SOUNDS = [
   {
     id: 1,
     title: "비",
-    heights: [17, 22, 24, 22, 19, 16, 14, 13],
+    audio: rainAudio,
+    heights: [
+      17, 22, 24, 22,
+      19, 16, 14, 13,
+    ],
   },
   {
     id: 2,
     title: "시냇물",
-    heights: [23, 20, 18, 16, 15, 14, 13, 12],
+    audio: streamAudio,
+    heights: [
+      23, 20, 18, 16,
+      15, 14, 13, 12,
+    ],
   },
   {
     id: 3,
     title: "파도",
-    heights: [23, 20, 17, 15, 14, 15, 17, 20],
+    audio: oceanAudio,
+    heights: [
+      23, 20, 17, 15,
+      14, 15, 17, 20,
+    ],
   },
   {
     id: 4,
     title: "공기음",
-    heights: [17, 15, 14, 15, 17, 20, 22, 24],
+    audio: airAudio,
+    heights: [
+      17, 15, 14, 15,
+      17, 20, 22, 24,
+    ],
   },
 ];
 
 const MAIN_WAVE_HEIGHTS = [
-  48, 44, 36, 28, 22, 20, 24, 32, 42, 48,
-  44, 34, 26, 20, 22, 30, 40, 48, 46, 36,
-  28, 22, 20, 24, 34, 44, 48, 42, 32, 24,
+  48, 44, 36, 28, 22,
+  20, 24, 32, 42, 48,
+  44, 34, 26, 20, 22,
+  30, 40, 48, 46, 36,
+  28, 22, 20, 24, 34,
+  44, 48, 42, 32, 24,
   20, 22, 30, 40, 48,
 ];
 
 function SoundPage() {
   const navigate = useNavigate();
 
-  // 상단 개인화 사운드 재생 상태
-  const [playing, setPlaying] = useState(false);
+  /*
+   * 현재 개인화 사운드 세션
+   */
+  const [
+    currentSoundSession,
+    setCurrentSoundSession,
+  ] = useState<SoundSession | null>(
+    null,
+  );
 
-  // 다른 소리 들어보기
-  // 처음에는 아무것도 선택되지 않음
-  const [previewPlayingId, setPreviewPlayingId] =
-    useState<number | null>(null);
+  /*
+   * 상단 개인화 사운드 상태
+   */
+  const [
+    playing,
+    setPlaying,
+  ] = useState(false);
 
-  const handlePlayToggle = () => {
-    // TODO:
-    // 실제 사운드 파일 연결 후 audio.play() / pause() 추가
-    setPlaying((previous) => !previous);
+  const [
+    hasStartedPersonalSound,
+    setHasStartedPersonalSound,
+  ] = useState(false);
+
+  /*
+   * 다른 소리 들어보기 상태
+   */
+  const [
+    previewPlayingId,
+    setPreviewPlayingId,
+  ] = useState<number | null>(
+    null,
+  );
+
+  /*
+   * =========================
+   * 현재 사운드 세션 조회
+   * =========================
+   */
+  useEffect(() => {
+    const loadCurrentSound =
+      async () => {
+        const uuid =
+          getUserUuid();
+
+        const sessionId =
+          sessionStorage.getItem(
+            "somni-current-sound-session-id",
+          );
+
+        if (
+          !uuid ||
+          !sessionId
+        ) {
+          console.warn(
+            "현재 사운드 세션 정보를 찾을 수 없습니다.",
+          );
+
+          return;
+        }
+
+        try {
+          const session =
+            await getSoundSession(
+              uuid,
+              sessionId,
+            );
+
+          console.log(
+            "현재 사운드 세션:",
+            session,
+          );
+
+          setCurrentSoundSession(
+            session,
+          );
+        } catch (error) {
+          console.error(
+            "현재 사운드 조회 실패",
+            error,
+          );
+        }
+      };
+
+    void loadCurrentSound();
+  }, []);
+
+  /*
+   * 페이지 이탈 시
+   * 모든 오디오 종료
+   */
+  useEffect(() => {
+    return () => {
+      stopNatureAudio();
+      stopRecoveryAudio();
+    };
+  }, []);
+
+  /*
+   * generated_params는 최초 생성 결과,
+   * final_params는 사용자가 자연음 등을
+   * 변경한 최종 재생 설정.
+   *
+   * 화면/실제 재생에서는 final_params 우선.
+   */
+  const activeSoundParams =
+    currentSoundSession
+      ?.final_params ??
+    currentSoundSession
+      ?.generated_params ??
+    null;
+
+  /*
+   * =========================
+   * 현재 자연음 이름
+   * =========================
+   */
+  const getBackgroundSoundLabel =
+    () => {
+      if (!activeSoundParams) {
+        return "개인화 사운드";
+      }
+
+      const backgroundSource =
+        activeSoundParams.sources?.find(
+          (source) =>
+            source.role ===
+              "ambient" ||
+            source.type ===
+              "background",
+        );
+
+      const background =
+        backgroundSource
+          ?.asset_tag;
+
+      const backgroundLabelMap: Record<
+        string,
+        string
+      > = {
+        rain: "잔잔한 빗소리",
+        stream: "시냇물 소리",
+        ocean: "파도",
+        air: "공기음",
+      };
+
+      if (!background) {
+        return "개인화 노이즈";
+      }
+
+      return (
+        backgroundLabelMap[
+          background
+        ] ??
+        "개인화 사운드"
+      );
+    };
+
+  /*
+   * =========================
+   * 노이즈 이름
+   * =========================
+   */
+  const getNoiseLabel = () => {
+    if (!activeSoundParams) {
+      return "";
+    }
+
+    const maskingSource =
+      activeSoundParams
+        .sources?.find(
+          (source) =>
+            source.role ===
+            "tinnitus_masking",
+        );
+
+    if (
+      maskingSource?.waveform ===
+      "pink_noise"
+    ) {
+      return "+ 노치 핑크노이즈";
+    }
+
+    return "";
   };
 
-  const handlePreviewPlay = (soundId: number) => {
-    setPreviewPlayingId((previous) =>
-      previous === soundId ? null : soundId,
-    );
+  /*
+   * =========================
+   * 개인화 사운드 재생
+   * =========================
+   */
+  const handlePlayToggle =
+    async () => {
+      if (!activeSoundParams) {
+        console.warn(
+          "재생할 개인화 사운드가 없습니다.",
+        );
 
-    // TODO:
-    // soundId에 맞는 실제 자연음 재생
-  };
+        return;
+      }
+
+      try {
+        /*
+         * 자연음 미리듣기가 재생 중이면
+         * 먼저 종료
+         */
+        stopNatureAudio();
+        setPreviewPlayingId(null);
+
+        /*
+         * 최초 재생
+         */
+        if (
+          !hasStartedPersonalSound
+        ) {
+          await playRecoveryAudio(
+            activeSoundParams,
+          );
+
+          setHasStartedPersonalSound(
+            true,
+          );
+
+          setPlaying(true);
+
+          return;
+        }
+
+        /*
+         * 일시정지
+         */
+        if (playing) {
+          await pauseRecoveryAudio();
+
+          setPlaying(false);
+
+          return;
+        }
+
+        /*
+         * 다시 재생
+         */
+        await resumeRecoveryAudio();
+
+        setPlaying(true);
+      } catch (error) {
+        console.error(
+          "개인화 사운드 재생 실패",
+          error,
+        );
+      }
+    };
+
+  /*
+   * =========================
+   * 자연음 미리듣기
+   * =========================
+   */
+  const handlePreviewPlay =
+    async (
+      soundId: number,
+    ) => {
+      const sound =
+        PREVIEW_SOUNDS.find(
+          (item) =>
+            item.id ===
+            soundId,
+        );
+
+      if (!sound) {
+        return;
+      }
+
+      /*
+       * 같은 자연음 다시 클릭
+       * → 정지
+       */
+      if (
+        previewPlayingId ===
+        soundId
+      ) {
+        stopNatureAudio();
+
+        setPreviewPlayingId(
+          null,
+        );
+
+        return;
+      }
+
+      try {
+        /*
+         * 개인화 사운드가 재생 중이면
+         * 미리듣기 전에 종료
+         */
+        stopRecoveryAudio();
+
+        setPlaying(false);
+
+        setHasStartedPersonalSound(
+          false,
+        );
+
+        await playNatureAudio(
+          sound.audio,
+        );
+
+        setPreviewPlayingId(
+          soundId,
+        );
+      } catch (error) {
+        console.error(
+          "자연음 재생 실패",
+          error,
+        );
+      }
+    };
 
   return (
     <div className="flex min-h-full flex-col px-5 pb-[96px]">
@@ -72,28 +414,56 @@ function SoundPage() {
         {/* 개인화 사운드 */}
         <div
           className="
-            mt-10 w-full rounded-[20px]
-            border border-[#2B8E78]
+            mt-10
+            w-full
+            rounded-[20px]
+            border
+            border-[#2B8E78]
             bg-[#103D30]
-            px-4 py-5
+            px-4
+            py-5
           "
         >
-          {/* 이 영역은 상세 화면 이동 */}
+          {/* 상세 화면 이동 */}
           <button
             type="button"
-            onClick={() => navigate("/sound/my-sound")}
-            className="block w-full text-left"
+            onClick={() =>
+              navigate(
+                "/sound/my-sound",
+              )
+            }
+            className="
+              block
+              w-full
+              text-left
+            "
           >
-            <div className="flex items-center gap-1 text-[11px] font-sans text-[11px]
-            text-[#60CEA7] font-bold leading-normal">
-              <span>개인화 사운드</span>
+            <div
+              className="
+                flex
+                items-center
+                gap-1
+                font-sans
+                text-[11px]
+                font-bold
+                leading-normal
+                text-[#60CEA7]
+              "
+            >
+              <span>
+                개인화 사운드
+              </span>
 
               <span
                 className="
-                  flex h-[14px] w-[14px]
-                  items-center justify-center
+                  flex
+                  h-[14px]
+                  w-[14px]
+                  items-center
+                  justify-center
                   rounded-full
-                  border border-[#60CEA7]
+                  border
+                  border-[#60CEA7]
                   text-[9px]
                 "
               >
@@ -101,61 +471,117 @@ function SoundPage() {
               </span>
             </div>
 
-            <p className="mt-4 text-[22px] font-bold text-text-primary">
-              잔잔한 빗소리
+            {/* 실제 현재 자연음 */}
+            <p
+              className="
+                mt-4
+                text-[22px]
+                font-bold
+                text-text-primary
+              "
+            >
+              {getBackgroundSoundLabel()}
             </p>
 
-            <p className="mt-1 text-[14px] text-[#87A3A7]">
-              + 노치 핑크노이즈
-            </p>
+            {/* 실제 노이즈 구성 */}
+            {getNoiseLabel() && (
+              <p
+                className="
+                  mt-1
+                  text-[14px]
+                  text-[#87A3A7]
+                "
+              >
+                {getNoiseLabel()}
+              </p>
+            )}
           </button>
 
-          <div className="mt-6 flex items-center gap-4">
+          <div
+            className="
+              mt-6
+              flex
+              items-center
+              gap-4
+            "
+          >
             {/* 파형 클릭 → 상세 이동 */}
             <button
               type="button"
-              onClick={() => navigate("/sound/my-sound")}
+              onClick={() =>
+                navigate(
+                  "/sound/my-sound",
+                )
+              }
               className="
-                flex h-[58px]
-                min-w-0 flex-1
-                items-center gap-[3px]
+                flex
+                h-[58px]
+                min-w-0
+                flex-1
+                items-center
+                gap-[3px]
               "
               aria-label="나만의 사운드 정보 보기"
             >
-              {MAIN_WAVE_HEIGHTS.map((height, index) => (
-                <span
-                  key={index}
-                  className="
-                    min-w-[3px]
-                    flex-1
-                    rounded-full
-                    bg-[#60CEA7]
-                  "
-                  style={{
-                    height: `${height}px`,
-                  }}
-                />
-              ))}
+              {MAIN_WAVE_HEIGHTS.map(
+                (
+                  height,
+                  index,
+                ) => (
+                  <span
+                    key={index}
+                    className="
+                      min-w-[3px]
+                      flex-1
+                      rounded-full
+                      bg-[#60CEA7]
+                    "
+                    style={{
+                      height: `${height}px`,
+                    }}
+                  />
+                ),
+              )}
             </button>
 
-            {/* 재생 버튼은 페이지 이동 X */}
+            {/* 실제 개인화 사운드 재생 */}
             <button
               type="button"
-              onClick={handlePlayToggle}
-              aria-label={playing ? "일시정지" : "재생"}
+              disabled={
+                !activeSoundParams
+              }
+              onClick={
+                handlePlayToggle
+              }
+              aria-label={
+                playing
+                  ? "일시정지"
+                  : "재생"
+              }
               className="
-                flex h-11 w-11
+                flex
+                h-11
+                w-11
                 shrink-0
-                items-center justify-center
+                items-center
+                justify-center
                 rounded-full
                 bg-[#60CEA7]
+                disabled:opacity-40
               "
             >
               <img
-                src={playing ? pauseIcon : playIcon}
+                src={
+                  playing
+                    ? pauseIcon
+                    : playIcon
+                }
                 alt=""
                 aria-hidden="true"
-                className="h-[20px] w-[20px]"
+                className="
+                  h-[20px]
+                  w-[20px]
+                "
               />
             </button>
           </div>
@@ -167,111 +593,117 @@ function SoundPage() {
             다른 소리 들어보기
           </h2>
 
-        <div className="mt-4 flex justify-between gap-2">
-        {PREVIEW_SOUNDS.map((sound) => {
-            const isPlaying =
-            previewPlayingId === sound.id;
+          <div className="mt-4 flex justify-between gap-2">
+            {PREVIEW_SOUNDS.map(
+              (sound) => {
+                const isPlaying =
+                  previewPlayingId ===
+                  sound.id;
 
-            return (
-            <button
-                key={sound.id}
-                type="button"
-                onClick={() =>
-                handlePreviewPlay(sound.id)
-                }
-                className={`
-                relative
-                h-[86px] w-[82px]
-                shrink-0
-                rounded-[16px]
-                border
-                transition-colors
-                ${
-                    isPlaying
-                    ? "border-[#2B8E78] bg-[#12382E]"
-                    : "border-[#24464A] bg-[#102126]"
-                }
-                `}
-            >
-                {/* 파형: 카드 위에서 15px */}
-                <div
-                className="
-                    absolute
-                    left-1/2
-                    top-[15px]
-                    flex h-[24px]
-                    -translate-x-1/2
-                    items-center
-                    justify-center
-                    gap-[3px]
-                "
-                aria-hidden="true"
-                >
-                {sound.heights.map(
-                    (height, waveIndex) => (
+                return (
+                  <button
+                    key={sound.id}
+                    type="button"
+                    onClick={() =>
+                      handlePreviewPlay(
+                        sound.id,
+                      )
+                    }
+                    className={`
+                      relative
+                      h-[86px]
+                      w-[82px]
+                      shrink-0
+                      rounded-[16px]
+                      border
+                      transition-colors
+                      ${
+                        isPlaying
+                          ? "border-[#2B8E78] bg-[#12382E]"
+                          : "border-[#24464A] bg-[#102126]"
+                      }
+                    `}
+                  >
+                    {/* 파형 */}
+                    <div
+                      className="
+                        absolute
+                        left-1/2
+                        top-[15px]
+                        flex
+                        h-[24px]
+                        -translate-x-1/2
+                        items-center
+                        justify-center
+                        gap-[3px]
+                      "
+                      aria-hidden="true"
+                    >
+                      {sound.heights.map(
+                        (
+                          height,
+                          waveIndex,
+                        ) => (
+                          <span
+                            key={
+                              waveIndex
+                            }
+                            className="
+                              w-[3px]
+                              shrink-0
+                              rounded-full
+                              bg-[#61DBB8]
+                            "
+                            style={{
+                              height: `${height}px`,
+                            }}
+                          />
+                        ),
+                      )}
+                    </div>
+
+                    {/* 자연음 이름 */}
                     <span
-                        key={waveIndex}
+                      className="
+                        absolute
+                        left-0
+                        top-[50px]
+                        w-full
+                        text-center
+                        font-sans
+                        text-[11px]
+                        font-bold
+                        leading-[13px]
+                        text-[#F0F7FA]
+                      "
+                    >
+                      {sound.title}
+                    </span>
+
+                    {/* 재생중 */}
+                    {isPlaying && (
+                      <span
                         className="
-                        w-[3px]
-                        shrink-0
-                        rounded-full
-                        bg-[#61DBB8]
+                          absolute
+                          left-0
+                          top-[67px]
+                          w-full
+                          text-center
+                          font-sans
+                          text-[9px]
+                          font-medium
+                          leading-[11px]
+                          text-[#61DBB8]
                         "
-                        style={{
-                        height: `${height}px`,
-                        }}
-                    />
-                    ),
-                )}
-                </div>
-
-                {/* 자연음 이름
-                    파형 24px 끝:
-                    15 + 24 = 39
-                    파형 ↔ 글씨 = 11px
-                    → top 50px
-                */}
-                <span
-                className="
-                    absolute
-                    left-0
-                    top-[50px]
-                    w-full
-                    text-center
-                    font-sans
-                    text-[11px]
-                    font-bold
-                    leading-[13px]
-                    text-[#F0F7FA]
-                "
-                >
-                {sound.title}
-                </span>
-
-                {/* 자연음 ↔ 재생중 = 4px */}
-                {isPlaying && (
-                <span
-                    className="
-                    absolute
-                    left-0
-                    top-[67px]
-                    w-full
-                    text-center
-                    font-sans
-                    text-[9px]
-                    font-medium
-                    leading-[11px]
-                    text-[#61DBB8]
-                    "
-                >
-                    재생중
-                </span>
-                )}
-            </button>
-            );
-        })}
-        </div>
-
+                      >
+                        재생중
+                      </span>
+                    )}
+                  </button>
+                );
+              },
+            )}
+          </div>
         </section>
 
         {/* 사운드 설정 */}
@@ -283,14 +715,23 @@ function SoundPage() {
           <button
             type="button"
             onClick={() =>
-              navigate("/sound/change-nature")
+              navigate(
+                "/sound/change-nature",
+              )
             }
             className="
-              mt-4 flex w-full items-center
-              justify-between rounded-[14px]
-              border border-[#24464A]
+              mt-4
+              flex
+              w-full
+              items-center
+              justify-between
+              rounded-[14px]
+              border
+              border-[#24464A]
               bg-[#102126]
-              px-4 py-5 text-left
+              px-4
+              py-5
+              text-left
             "
           >
             <div>
@@ -310,13 +751,24 @@ function SoundPage() {
 
           <button
             type="button"
-            onClick={() => navigate("/frequency")}
+            onClick={() =>
+              navigate(
+                "/frequency",
+              )
+            }
             className="
-              mt-3 flex w-full items-center
-              justify-between rounded-[14px]
-              border border-[#24464A]
+              mt-3
+              flex
+              w-full
+              items-center
+              justify-between
+              rounded-[14px]
+              border
+              border-[#24464A]
               bg-[#102126]
-              px-4 py-5 text-left
+              px-4
+              py-5
+              text-left
             "
           >
             <div>

@@ -2,19 +2,25 @@ import os
 import sys
 from pathlib import Path
 
+import dj_database_url
+from dotenv import load_dotenv
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# .env 파일 로드
+load_dotenv(BASE_DIR / '.env')
 
 # 🚨 apps 폴더를 파이썬 검색 경로에 추가
 sys.path.insert(0, str(BASE_DIR / 'apps'))
 
 
 # Quick-start development settings - unsuitable for production
-SECRET_KEY = 'django-insecure-)ou!!lg)fr(_9t&$nklpaenq#$um2qv87c^9$ml*rid9+*e-@s'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-)ou!!lg)fr(_9t&$nklpaenq#$um2qv87c^9$ml*rid9+*e-@s')
 
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']  # 개발 편의를 위해 전체 허용
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')  # 개발 편의를 위해 전체 허용
 
 
 # Application definition
@@ -28,6 +34,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
+    'corsheaders',
 
     # 🚨 여기에 생성할 앱 이름을 추가해 주시면 됩니다! (예: 'users', 'posts')
     'accounts',
@@ -38,11 +45,17 @@ INSTALLED_APPS = [
     'sound',
     'data',
     'relaxtion',
+    'soundfit',
+    'mypage',
+    'personalization',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+
+    'corsheaders.middleware.CorsMiddleware',
+
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',  # MTV 구조에서 CSRF 보완용 필수!
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -56,6 +69,11 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [],
     'DEFAULT_PERMISSION_CLASSES': [],
 }
+
+# 로컬 프론트엔드 CORS 허용
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:5273',
+]
 
 ROOT_URLCONF = 'config.urls'
 
@@ -77,12 +95,12 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 
-# 🗄️ Database - SQLite
+# 🗄️ Database - DATABASE_URL 환경변수로 SQLite/PostgreSQL 분기
+# .env의 DATABASE_URL이 postgres://... 면 PostgreSQL, sqlite:///./test.db 면 SQLite로 자동 연결
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.parse(
+        os.getenv('DATABASE_URL', f'sqlite:///{BASE_DIR / "db.sqlite3"}')
+    )
 }
 
 
@@ -116,6 +134,7 @@ USE_TZ = False
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']  # 공통 CSS/JS/이미지 파일 경로
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # 배포 시 collectstatic이 모아줄 경로
 
 # Media files (사용자가 업로드하는 사진/파일)
 MEDIA_URL = '/media/'

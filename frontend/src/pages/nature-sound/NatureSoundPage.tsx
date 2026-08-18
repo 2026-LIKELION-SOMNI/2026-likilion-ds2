@@ -2,11 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import NatureSoundCard from "../../components/nature-sound/NatureSoundCard";
-import {
-  natureSoundCategories,
-  natureSounds,
-  type NatureSoundCategory,
-} from "../../mock/natureSoundData";
+import { natureSoundCategories, natureSounds, type NatureSoundCategory,} from "../../mock/natureSoundData";
+
+import { playNatureAudio, stopNatureAudio,} from "../../audio/natureAudio";
+
 
 function NatureSoundPage() {
   const navigate = useNavigate();
@@ -25,6 +24,12 @@ function NatureSoundPage() {
       );
     }
   }, [navigate]);
+
+  useEffect(() => {
+    return () => {
+      stopNatureAudio();
+    };
+  }, []);
   const [selectedCategory, setSelectedCategory] =
     useState<NatureSoundCategory>("추천");
 
@@ -65,10 +70,32 @@ function NatureSoundPage() {
     setSelectedSoundId(soundId);
   };
 
-  const handleSoundPlay = (soundId: number) => {
-    setPlayingSoundId((previous) =>
-      previous === soundId ? null : soundId,
+  const handleSoundPlay = async (
+    soundId: number,
+  ) => {
+    const sound = natureSounds.find(
+      (item) => item.id === soundId,
     );
+
+    if (!sound) {
+      return;
+    }
+
+    if (playingSoundId === soundId) {
+      stopNatureAudio();
+      setPlayingSoundId(null);
+      return;
+    }
+
+    try {
+      await playNatureAudio(sound.audio);
+      setPlayingSoundId(soundId);
+    } catch (error) {
+      console.error(
+        "자연음 재생 실패",
+        error,
+      );
+    }
   };
 
   const handleConfirm = () => {
@@ -76,7 +103,27 @@ function NatureSoundPage() {
       return;
     }
 
-    // TODO: 선택한 자연음 서버 저장
+    const selectedSound =
+      natureSounds.find(
+        (sound) =>
+          sound.id === selectedSoundId,
+      );
+
+    if (!selectedSound) {
+      return;
+    }
+
+    /*
+    * AI Sound Fit 등에서
+    * 현재 선택한 자연음을 사용할 수 있도록 저장
+    */
+    sessionStorage.setItem(
+      "somni-selected-nature-sound",
+      selectedSound.backendValue,
+    );
+
+    stopNatureAudio();
+
     navigate("/sound-setup");
   };
 
@@ -88,10 +135,11 @@ function NatureSoundPage() {
       <section className="pt-8">
         <h1
           className="
+            font-sans
             text-[24px]
-            leading-[30px]
             font-bold
-            text-text-primary
+            leading-[36px]
+            text-[#ECF3F2]
           "
         >
           어떤 배경 소리가

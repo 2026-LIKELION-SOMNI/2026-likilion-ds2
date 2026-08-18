@@ -1,0 +1,446 @@
+import {
+  useEffect,
+  useState,
+} from "react";
+import { useNavigate } from "react-router-dom";
+
+import plusIcon from "../../assets/icons/Plus.svg";
+import minusIcon from "../../assets/icons/Minus.svg";
+
+import {
+  playMixingPointNoise,
+  setMixingPointGain,
+  stopTinnitusAudio,
+} from "../../audio/tinnitusAudio";
+
+import {
+  saveMixingPoint,
+} from "../../services/tinnitusService";
+
+import {
+  getPitchMatchSession,
+} from "../../utils/pitchMatchStorage";
+
+const MIXING_WAVE_HEIGHTS = [
+  48, 42, 34, 28, 24, 22, 24, 28,
+  34, 42, 48, 52, 48, 42, 34, 28,
+  24, 22, 24, 28, 36, 44, 50, 52,
+  48, 42, 34, 28, 24, 22, 24, 28,
+  36, 44, 50, 52, 48, 42, 34, 28,
+  24, 22, 24, 30, 38, 46, 52,
+];
+
+const MAX_MIXING_GAIN = 0.6;
+
+function volumeToGain(
+  volume: number,
+) {
+  return (
+    (volume / 100) *
+    MAX_MIXING_GAIN
+  );
+}
+
+function MixingPointPage() {
+  const navigate = useNavigate();
+
+  const [
+    volume,
+    setVolume,
+  ] = useState(22);
+
+  const [
+    isSaving,
+    setIsSaving,
+  ] = useState(false);
+
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState("");
+
+  const pitchMatchSession =
+    getPitchMatchSession();
+
+  /*
+   * 페이지 진입 시
+   * 현재 기본 볼륨으로 사운드 재생
+   */
+  useEffect(() => {
+    const startAudio =
+      async () => {
+        if (
+          !pitchMatchSession
+            ?.center_frequency
+        ) {
+          setErrorMessage(
+            "음역 정보를 불러오지 못했어요.",
+          );
+
+          return;
+        }
+
+        try {
+          const gain =
+            volumeToGain(volume);
+
+          await playMixingPointNoise(
+            pitchMatchSession
+              .center_frequency,
+            gain,
+          );
+        } catch (error) {
+          console.error(
+            "혼합점 사운드 재생 실패",
+            error,
+          );
+
+          setErrorMessage(
+            "사운드를 재생하지 못했어요.",
+          );
+        }
+      };
+
+    void startAudio();
+
+    return () => {
+      stopTinnitusAudio();
+    };
+  }, [
+    pitchMatchSession?.center_frequency,
+  ]);
+
+  /*
+   * 모든 볼륨 변경은
+   * 이 함수 사용
+   */
+  const updateVolume = (
+    nextVolume: number,
+  ) => {
+    const safeVolume =
+      Math.max(
+        0,
+        Math.min(
+          nextVolume,
+          100,
+        ),
+      );
+
+    setVolume(
+      safeVolume,
+    );
+
+    const gain =
+      volumeToGain(
+        safeVolume,
+      );
+
+    setMixingPointGain(
+      gain,
+    );
+  };
+
+  const handleVolumeDown =
+    () => {
+      updateVolume(
+        volume - 1,
+      );
+    };
+
+  const handleVolumeUp =
+    () => {
+      updateVolume(
+        volume + 1,
+      );
+    };
+
+  const handleVolumeChange =
+    (
+      value: number,
+    ) => {
+      updateVolume(value);
+    };
+
+  /*
+   * 최종 혼합점 저장
+   */
+  const handleSave =
+    async () => {
+      if (
+        !pitchMatchSession
+      ) {
+        setErrorMessage(
+          "음역 매칭 정보를 찾지 못했어요.",
+        );
+
+        return;
+      }
+
+      if (isSaving) {
+        return;
+      }
+
+      const mixingPointGain =
+        volumeToGain(
+          volume,
+        );
+
+      try {
+        setIsSaving(true);
+        setErrorMessage("");
+
+        stopTinnitusAudio();
+
+        await saveMixingPoint(
+          pitchMatchSession.id,
+          mixingPointGain,
+        );
+
+        sessionStorage.setItem(
+          "somni-sound-setup-completed",
+          "true",
+        );
+
+        /*
+         * 이 페이지는 현재 초기 플로우에서는
+         * 사용하지 않음.
+         *
+         * 나중에 설정에서 호출했을 때
+         * 저장 후 sound 화면으로 돌아가도록 설정.
+         */
+        navigate(
+          "/sound",
+          {
+            replace: true,
+          },
+        );
+      } catch (error) {
+        console.error(
+          "혼합점 저장 실패",
+          error,
+        );
+
+        setErrorMessage(
+          "볼륨 설정을 저장하지 못했어요.",
+        );
+      } finally {
+        setIsSaving(false);
+      }
+    };
+
+  return (
+    <div className="flex min-h-full flex-col px-5 pb-6">
+      <section className="pt-8">
+        <h1
+          className="
+            font-sans
+            text-[24px]
+            font-bold
+            leading-[36px]
+            text-[#ECF3F2]
+          "
+        >
+          이명이 노이즈랑 자연스럽게
+          <br />
+          어울리는 지점을 찾아보세요.
+        </h1>
+
+        {/* 현재 볼륨 */}
+        <div
+          className="
+            mt-10
+            rounded-[1rem]
+            border
+            border-[#236653]
+            bg-[#103329]
+            p-5
+          "
+        >
+          <p className="text-[0.6875rem] font-semibold text-[#60CEA7]">
+            현재 볼륨
+          </p>
+
+          <p className="mt-2 text-[2rem] font-bold text-text-primary">
+            {volume}%
+          </p>
+
+          <div className="mt-3 flex h-[72px] w-full items-center gap-[2px]">
+            {MIXING_WAVE_HEIGHTS.map(
+              (
+                height,
+                index,
+              ) => {
+                const volumeScale =
+                  0.35 +
+                  volume *
+                    0.009;
+
+                return (
+                  <span
+                    key={index}
+                    className="
+                      min-w-[3px]
+                      flex-1
+                      rounded-full
+                      bg-[#60CEA7]
+                      transition-[height]
+                      duration-150
+                    "
+                    style={{
+                      height: `${Math.max(
+                        6,
+                        height *
+                          volumeScale,
+                      )}px`,
+                    }}
+                  />
+                );
+              },
+            )}
+          </div>
+        </div>
+
+        {/* 볼륨 조절 */}
+        <div className="mt-7 flex w-full items-center justify-between">
+          <button
+            type="button"
+            onClick={
+              handleVolumeDown
+            }
+            aria-label="볼륨 낮추기"
+            className="
+              flex
+              h-[35px]
+              w-[35px]
+              shrink-0
+              items-center
+              justify-center
+              rounded-full
+              border
+              border-[#2B8E78]
+            "
+          >
+            <img
+              src={minusIcon}
+              alt=""
+              className="h-5 w-5"
+            />
+          </button>
+
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={volume}
+            onChange={(
+              event,
+            ) =>
+              handleVolumeChange(
+                Number(
+                  event.target
+                    .value,
+                ),
+              )
+            }
+            aria-label="볼륨 조절"
+            className="
+              mx-5
+              min-w-0
+              flex-1
+              accent-[#60CEA7]
+            "
+          />
+
+          <button
+            type="button"
+            onClick={
+              handleVolumeUp
+            }
+            aria-label="볼륨 높이기"
+            className="
+              flex
+              h-[35px]
+              w-[35px]
+              shrink-0
+              items-center
+              justify-center
+              rounded-full
+              border
+              border-[#2B8E78]
+            "
+          >
+            <img
+              src={plusIcon}
+              alt=""
+              className="h-5 w-5"
+            />
+          </button>
+        </div>
+
+        {/* 설명 */}
+        <div className="mt-[40px] flex items-start gap-[11px]">
+          <span
+            className="
+              shrink-0
+              text-[15px]
+              leading-none
+              text-[#809EA8]
+            "
+            aria-hidden="true"
+          >
+            ⓘ
+          </span>
+
+          <div className="min-w-0">
+            <p className="text-[12px] text-[#809EA8]">
+              무엇을 기준으로 조절하면 되나요?
+            </p>
+
+            <p className="mt-[8px] text-[11px] leading-normal text-[#809EA8]">
+              이명이 완전히 들리지 않는다면
+              볼륨을 조금 낮춰주세요.
+              <br />
+              반대로 이명이 커서 신경 쓰인다면
+              볼륨을 키워주세요.
+            </p>
+
+            {errorMessage && (
+              <p className="mt-3 text-[12px] text-[#F09292]">
+                {errorMessage}
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* 저장 */}
+      <div className="mt-auto pt-10">
+        <button
+          type="button"
+          disabled={isSaving}
+          onClick={
+            handleSave
+          }
+          className={`
+            h-14
+            w-full
+            rounded-[0.75rem]
+            text-[0.875rem]
+            font-bold
+            ${
+              isSaving
+                ? "bg-[#214750] text-[#0D1719]"
+                : "bg-[#60CEA7] text-[#07100D]"
+            }
+          `}
+        >
+          {isSaving
+            ? "저장 중..."
+            : "저장하기"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default MixingPointPage;

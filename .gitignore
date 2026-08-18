@@ -19,8 +19,8 @@ ENV/
 *.db
 
 # Django 미디어/스태틱 (사용자 업로드 파일)
-/media/
-/staticfiles/
+media/
+staticfiles/
 
 # IDE 및 OS 설정 파일
 .vscode/

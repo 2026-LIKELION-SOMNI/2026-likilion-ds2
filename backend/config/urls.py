@@ -13,6 +13,9 @@ urlpatterns = [
     path("api/sound/", include("sound.urls")),
     path("api/data/", include("data.urls")),
     path("api/relaxtion/", include("relaxtion.urls")),
+    path("api/soundfit/", include("soundfit.urls")),
+    path("api/mypage/", include("mypage.urls")),
+    path("api/personalization/", include("personalization.urls")),
 ]
 
 if settings.DEBUG:

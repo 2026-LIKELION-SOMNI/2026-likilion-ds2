@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from .models import RelaxationSession
 
+
 # activity_type을 기준으로 화면 문구와 음성 가이드 렌더링
 class RelaxationSessionSerializer(serializers.ModelSerializer):
 
@@ -35,31 +36,3 @@ class RelaxationSessionSerializer(serializers.ModelSerializer):
         ]
 
         read_only_fields = fields
-
-# 체크인에서 이미 입력한 상태값 전달받음(별도 입력 요구 x)
-class RelaxationRecommendationRequestSerializer(
-    serializers.Serializer
-):
-
-    tinnitus_discomfort = serializers.IntegerField(
-        min_value=1,
-        max_value=5,
-    )
-
-    anxiety = serializers.IntegerField(
-        min_value=1,
-        max_value=5,
-    )
-
-    stress = serializers.BooleanField()
-
-    fatigue = serializers.IntegerField(
-        min_value=1,
-        max_value=5,
-        required=False,
-        allow_null=True,
-    )
-
-    caffeine = serializers.BooleanField(
-        default=False,
-    )

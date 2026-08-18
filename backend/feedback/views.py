@@ -90,7 +90,7 @@ class NightlyEvaluationPendingListView(APIView):
             ).data
         )
 
-
+# 평가 상세 조회
 class NightlyEvaluationDetailView(APIView):
 
     def get(self, request, uuid, pk):

@@ -1,16 +1,21 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import NatureSoundCard from "../../components/nature-sound/NatureSoundCard";
 
-import {
-  natureSoundCategories,
-  natureSounds,
-  type NatureSoundCategory,
-} from "../../mock/natureSoundData";
+import { natureSoundCategories, natureSounds, type NatureSoundCategory,} from "../../mock/natureSoundData";
+import { playNatureAudio, stopNatureAudio,} from "../../audio/natureAudio";
+
+import { getSoundSession, updateSoundBackground, } from "../../api/sound";
+import { getUserUuid, } from "../../utils/userStorage";
 
 function ChangeNatureSoundPage() {
   const navigate = useNavigate();
+  useEffect(() => {
+    return () => {
+      stopNatureAudio();
+    };
+  }, []);
 
   const [selectedCategory, setSelectedCategory] =
     useState<NatureSoundCategory>("추천");
@@ -52,22 +57,154 @@ function ChangeNatureSoundPage() {
     });
   }, [searchQuery, selectedCategory]);
 
-  const handleSoundPlay = (soundId: number) => {
-    setPlayingSoundId((previous) =>
-      previous === soundId ? null : soundId,
+  const handleSoundPlay = async (
+    soundId: number,
+  ) => {
+    const sound = natureSounds.find(
+      (item) => item.id === soundId,
     );
+
+    if (!sound) {
+      return;
+    }
+
+    if (playingSoundId === soundId) {
+      stopNatureAudio();
+      setPlayingSoundId(null);
+      return;
+    }
+
+    try {
+      await playNatureAudio(sound.audio);
+
+      setPlayingSoundId(soundId);
+    } catch (error) {
+      console.error(
+        "자연음 재생 실패",
+        error,
+      );
+    }
   };
 
-  const handleApply = () => {
+  const handleConfirm = async () => {
     if (!selectedSoundId) {
       return;
     }
 
-    // TODO:
-    // 백엔드에 변경한 자연음 전달
-    // 노치 대역 / 자동 믹싱 규칙 유지
+    const selectedSound =
+      natureSounds.find(
+        (sound) =>
+          sound.id === selectedSoundId,
+      );
 
-    navigate("/sound");
+    if (!selectedSound) {
+      return;
+    }
+
+    const uuid = getUserUuid();
+
+    const sessionId =
+      sessionStorage.getItem(
+        "somni-current-sound-session-id",
+      );
+
+    if (!uuid || !sessionId) {
+      console.error(
+        "현재 사운드 세션 정보를 찾을 수 없습니다.",
+      );
+      return;
+    }
+
+    const labelMap: Record<
+      string,
+      string
+    > = {
+      rain: "잔잔한 빗소리",
+      stream: "시냇물 소리",
+      ocean: "파도 소리",
+      air: "팬·공기음",
+    };
+
+    try {
+      /*
+      * 변경 전 현재 자연음 조회
+      */
+      const currentSession =
+        await getSoundSession(
+          uuid,
+          sessionId,
+        );
+
+      const currentParams =
+        currentSession.final_params ??
+        currentSession.generated_params;
+
+      const currentBackground =
+        currentParams?.sources?.find(
+          (source) =>
+            source.role === "ambient" ||
+            source.type === "background",
+        );
+
+      const previousValue =
+        currentBackground?.asset_tag;
+
+      /*
+      * 이전 자연음 이름 저장
+      */
+      if (previousValue) {
+        sessionStorage.setItem(
+          "somni-previous-nature-sound-label",
+          labelMap[previousValue] ??
+            previousValue,
+        );
+      }
+
+      /*
+      * 새 자연음으로 백엔드 변경
+      */
+      const updatedSession =
+        await updateSoundBackground(
+          uuid,
+          sessionId,
+          selectedSound.backendValue,
+        );
+
+      console.log(
+        "자연음 변경 결과:",
+        updatedSession,
+      );
+
+      /*
+      * 새 자연음 값 + 표시 이름 저장
+      */
+      sessionStorage.setItem(
+        "somni-selected-nature-sound",
+        selectedSound.backendValue,
+      );
+
+      sessionStorage.setItem(
+        "somni-selected-nature-sound-label",
+        labelMap[
+          selectedSound.backendValue
+        ] ?? selectedSound.title,
+      );
+
+      stopNatureAudio();
+
+      /*
+      * 바로 Sound 화면으로 가지 않고
+      * Sound Fit 안내 화면으로 이동
+      */
+      navigate(
+        "/sound-fit/nature-changed",
+      );
+    } catch (error) {
+      console.error(
+        "자연음 변경 실패",
+        error,
+      );
+    }
   };
 
   return (
@@ -273,8 +410,8 @@ function ChangeNatureSoundPage() {
         <button
           type="button"
           disabled={!selectedSoundId}
-          onClick={handleApply}
-          className={`
+          onClick={handleConfirm}
+            className={`
             h-14 w-full
             rounded-[12px]
             text-[14px]
