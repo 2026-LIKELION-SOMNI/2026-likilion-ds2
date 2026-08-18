@@ -60,11 +60,26 @@ SLEEP_LATENCY_MINUTES = {
     "over_60min": 75,
 }
 
+# soundfit 취향을 masking_ratio/modulation_intensity에 반영할 때 쓰는 값
+# (임의로 잡은 값, 실제 감도는 테스트하면서 조정 필요)
+SOUNDFIT_LAYER_MIX_TO_MASKING_RATIO = {
+    "high": 0.70,   # 노이즈 위주 선호
+    "low": 0.50,    # 자연음 위주 선호
+    # "medium"은 기존 기본값(0.60)으로 처리
+}
+
+SOUNDFIT_TEXTURE_TO_MODULATION = {
+    "clear": "medium",  # 선명하게 선호
+    "soft": "low",      # 부드럽게 선호
+    # "balanced"는 기존 기본값("medium")으로 처리
+}
+
 # 기록용(어떤 값이 부족했는지 알기 위해)
 SOURCE_TINNITUS_PROFILE = "tinnitus_profile"
 SOURCE_MIXING_POINT = "mixing_point"
 SOURCE_HEALTH_SLEEP = "health_sleep"
 SOURCE_PERSONALIZATION_PROFILE = "personalization_profile"
+SOURCE_SOUNDFIT = "soundfit_profile"  # 신규
 
 
 def _get_model(app_label: str, model_name: str):
@@ -90,6 +105,10 @@ class CurrentState:
     caffeine: bool = False
 
     recent_sleep_hours: Optional[float] = None
+
+    # soundfit 결과 (신규) - masking_ratio/modulation_intensity의 시작점(prior)으로 사용
+    soundfit_texture: Optional[str] = None
+    soundfit_layer_mix: Optional[str] = None
 
     # 자연음 개인화
     sound_tag_weights: dict = field(default_factory=dict)
@@ -118,6 +137,8 @@ class CurrentState:
             "fatigue": self.fatigue,
             "caffeine": self.caffeine,
             "recent_sleep_hours": self.recent_sleep_hours,
+            "soundfit_texture": self.soundfit_texture,
+            "soundfit_layer_mix": self.soundfit_layer_mix,
             "sound_tag_weights": self.sound_tag_weights,
             "excluded_sound_tags": self.excluded_sound_tags,
             "sound_sample_count": self.sound_sample_count,
@@ -222,6 +243,30 @@ def build_current_state(
     if state.recent_sleep_hours is None:
         state.missing_data_sources.append(
             SOURCE_HEALTH_SLEEP
+        )
+
+    # soundfit : 사용자 취향 (신규)
+    # masking_ratio/modulation_intensity 결정 시 시작점(prior)으로 사용
+    SoundFitProfile = _get_model(
+        "soundfit",
+        "SoundFitProfile",
+    )
+
+    soundfit_profile = None
+
+    if SoundFitProfile is not None:
+        soundfit_profile = (
+            SoundFitProfile.objects
+            .filter(user=user)
+            .first()
+        )
+
+    if soundfit_profile is not None:
+        state.soundfit_texture = soundfit_profile.texture
+        state.soundfit_layer_mix = soundfit_profile.layer_mix
+    else:
+        state.missing_data_sources.append(
+            SOURCE_SOUNDFIT
         )
 
     # F-503 : 누적 개인화 프로필
@@ -531,9 +576,9 @@ def decide_relaxation_activity_type(
     )
 
 # F-507 : masking level 결정
-# 현재 이명 불편도와 과거 사운드 반응을 이용해 masking 정도를 결정 
+# 현재 이명 불편도와 과거 사운드 반응을 이용해 masking 정도를 결정
 # 볼륨이 너무 컸어요는 여기에서는 사용하지 않음. mixing point에서 별도로 처리
-
+# 불편 신고 기반 판단이 최우선이며, 그 조건에 해당하지 않을 때만 soundfit(layer_mix) 취향을 시작점으로 사용한다.
 def decide_masking_ratio(
     state: CurrentState,
     discomfort_context: dict,
@@ -598,9 +643,14 @@ def decide_masking_ratio(
     ):
         return 0.75
 
+    # 신규: 위 불편 신고 기반 조건에 해당하지 않으면 soundfit layer_mix를 시작점으로 사용
+    if state.soundfit_layer_mix in SOUNDFIT_LAYER_MIX_TO_MASKING_RATIO:
+        return SOUNDFIT_LAYER_MIX_TO_MASKING_RATIO[state.soundfit_layer_mix]
+
     return 0.60
 
 # variation level 결정(불안/스트레스, 과거 사운드 반응 이용해 정도 결정)
+# 불편 신고 기반 판단이 최우선이며, 그 조건에 해당하지 않을 때만 soundfit(texture) 취향을 시작점으로 사용한다.
 def decide_modulation_intensity(
     state: CurrentState,
     discomfort_context: dict,
@@ -647,6 +697,10 @@ def decide_modulation_intensity(
         or state.stress
     ):
         return "low"
+
+    # 신규: 위 불편 신고 기반 조건에 해당하지 않으면 soundfit texture를 시작점으로 사용
+    if state.soundfit_texture in SOUNDFIT_TEXTURE_TO_MODULATION:
+        return SOUNDFIT_TEXTURE_TO_MODULATION[state.soundfit_texture]
 
     return "medium"
 
@@ -844,7 +898,7 @@ def _compute_recommended_duration(
 #1. 사운드는 모든 사용자에게 항상 제공
 #2. 노치 사운드 역시 기본 적용
 #3. CBT/이완 여부는 현재 체크인 규칙으로 결정
-#4. 자연음 / masking / variation / duration 개인화
+#4. 자연음 / masking / variation / duration 개인화 (soundfit 취향을 시작점으로 반영)
 #5. 직전 volume_too_loud 반응이 있으면 다음 세션 mixing point만 일시적으로 감소
 def decide_intervention(
     *,
@@ -891,7 +945,7 @@ def decide_intervention(
         excluded_background=previous_background,
     )
 
-    # 4. masking
+    # 4. masking (soundfit layer_mix 반영)
     masking_ratio = (
         decide_masking_ratio(
             state,
@@ -901,7 +955,7 @@ def decide_intervention(
             ),
         )
     )
-    # 5. variation
+    # 5. variation (soundfit texture 반영)
     modulation_intensity = (
         decide_modulation_intensity(
             state,
@@ -931,6 +985,11 @@ def decide_intervention(
         "modulation_intensity": modulation_intensity,
         "mixing_point_gain": mixing_point_gain,
         "duration_minutes": duration_minutes,
+        # 신규: 이번 결정에 soundfit 값이 어떤 상태로 반영됐는지 추적용으로 남김
+        "soundfit_applied": {
+            "texture": state.soundfit_texture,
+            "layer_mix": state.soundfit_layer_mix,
+        },
     }
 
     reason_parts = [
@@ -941,6 +1000,12 @@ def decide_intervention(
         f"mixing_point_gain={mixing_point_gain}",
         f"duration_minutes={duration_minutes}",
     ]
+
+    if state.soundfit_texture or state.soundfit_layer_mix:
+        reason_parts.append(
+            "soundfit="
+            f"(texture={state.soundfit_texture}, layer_mix={state.soundfit_layer_mix})"
+        )
 
     if relaxation_activity_type:
         reason_parts.append(
