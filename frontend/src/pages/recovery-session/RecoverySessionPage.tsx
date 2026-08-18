@@ -305,18 +305,22 @@ function RecoverySessionPage() {
           );
 
           
-          if (
-            session.status ===
-            "generation_failed"
-          ) {
-            setScreen(
-              "initial-error",
-            );
+        if (
+          session.status ===
+          "generation_failed"
+        ) {
+          setScreen(
+            "initial-error",
+          );
 
-            return;
-          }
+          return;
+        }
 
-          setScreen("session");
+        localStorage.removeItem(
+          "somni-data-deleted",
+        );
+
+        setScreen("session");
         } catch (error) {
           console.error(
             "오늘의 사운드 생성 실패",
@@ -1767,7 +1771,10 @@ function RecoverySessionPage() {
           setSoundSession(
             session,
           );
-
+          sessionStorage.setItem(
+            "somni-current-sound-session-id",
+            session.session_id,
+          );
           if (
             session.status ===
             "generation_failed"
@@ -1778,6 +1785,10 @@ function RecoverySessionPage() {
 
             return;
           }
+
+          localStorage.removeItem(
+            "somni-data-deleted",
+          );
 
           setScreen("session");
         } catch (error) {

@@ -7,6 +7,7 @@ import minusIcon from "../../assets/icons/Minus.svg";
 import { playMixingPointNoise, setMixingPointGain, stopTinnitusAudio,} from "../../audio/tinnitusAudio";
 
 import { getPitchMatchSession, } from "../../utils/pitchMatchStorage";
+import { saveMixingPoint, } from "../../services/tinnitusService";
 
 const MIXING_WAVE_HEIGHTS = [
   48, 42, 34, 28, 24, 22, 24, 28,
@@ -18,6 +19,7 @@ const MIXING_WAVE_HEIGHTS = [
 ];
 
 const MAX_MIXING_GAIN = 0.6;
+const INITIAL_VOLUME = 22;
 
 function volumeToGain(
   volume: number,
@@ -40,6 +42,49 @@ function MixingPointPage() {
     errorMessage,
     setErrorMessage,
   ] = useState("");
+
+  const handleStart =
+    async () => {
+      if (!pitchMatchSession) {
+        setErrorMessage(
+          "음역 매칭 정보를 찾지 못했어요.",
+        );
+        return;
+      }
+
+      try {
+        const mixingPointGain =
+          volumeToGain(volume);
+
+        stopTinnitusAudio();
+
+        await saveMixingPoint(
+          pitchMatchSession.id,
+          mixingPointGain,
+        );
+
+        sessionStorage.setItem(
+          "somni-sound-setup-completed",
+          "true",
+        );
+
+        navigate(
+          "/recovery-session",
+          {
+            replace: true,
+          },
+        );
+      } catch (error) {
+        console.error(
+          "혼합점 저장 실패",
+          error,
+        );
+
+        setErrorMessage(
+          "볼륨 설정을 저장하지 못했어요.",
+        );
+      }
+    };
 
   const pitchMatchSession =
     getPitchMatchSession();
@@ -64,7 +109,7 @@ function MixingPointPage() {
 
         try {
           const gain =
-            volumeToGain(volume);
+            volumeToGain(INITIAL_VOLUME);
 
           await playMixingPointNoise(
             pitchMatchSession
@@ -334,8 +379,7 @@ function MixingPointPage() {
         <button
           type="button"
           onClick={() => {
-            stopTinnitusAudio();
-            navigate("/recovery-session");
+            void handleStart();
           }}
           
           className="

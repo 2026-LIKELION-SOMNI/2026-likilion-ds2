@@ -7,6 +7,7 @@ import ExclamationMark from "../../assets/icons/ExclamationMark.svg";
 import { getMyPageProfileSummary, type MyPageProfileSummary, } from "../../api/mypage";
 
 import { getUserUuid } from "../../utils/userStorage";
+import { deleteAllUserData, } from "../../api/data";
 
 function ChevronRight() {
   return (
@@ -33,6 +34,12 @@ function MyPage() {
 
   const [showDeleteModal, setShowDeleteModal] =
     useState(false);
+
+  const [
+    isDeleting,
+    setIsDeleting,
+  ] = useState(false);
+
   const isDataDeleted =
     localStorage.getItem("somni-data-deleted") === "true";
 
@@ -78,6 +85,79 @@ function MyPage() {
 
     void loadProfileSummary();
   }, []);
+
+  const handleDeleteAllData =
+    async () => {
+      const uuid =
+        getUserUuid();
+
+      if (
+        !uuid ||
+        isDeleting
+      ) {
+        return;
+      }
+
+      try {
+        setIsDeleting(true);
+
+        const result =
+          await deleteAllUserData(
+            uuid,
+          );
+
+        console.log(
+          "전체 데이터 삭제 완료:",
+          result,
+        );
+
+        /*
+        * 프론트 화면 상태용
+        */
+        localStorage.setItem(
+          "somni-data-deleted",
+          "true",
+        );
+
+        /*
+        * 기존 세션 관련 임시값 제거
+        */
+        sessionStorage.removeItem(
+          "somni-current-sound-session-id",
+        );
+
+        sessionStorage.removeItem(
+          "somni-selected-nature-sound",
+        );
+
+        sessionStorage.removeItem(
+          "somni-selected-nature-sound-label",
+        );
+
+        sessionStorage.removeItem(
+          "somni-previous-nature-sound-label",
+        );
+
+        sessionStorage.removeItem(
+          "somni-sound-setup-completed",
+        );
+
+        setShowDeleteModal(
+          false,
+        );
+
+        navigate(
+          "/my/delete-complete",
+        );
+      } catch (error) {
+        console.error(
+          "전체 데이터 삭제 실패",
+          error,
+        );
+      } finally {
+        setIsDeleting(false);
+      }
+    };
 
   return (
     <div className="flex min-h-full flex-col px-5 pb-[94px]">      {/* 마이 */}
@@ -147,10 +227,6 @@ function MyPage() {
           <button
             type="button"
             onClick={() => {
-              localStorage.removeItem(
-                "somni-data-deleted",
-              );
-
               navigate("/frequency");
             }}
             className="
@@ -813,21 +889,13 @@ function MyPage() {
               </p>
             </div>
 
-            {/* 실제 삭제 API는 아직 연결 X */}
+            {/* 실제 삭제 */}
             <div className="mt-[36px] w-full">
               <button
                 type="button"
+                disabled={isDeleting}
                 onClick={() => {
-                  localStorage.setItem(
-                    "somni-data-deleted",
-                    "true",
-                  );
-
-                  setShowDeleteModal(false);
-
-                  navigate(
-                    "/my/delete-complete",
-                  );
+                  void handleDeleteAllData();
                 }}
                 className="
                   flex
@@ -843,7 +911,9 @@ function MyPage() {
                   text-[#F0F7FA]
                 "
               >
-                모든 데이터 삭제
+                {isDeleting
+                  ? "삭제 중..."
+                  : "모든 데이터 삭제"}
               </button>
 
               <button
