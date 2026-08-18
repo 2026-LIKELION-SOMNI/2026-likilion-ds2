@@ -4,6 +4,7 @@ import MainLayout from "../layouts/MainLayout";
 import OnboardingLayout from "../layouts/OnboardingLayout";
 
 import StartPage from "../pages/onboarding/StartPage";
+import SafetyGuidePage from "../pages/onboarding/SafetyGuidePage";
 import HomePage from "../pages/home/HomePage";
 import CheckInPage from "../pages/check-in/CheckInPage";
 import FrequencyPage from "../pages/frequency/FrequencyPage";
@@ -29,6 +30,10 @@ const router = createBrowserRouter([
       {
         path: "/onboarding",
         element: <StartPage />,
+      },
+      {
+        path: "/onboarding/safety",
+        element: <SafetyGuidePage />,
       },
     ],
   },
