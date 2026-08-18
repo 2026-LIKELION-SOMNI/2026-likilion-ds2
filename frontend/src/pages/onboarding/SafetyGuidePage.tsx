@@ -15,8 +15,7 @@ function SafetyGuidePage() {
     <div
       className="
         flex
-        h-full
-        min-h-0
+        min-h-full
         flex-col
         px-6
         pb-[2.5rem]

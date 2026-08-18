@@ -1,15 +1,18 @@
 interface SectionTitleProps {
   title: string;
   description?: string;
+  id?: string;
 }
 
 function SectionTitle({
   title,
   description,
+  id,
 }: SectionTitleProps) {
   return (
     <div>
-      <p
+      <h2
+        id={id}
         className="
           font-sans
           text-[0.9375rem]
@@ -19,7 +22,7 @@ function SectionTitle({
         "
       >
         {title}
-      </p>
+      </h2>
 
       {description && (
         <p

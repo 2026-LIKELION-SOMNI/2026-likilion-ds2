@@ -23,6 +23,7 @@ function ScaleSelector({
 }: ScaleSelectorProps) {
   return (
     <div
+      aria-invalid={hasError || undefined}
       className={`
         w-full
         rounded-[1.125rem]
@@ -33,7 +34,7 @@ function ScaleSelector({
         ${hasError ? "border-[#E5484D]" : "border-[#2D4548]"}
       `}
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-[0.5rem]">
         <span
           className="
             font-sans
@@ -48,6 +49,7 @@ function ScaleSelector({
 
         <span
           className="
+            shrink-0
             font-sans
             text-[0.625rem]
             font-normal
@@ -74,7 +76,11 @@ function ScaleSelector({
         </p>
       )}
 
-      <div className="mt-[0.75rem] flex items-center justify-between">
+      <div
+        role="radiogroup"
+        aria-label={label}
+        className="mt-[0.75rem] flex items-center justify-between gap-[0.5rem]"
+      >
         {SCALE_VALUES.map((scaleValue) => {
           const isSelected = value === scaleValue;
 
@@ -82,18 +88,19 @@ function ScaleSelector({
             <button
               key={scaleValue}
               type="button"
-              aria-pressed={isSelected}
+              role="radio"
+              aria-checked={isSelected}
+              aria-label={`${label} ${scaleValue}점`}
               onClick={() => onChange(scaleValue)}
               className={`
                 flex
                 h-[2.875rem]
-                w-[3.25rem]
+                max-w-[3.25rem]
+                flex-1
                 items-center
                 justify-center
                 rounded-[0.875rem]
                 border
-                pt-[0.75rem]
-                pb-[0.8125rem]
                 text-center
                 font-sans
                 text-[0.875rem]

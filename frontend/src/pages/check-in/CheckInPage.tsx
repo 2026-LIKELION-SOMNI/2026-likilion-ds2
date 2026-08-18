@@ -2,11 +2,16 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import Button from "../../components/common/Button";
+import NoteField from "../../components/common/NoteField";
 import ScaleSelector from "../../components/common/ScaleSelector";
 import SectionTitle from "../../components/common/SectionTitle";
 import SelectChip from "../../components/common/SelectChip";
-import { createCheckin } from "../../api/checkin";
+import {
+  CHECKIN_NOTE_MAX_LENGTH,
+  createCheckin,
+} from "../../api/checkin";
 import type { DailyFactor } from "../../api/checkin";
+import { toErrorMessage } from "../../api/client";
 import { getUserUuid } from "../../utils/userStorage";
 
 const FACTOR_OPTIONS: {
@@ -18,8 +23,6 @@ const FACTOR_OPTIONS: {
   { value: "fatigue", label: "피로" },
   { value: "noise_exposure", label: "소음 노출" },
 ];
-
-const NOTE_MAX_LENGTH = 255;
 
 function CheckInPage() {
   const navigate = useNavigate();
@@ -58,9 +61,9 @@ function CheckInPage() {
     );
   };
 
-  const selectNoFactor = () => {
+  const toggleNoFactor = () => {
     setFactors([]);
-    setHasNoFactor(true);
+    setHasNoFactor((previous) => !previous);
   };
 
   const handleSubmit = async () => {
@@ -84,16 +87,17 @@ function CheckInPage() {
       await createCheckin(uuid, {
         discomfort,
         tension,
-        daily_factors: hasNoFactor
-          ? []
-          : factors,
+        daily_factors: factors,
         note: note.trim(),
       });
 
       navigate("/");
-    } catch {
+    } catch (error) {
       setErrorMessage(
-        "체크인 저장에 실패했어요. 잠시 후 다시 시도해 주세요.",
+        toErrorMessage(
+          error,
+          "체크인 저장에 실패했어요. 잠시 후 다시 시도해 주세요.",
+        ),
       );
     } finally {
       setIsSaving(false);
@@ -131,7 +135,6 @@ function CheckInPage() {
           hint="1 편안함 · 5 매우 불편함"
           value={discomfort}
           onChange={setDiscomfort}
-          hasError={errorMessage !== null}
         />
 
         <ScaleSelector
@@ -139,7 +142,6 @@ function CheckInPage() {
           hint="1 안정됨 · 5 매우 불안함"
           value={tension}
           onChange={setTension}
-          hasError={errorMessage !== null}
         />
       </div>
 
@@ -163,69 +165,31 @@ function CheckInPage() {
           <SelectChip
             label="특별한 요인 없음"
             isSelected={hasNoFactor}
-            onClick={selectNoFactor}
+            onClick={toggleNoFactor}
           />
         </div>
       </section>
 
-      <section
-        className="
-          mt-[1.75rem]
-          w-full
-          rounded-[1rem]
-          border
-          border-[#2D4548]
-          bg-[#142025]
-          px-[0.875rem]
-          py-[0.875rem]
-        "
-      >
-        <label
-          htmlFor="checkin-note"
-          className="
-            font-sans
-            text-[0.6875rem]
-            font-medium
-            leading-[1.0625rem]
-            text-[#809EA8]
-          "
-        >
-          한 줄 메모 (선택)
-        </label>
-
-        <textarea
+      <div className="mt-[1.75rem]">
+        <NoteField
           id="checkin-note"
-          rows={2}
-          maxLength={NOTE_MAX_LENGTH}
-          value={note}
-          onChange={(event) =>
-            setNote(event.target.value)
-          }
+          label="한 줄 메모 (선택)"
           placeholder="예) 커피를 늦게 마셨고, 잠들기 전 더 크게 들려요."
-          className="
-            mt-[0.625rem]
-            w-full
-            resize-none
-            bg-transparent
-            font-sans
-            text-[0.6875rem]
-            font-normal
-            leading-[1.0625rem]
-            text-[#ECF3F2]
-            outline-none
-            placeholder:text-[#587176]
-          "
+          value={note}
+          onChange={setNote}
+          maxLength={CHECKIN_NOTE_MAX_LENGTH}
         />
-      </section>
+      </div>
 
       {errorMessage && (
         <p
+          role="alert"
           className="
             mt-[1rem]
-            font-inter
+            font-sans
             text-[0.75rem]
             font-normal
-            leading-[145%]
+            leading-[1.125rem]
             text-[#E5484D]
           "
         >

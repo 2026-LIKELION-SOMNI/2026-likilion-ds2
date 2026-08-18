@@ -2,20 +2,25 @@ interface SelectChipProps {
   label: string;
   isSelected: boolean;
   onClick: () => void;
+  singleSelect?: boolean;
 }
 
 function SelectChip({
   label,
   isSelected,
   onClick,
+  singleSelect = false,
 }: SelectChipProps) {
   return (
     <button
       type="button"
-      aria-pressed={isSelected}
+      role={singleSelect ? "radio" : undefined}
+      aria-checked={singleSelect ? isSelected : undefined}
+      aria-pressed={singleSelect ? undefined : isSelected}
       onClick={onClick}
       className={`
         inline-flex
+        min-h-[2.75rem]
         items-center
         justify-center
         gap-[0.625rem]
