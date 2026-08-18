@@ -6,7 +6,8 @@ app_name = "sound"
 
 urlpatterns = [
     path("<uuid:uuid>/generate-today/", views.GenerateTodaySoundView.as_view(), name="generate-today"),
-    path("<uuid:uuid>/sessions/comfortable/", views.MySoundListView.as_view(), name="sessions-comfortable"),  # 신규
+    path("<uuid:uuid>/sessions/latest/", views.LatestSoundSessionView.as_view(), name="sessions-latest"),  # 신규
+    path("<uuid:uuid>/sessions/comfortable/", views.MySoundListView.as_view(), name="sessions-comfortable"),
     path("<uuid:uuid>/sessions/<uuid:session_id>/", views.SoundSessionDetailView.as_view(), name="session-detail"),
     path("<uuid:uuid>/sessions/<uuid:session_id>/regenerate/", views.RegenerateSoundView.as_view(), name="session-regenerate"),
     path("<uuid:uuid>/sessions/<uuid:session_id>/use-fallback/", views.UseFallbackSoundView.as_view(), name="session-use-fallback"),
