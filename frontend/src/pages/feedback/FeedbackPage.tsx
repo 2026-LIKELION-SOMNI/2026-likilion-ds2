@@ -337,16 +337,17 @@ function FeedbackPage() {
         {!isLoading && !evaluation && (
           <>
             <p
-              className="
+              className={`
                 mt-[1.5rem]
                 font-sans
                 text-[0.75rem]
                 font-normal
                 leading-[1.125rem]
-                text-[#587176]
-              "
+                ${errorMessage ? "text-[#E5484D]" : "text-[#809EA8]"}
+              `}
             >
-              지금은 기록할 세션이 없어요.
+              {errorMessage ??
+                "지금은 기록할 세션이 없어요."}
             </p>
 
             <div className="mt-auto">

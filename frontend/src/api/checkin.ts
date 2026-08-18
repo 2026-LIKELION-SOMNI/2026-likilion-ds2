@@ -1,3 +1,5 @@
+import { request, requestOrNull } from "./client";
+
 export type DailyFactor =
   | "caffeine"
   | "stress"
@@ -27,38 +29,9 @@ export interface CheckinPayload {
   note?: string;
 }
 
-async function request<T>(
-  url: string,
-  options?: RequestInit,
-): Promise<T> {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
-  });
+export const CHECKIN_NOTE_MAX_LENGTH = 255;
 
-  if (!response.ok) {
-    const errorBody = await response
-      .json()
-      .catch(() => null);
-
-    console.error(
-      "체크인 API 실패:",
-      errorBody,
-    );
-
-    throw new Error(
-      errorBody?.detail ??
-        `API 요청 실패 (${response.status})`,
-    );
-  }
-
-  return response.json() as Promise<T>;
-}
-
-export async function createCheckin(
+export function createCheckin(
   uuid: string,
   payload: CheckinPayload,
 ) {
@@ -71,27 +44,13 @@ export async function createCheckin(
   );
 }
 
-export async function getLatestCheckin(
-  uuid: string,
-) {
-  const response = await fetch(
+export function getLatestCheckin(uuid: string) {
+  return requestOrNull<CheckinRecord>(
     `/api/checkin/${uuid}/latest/`,
   );
-
-  if (response.status === 404) {
-    return null;
-  }
-
-  if (!response.ok) {
-    throw new Error(
-      `API 요청 실패 (${response.status})`,
-    );
-  }
-
-  return (await response.json()) as CheckinRecord;
 }
 
-export async function getCheckinList(
+export function getCheckinList(
   uuid: string,
   date?: string,
 ) {

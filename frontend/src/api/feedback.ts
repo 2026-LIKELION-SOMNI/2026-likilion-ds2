@@ -1,3 +1,5 @@
+import { request, requestOrNull } from "./client";
+
 export type SleepLatency =
   | "under_15min"
   | "15_30min"
@@ -61,63 +63,15 @@ export interface NightlyEvaluationPayload {
   note?: string;
 }
 
-async function request<T>(
-  url: string,
-  options?: RequestInit,
-): Promise<T> {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
-  });
+export const EVALUATION_NOTE_MAX_LENGTH = 100;
 
-  if (!response.ok) {
-    const errorBody = await response
-      .json()
-      .catch(() => null);
-
-    console.error(
-      "결과 기록 API 실패:",
-      errorBody,
-    );
-
-    throw new Error(
-      errorBody?.detail ??
-        `API 요청 실패 (${response.status})`,
-    );
-  }
-
-  return response.json() as Promise<T>;
-}
-
-export async function getTodayEvaluation(
-  uuid: string,
-) {
-  const response = await fetch(
+export function getTodayEvaluation(uuid: string) {
+  return requestOrNull<NightlyEvaluation>(
     `/api/feedback/${uuid}/today/`,
   );
-
-  if (response.status === 404) {
-    return null;
-  }
-
-  if (!response.ok) {
-    const errorBody = await response
-      .json()
-      .catch(() => null);
-
-    throw new Error(
-      errorBody?.detail ??
-        `API 요청 실패 (${response.status})`,
-    );
-  }
-
-  return (await response.json()) as NightlyEvaluation;
 }
 
-export async function getPendingEvaluations(
+export function getPendingEvaluations(
   uuid: string,
 ) {
   return request<NightlyEvaluation[]>(
@@ -125,7 +79,7 @@ export async function getPendingEvaluations(
   );
 }
 
-export async function getEvaluationDetail(
+export function getEvaluationDetail(
   uuid: string,
   evaluationId: number,
 ) {
@@ -134,7 +88,7 @@ export async function getEvaluationDetail(
   );
 }
 
-export async function submitEvaluation(
+export function submitEvaluation(
   uuid: string,
   evaluationId: number,
   payload: NightlyEvaluationPayload,
