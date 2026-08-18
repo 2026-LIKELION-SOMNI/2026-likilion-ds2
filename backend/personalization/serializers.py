@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import InterventionDecision, UserPersonalizationProfile
+from sound.services import build_summary_label_from_strategy
 
 # 오늘 개인화 개입 결정을 생성할 때 받는 입력값
 class InterventionDecisionCreateSerializer(serializers.Serializer):
@@ -46,6 +47,7 @@ class InterventionDecisionSerializer(serializers.ModelSerializer):
             "relaxation_session_id",
             "decided_at",
             "relaxation_recommendation_source",
+            "sound_summary",
         ]
 
         read_only_fields = fields

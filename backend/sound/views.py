@@ -15,14 +15,7 @@ from tinnitus.models import PitchMatchSession
 
 from . import services
 from .models import SoundDiscomfortReport, SoundSession
-from .serializers import (
-    GenerateTodaySoundRequestSerializer,
-    SoundBackgroundUpdateSerializer,
-    SoundDiscomfortReportSerializer,
-    SoundPlaybackUpdateSerializer,
-    SoundSessionResultSerializer,
-    SoundVolumeUpdateSerializer,
-)
+from .serializers import *
 
 
 logger = logging.getLogger(__name__)
@@ -1037,4 +1030,53 @@ class SoundDiscomfortReportView(APIView):
         return Response(
             response_data,
             status=status.HTTP_201_CREATED,
+        )
+
+#이전에 편안했던 사운드 듣기
+class SwitchToComfortableSoundView(APIView):
+    def post(self, request, uuid, session_id):
+        user = get_object_or_404(AnonymousUser, uuid=uuid)
+        source_session = get_object_or_404(
+            SoundSession, session_id=session_id, user=user
+        )
+        new_session = services.switch_to_comfortable_session(user, source_session)
+        return Response(
+            SoundSessionResultSerializer(new_session).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class HomeComfortableSoundView(APIView):
+    def get(self, request, uuid):
+        user = get_object_or_404(AnonymousUser, uuid=uuid)
+        result = services.get_latest_comfortable_session(user)
+
+        if result is None:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        data = {
+            "session_id": result["session"].session_id,
+            "sound_summary": services.build_sound_summary_label(result["session"]),
+            "evaluated_at": result["evaluated_at"],
+        }
+        return Response(ComfortableSoundItemSerializer(data).data)
+
+
+# 마이페이지 "나의 사운드" 목록
+class MySoundListView(APIView):
+    def get(self, request, uuid):
+        user = get_object_or_404(AnonymousUser, uuid=uuid)
+        items = services.list_comfortable_sessions_with_meta(user)
+
+        data = [
+            {
+                "session_id": item["session"].session_id,
+                "sound_summary": services.build_sound_summary_label(item["session"]),
+                "evaluated_at": item["evaluated_at"],
+            }
+            for item in items
+        ]
+
+        return Response(
+            ComfortableSoundItemSerializer(data, many=True).data
         )
