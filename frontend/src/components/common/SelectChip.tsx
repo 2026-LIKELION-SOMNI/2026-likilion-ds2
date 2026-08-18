@@ -32,7 +32,7 @@ function SelectChip({
         ${
           isSelected
             ? "border-[#2B8E78] bg-[#12382E] text-[#61DBB8]"
-            : "border-[#2D4548] bg-[#142025] text-[#809EA8]"
+            : "border-[#24464E] bg-[#112126] text-[#809EA8]"
         }
       `}
     >
