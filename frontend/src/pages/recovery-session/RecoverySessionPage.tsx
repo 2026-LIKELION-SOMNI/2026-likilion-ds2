@@ -868,11 +868,9 @@ function RecoverySessionPage() {
           newSession.session_id,
         );
 
-        setSoundSession(
-          newSession,
+        localStorage.removeItem(
+          "somni-data-deleted",
         );
-
-
         setSoundSession(
           newSession,
         );
