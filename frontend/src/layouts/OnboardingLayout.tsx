@@ -16,6 +16,7 @@ function OnboardingLayout() {
         className="
           safe-area-top
           safe-area-bottom
+          row-start-2
           h-full
           overflow-y-auto
           overscroll-y-contain
