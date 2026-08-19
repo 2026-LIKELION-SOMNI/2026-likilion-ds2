@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>온보딩 API 테스트</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; }
+        section { border: 1px solid #ccc; padding: 16px; margin-bottom: 16px; border-radius: 8px; }
+        input, button { padding: 6px 10px; margin: 4px 0; }
+        button { cursor: pointer; }
+        pre { background: #f4f4f4; padding: 10px; border-radius: 4px; white-space: pre-wrap; }
+        label { display: block; margin: 4px 0; }
+    </style>
+</head>
+<body>
+    <h1>온보딩 API 테스트 페이지</h1>
+
+    <section>
+        <h3>0. 익명 유저 생성 (accounts)</h3>
+        <button onclick="registerUser()">유저 생성</button>
+        <p>현재 UUID: <b id="currentUuid">없음</b></p>
+    </section>
+
+    <section>
+        <h3>1. 고지 확인 (F-103)</h3>
+        <button onclick="confirmDisclaimer()">고지 확인 요청</button>
+    </section>
+
+    <section>
+        <h3>2. 안전 문항 제출 (F-104~107)</h3>
+        <label><input type="checkbox" id="hearing_loss"> 갑작스러운 청력 저하</label>
+        <label><input type="checkbox" id="one_sided"> 한쪽에서만 지속되는 이명</label>
+        <label><input type="checkbox" id="pulse_sound"> 맥박에 맞춰 들리는 소리</label>
+        <label><input type="checkbox" id="dizziness"> 심한 어지럼증 동반</label>
+        <button onclick="submitSafetyCheck()">제출</button>
+    </section>
+
+    <section>
+        <h3>3. 온보딩 완료</h3>
+        <button onclick="completeOnboarding()">완료 처리</button>
+    </section>
+
+    <section>
+        <h3>4. 상태 조회</h3>
+        <button onclick="getStatus()">상태 확인</button>
+    </section>
+
+    <h3>결과</h3>
+    <pre id="result">여기에 응답이 표시됩니다.</pre>
+
+    <script>
+        let uuid = null;
+
+        function show(data) {
+            document.getElementById("result").textContent = JSON.stringify(data, null, 2);
+        }
+
+        async function registerUser() {
+            const res = await fetch("/api/accounts/register/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({}),
+            });
+            const data = await res.json();
+            uuid = data.uuid;
+            document.getElementById("currentUuid").textContent = uuid;
+            show(data);
+        }
+
+        async function confirmDisclaimer() {
+            if (!uuid) return alert("먼저 유저를 생성하세요");
+            const res = await fetch("/api/onboarding/disclaimer/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ uuid }),
+            });
+            show(await res.json());
+        }
+
+        async function submitSafetyCheck() {
+            if (!uuid) return alert("먼저 유저를 생성하세요");
+            const body = {
+                hearing_loss: document.getElementById("hearing_loss").checked,
+                one_sided: document.getElementById("one_sided").checked,
+                pulse_sound: document.getElementById("pulse_sound").checked,
+                dizziness: document.getElementById("dizziness").checked,
+            };
+            const res = await fetch(`/api/onboarding/safety-check/${uuid}/`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+            show(await res.json());
+        }
+
+        async function completeOnboarding() {
+            if (!uuid) return alert("먼저 유저를 생성하세요");
+            const res = await fetch(`/api/onboarding/complete/${uuid}/`, {
+                method: "POST",
+            });
+            show(await res.json());
+        }
+
+        async function getStatus() {
+            if (!uuid) return alert("먼저 유저를 생성하세요");
+            const res = await fetch(`/api/onboarding/status/${uuid}/`);
+            show(await res.json());
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+@import "tailwindcss";
+
+@theme {
+  /* 추후 추가 예정 */
+  --color-primary: #60cea7;
+  --color-primary-hover: #63e0b2;
+  --color-primary-light: #f1efff;
+
+  --color-app-background: #0d1417;
+  --color-surface: #0d1417;
+
+  --color-page-background: #070b0d;
+
+  --color-text-primary: #ecf3f2;
+  --color-text-secondary: #9caaa8;
+  --color-text-tertiary: #87CBE6;
+
+  --color-border: #253034;
+  --color-danger: #e5484d;
+
+  --font-sans:
+    Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --font-inter:
+    Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    min-width: 320px;
+    overflow: hidden;
+
+    font-family: var(--font-sans);
+    color: var(--color-text-primary);
+    background-color: var(--color-page-background);
+
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+
+    @media (min-width: 768px) {
+      background-color: #000000;
+      backdrop-filter: blur(40px);
+    }
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+@layer components {
+  .app-container {
+    @apply relative mx-auto grid w-full max-w-[480px] grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-app-background text-text-primary md:my-4 md:border md:border-gray-600 md:shadow-[0_0_80px_rgba(255,255,255,0.4)];
+    aspect-ratio: 9 / 20;
+  }
+}
+
+@layer utilities {
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* 스크롤은 가능하지만 스크롤바는 숨김 */
+/* 실제로 스크롤되는 요소는 속성에 scrollbar-hide 붙이면 됨  */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+
+/* 스크롤은 유지하고 스크롤바만 숨김 */
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes somni-wave {
+  0%,
+  100% {
+    transform: scaleY(var(--somni-wave-min, 0.35));
+  }
+
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.somni-wave-bar {
+  transform-origin: center;
+  animation-name: somni-wave;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .somni-wave-bar {
+    animation: none;
+    transform: scaleY(var(--somni-wave-min, 0.35));
+  }
+}
