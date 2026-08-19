@@ -93,6 +93,10 @@ const router = createBrowserRouter([
         element: <NotificationSettingsPage />,
       },
       {
+        path: "/my/safety",
+        element: <SafetyGuidePage />,
+      },
+      {
         path: "/my/sound-profile",
         element: <SoundProfilePage />,
       },

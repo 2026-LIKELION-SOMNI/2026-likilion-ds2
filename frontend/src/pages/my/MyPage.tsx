@@ -702,9 +702,19 @@ function MyPage() {
 
           <div className="h-px w-full bg-[#1F3D45]" />
 
-          {/* 서비스 안내·안전 - 아직 이동 X */}
+          {/* 서비스 안내·안전 */}
           <button
             type="button"
+            onClick={() =>
+              navigate(
+                "/my/safety",
+                {
+                  state: {
+                    from: "mypage",
+                  },
+                },
+              )
+            }
             className="
               flex
               w-full
