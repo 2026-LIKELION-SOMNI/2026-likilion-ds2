@@ -308,15 +308,27 @@ function RecoverySessionPage() {
               "somni-recovery-existing-session-id",
             );
 
-          const session =
-            existingSessionId
-              ? await getSoundSession(
-                  uuid,
-                  existingSessionId,
-                )
-              : await generateTodaySound(
-                  uuid,
-                );
+            const selectedBackground =
+              sessionStorage.getItem(
+                "somni-selected-nature-sound",
+              ) as
+                | "rain"
+                | "stream"
+                | "ocean"
+                | "air"
+                | null;
+
+            const session =
+              existingSessionId
+                ? await getSoundSession(
+                    uuid,
+                    existingSessionId,
+                  )
+                : await generateTodaySound(
+                    uuid,
+                    false,
+                    selectedBackground ?? undefined,
+                  );
 
           if (existingSessionId) {
             sessionStorage.removeItem(
@@ -1877,10 +1889,21 @@ function RecoverySessionPage() {
             "initial-loading",
           );
 
+          const selectedBackground =
+            sessionStorage.getItem(
+              "somni-selected-nature-sound",
+            ) as
+              | "rain"
+              | "stream"
+              | "ocean"
+              | "air"
+              | null;
+
           const session =
             await generateTodaySound(
               uuid,
               true,
+              selectedBackground ?? undefined,
             );
 
           setSoundSession(

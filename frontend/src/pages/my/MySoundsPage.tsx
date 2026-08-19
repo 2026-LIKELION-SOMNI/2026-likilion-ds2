@@ -180,7 +180,15 @@ function MySoundsPage() {
         );
       }
     };
-
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center px-5">
+        <p className="text-[14px] text-[#809EA8]">
+          저장된 사운드를 불러오고 있어요.
+        </p>
+      </div>
+    );
+  }
   /*
    * =========================
    * 저장된 사운드 없음

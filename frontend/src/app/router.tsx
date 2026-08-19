@@ -24,7 +24,7 @@ import NatureChangedSoundFitPage from "../pages/sound-fit/NatureChangedSoundFitP
 import RoutineReadyPage from "../pages/routine/RoutineReadyPage";
 import MixingPointPage from "../pages/sound-setup/MixingPointPage";
 import MySoundsPage from "../pages/my/MySoundsPage";
-
+import FeedbackPage from "../pages/feedback/FeedbackPage";
 
 const router = createBrowserRouter([
   {
@@ -51,6 +51,10 @@ const router = createBrowserRouter([
       {
         path: "/check-in",
         element: <CheckInPage />,
+      },
+      {
+        path: "/feedback",
+        element: <FeedbackPage />,
       },
       {
         path: "/frequency",

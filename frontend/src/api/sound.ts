@@ -183,6 +183,7 @@ async function request<T>(
 export async function generateTodaySound(
   uuid: string,
   forceRegenerate = false,
+  background?: SoundBackground,
 ) {
   return request<SoundSession>(
     `/api/sound/${uuid}/generate-today/`,
@@ -191,6 +192,12 @@ export async function generateTodaySound(
       body: JSON.stringify({
         force_regenerate:
           forceRegenerate,
+
+        ...(background
+          ? {
+              background,
+            }
+          : {}),
       }),
     },
   );

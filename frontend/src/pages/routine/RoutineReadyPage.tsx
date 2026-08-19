@@ -158,17 +158,29 @@ function RoutineReadyPage() {
 
         try {
           setErrorMessage("");
-
-          const soundSession =
-            await generateTodaySound(
-              uuid,
-            );
+          const selectedBackground =
+            sessionStorage.getItem(
+              "somni-selected-nature-sound",
+            ) as
+              | "rain"
+              | "stream"
+              | "ocean"
+              | "air"
+              | null;
+            const soundSession =
+              await generateTodaySound(
+                uuid,
+                false,
+                selectedBackground ?? undefined,
+              );
 
           sessionStorage.setItem(
             "somni-current-sound-session-id",
             soundSession.session_id,
           );
-
+          sessionStorage.removeItem(
+            "somni-personal-sound-pending",
+          );
           navigate(
             "/mixing-point",
           );

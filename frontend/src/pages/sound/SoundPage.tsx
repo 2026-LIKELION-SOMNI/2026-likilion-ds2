@@ -16,7 +16,9 @@ import { playNatureAudio, stopNatureAudio, } from "../../audio/natureAudio";
 import { pauseRecoveryAudio, playRecoveryAudio, resumeRecoveryAudio,
   stopRecoveryAudio, } from "../../audio/recoveryAudio";
 
-import { getLatestSoundSession, getSoundSession, type SoundSession,
+import {
+  getLatestSoundSession,
+  type SoundSession,
 } from "../../api/sound";
 import {
   getMyPageProfileSummary,
@@ -134,79 +136,83 @@ function SoundPage() {
 
           return;
         }
+        let currentProfile:
+          MyPageProfileSummary | null = null;
+
         try {
-          const profile =
+          currentProfile =
             await getMyPageProfileSummary(
               uuid,
             );
 
-          setProfileSummary(profile);
+          setProfileSummary(
+            currentProfile,
+          );
         } catch (error) {
           console.error(
             "개인화 사운드 프로필 조회 실패",
             error,
           );
         }
-        const sessionId =
-          sessionStorage.getItem(
+
+        try {
+          const session =
+            await getLatestSoundSession(
+              uuid,
+            );
+
+          const sessionParams =
+            session.final_params ??
+            session.generated_params;
+
+          const sessionCenterFrequency =
+            sessionParams
+              ?.frequency_bands?.[0]
+              ?.center_hz;
+
+          const currentCenterFrequency =
+            currentProfile
+              ?.center_frequency;
+
+          const isCurrentSoundSession =
+            currentCenterFrequency != null &&
+            sessionCenterFrequency != null &&
+            Math.abs(
+              currentCenterFrequency -
+                sessionCenterFrequency,
+            ) < 1;
+
+          /*
+          * 새 음역매칭은 끝났지만
+          * 아직 해당 음역으로 회복세션을
+          * 생성하지 않은 상태
+          */
+          if (!isCurrentSoundSession) {
+            setCurrentSoundSession(null);
+            return;
+          }
+
+          sessionStorage.setItem(
             "somni-current-sound-session-id",
+            session.session_id,
           );
 
-        let session:
-          SoundSession | null = null;
+          console.log(
+            "현재 사운드 세션:",
+            session,
+          );
 
-        /*
-        * sessionStorage에 세션 ID가 있으면
-        * 우선 해당 세션 조회
-        */
-        if (sessionId) {
-          try {
-            session =
-              await getSoundSession(
-                uuid,
-                sessionId,
-              );
-          } catch (error) {
-            console.warn(
-              "저장된 사운드 세션 조회 실패. 최신 세션을 조회합니다.",
-              error,
-            );
-          }
+          setCurrentSoundSession(
+            session,
+          );
+        } catch (error) {
+          console.error(
+            "최신 사운드 세션 조회 실패",
+            error,
+          );
+
+          setCurrentSoundSession(null);
         }
-
-        /*
-        * 저장된 세션 ID가 없거나
-        * 기존 세션 조회에 실패한 경우
-        * 백엔드에서 가장 최근 세션 조회
-        */
-        if (!session) {
-          try {
-            session =
-              await getLatestSoundSession(
-                uuid,
-              );
-
-            /*
-            * 복구한 최신 세션 ID를
-            * 다시 sessionStorage에 저장
-            */
-            sessionStorage.setItem(
-              "somni-current-sound-session-id",
-              session.session_id,
-            );
-          } catch {
-            session = null;
-          }
-        }
-
-        console.log(
-          "현재 사운드 세션:",
-          session,
-        );
-
-        setCurrentSoundSession(
-          session,
-        );
       };
 
     void loadCurrentSound();
@@ -877,9 +883,12 @@ function SoundPage() {
                 "somni-previous-nature-sound-label",
               );
 
-              navigate(
-                "/frequency",
+              sessionStorage.setItem(
+                "somni-personal-sound-pending",
+                "true",
               );
+
+              navigate("/frequency");
             }}
             className="
               mt-3
