@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState, } from "react";
 import { useLocation, useNavigate, } from "react-router-dom";
 
 import FrequencyCard from "../../components/frequency/FrequencyCard";
-import { clearPitchMatchSession, getPitchMatchSession, savePitchMatchSession,} from "../../utils/pitchMatchStorage";import playIcon from "../../assets/icons/play.svg";
-import pauseIcon from "../../assets/icons/pause.svg";
+import { clearPitchMatchSession, getPitchMatchSession, savePitchMatchSession,} from "../../utils/pitchMatchStorage";import playIcon from "../../assets/icons/Play.svg";
+import pauseIcon from "../../assets/icons/Pause.svg";
 
 import { saveTinnitusProfile, startPitchMatching, selectPitchMatch, selectOctave, goBackPitchMatch,
   type PitchMatchSession, type ToneType, } from "../../services/tinnitusService";
