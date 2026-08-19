@@ -181,6 +181,16 @@ function RoutineReadyPage() {
           sessionStorage.removeItem(
             "somni-personal-sound-pending",
           );
+
+          if (
+            decision?.relaxation_activity_type
+          ) {
+            navigate(
+              "/relaxation",
+            );
+            return;
+          }
+
           navigate(
             "/mixing-point",
           );
