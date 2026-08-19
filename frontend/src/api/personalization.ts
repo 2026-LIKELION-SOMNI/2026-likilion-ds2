@@ -1,7 +1,3 @@
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ??
-  "http://127.0.0.1:8000";
-
 export interface StateSnapshot {
   tinnitus_center_hz: number | null;
   tinnitus_freq_min_hz: number | null;
@@ -108,7 +104,7 @@ export async function getLatestInterventionDecision(
   uuid: string,
 ): Promise<InterventionDecision> {
   const response = await fetch(
-    `${API_BASE_URL}/api/personalization/${uuid}/decision/latest/`,
+    `/api/personalization/${uuid}/decision/latest/`,
   );
 
   if (!response.ok) {
