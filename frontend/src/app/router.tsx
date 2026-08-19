@@ -5,10 +5,13 @@ import OnboardingLayout from "../layouts/OnboardingLayout";
 import { RootPage, OnboardingStartPage, } from "./OnboardingRouteGuard";
 import SafetyGuidePage from "../pages/onboarding/SafetyGuidePage";
 import CheckInPage from "../pages/check-in/CheckInPage";
+import FeedbackPage from "../pages/feedback/FeedbackPage";
 import FrequencyPage from "../pages/frequency/FrequencyPage";
 import NatureSoundPage from "../pages/nature-sound/NatureSoundPage";
 import SoundSetupPage from "../pages/sound-setup/SoundSetupPage";
 import RecoverySessionPage from "../pages/recovery-session/RecoverySessionPage";
+import RelaxationIntroPage from "../pages/relaxation/RelaxationIntroPage";
+import RelaxationSessionPage from "../pages/relaxation/RelaxationSessionPage";
 import SoundPage from "../pages/sound/SoundPage";
 import MySoundPage from "../pages/sound/MySoundPage";
 import ChangeNatureSoundPage from "../pages/sound/ChangeNatureSoundPage";
@@ -22,7 +25,6 @@ import NatureChangedSoundFitPage from "../pages/sound-fit/NatureChangedSoundFitP
 import RoutineReadyPage from "../pages/routine/RoutineReadyPage";
 import MixingPointPage from "../pages/sound-setup/MixingPointPage";
 import MySoundsPage from "../pages/my/MySoundsPage";
-import FeedbackPage from "../pages/feedback/FeedbackPage";
 
 
 const router = createBrowserRouter([
@@ -70,6 +72,14 @@ const router = createBrowserRouter([
       {
         path: "/recovery-session",
         element: <RecoverySessionPage />,
+      },
+      {
+        path: "/relaxation",
+        element: <RelaxationIntroPage />,
+      },
+      {
+        path: "/relaxation/session",
+        element: <RelaxationSessionPage />,
       },
       {
         path: "/sound",

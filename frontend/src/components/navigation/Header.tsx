@@ -13,6 +13,12 @@ interface RecoveryHeaderState {
   showStopButton: boolean;
 }
 
+interface RelaxationHeaderState {
+  title: string;
+  showBackButton: boolean;
+  actionLabel: string | null;
+}
+
 const HEADER_INFO: Record<
   string,
   HeaderInfo
@@ -94,6 +100,14 @@ const HEADER_INFO: Record<
     title: "회복 세션",
     showBackButton: false,
   },
+  "/relaxation": {
+    title: "오늘의 수면 준비",
+    showBackButton: true,
+  },
+  "/relaxation/session": {
+    title: "수면 준비",
+    showBackButton: false,
+  },
     "/my/delete-complete": {
     title: "",
     showBackButton: false,
@@ -152,6 +166,15 @@ function Header() {
     title: "회복 세션",
     showBackButton: false,
     showStopButton: true,
+  });
+
+  const [
+    relaxationHeader,
+    setRelaxationHeader,
+  ] = useState<RelaxationHeaderState>({
+    title: "오늘의 수면 준비",
+    showBackButton: true,
+    actionLabel: null,
   });
 
   const headerInfo =
@@ -220,9 +243,39 @@ function Header() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleRelaxationHeader = (
+      event: Event,
+    ) => {
+      const customEvent =
+        event as CustomEvent<RelaxationHeaderState>;
+
+      setRelaxationHeader(
+        customEvent.detail,
+      );
+    };
+
+    window.addEventListener(
+      "relaxation-header",
+      handleRelaxationHeader,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "relaxation-header",
+        handleRelaxationHeader,
+      );
+    };
+  }, []);
+
   const isRecoverySession =
     location.pathname ===
     "/recovery-session";
+
+  const isRelaxation =
+    location.pathname.startsWith(
+      "/relaxation",
+    );
 
   /*
    * 실제 표시할 제목
@@ -233,7 +286,9 @@ function Header() {
       ? frequencyTitle
       : isRecoverySession
         ? recoveryHeader.title
-        : headerInfo.title;
+        : isRelaxation
+          ? relaxationHeader.title
+          : headerInfo.title;
 
   /*
    * 실제 표시할 뒤로가기 버튼
@@ -241,7 +296,9 @@ function Header() {
   const showBackButton =
     isRecoverySession
       ? recoveryHeader.showBackButton
-      : headerInfo.showBackButton;
+      : isRelaxation
+        ? relaxationHeader.showBackButton
+        : headerInfo.showBackButton;
 
   /*
    * 뒤로가기
@@ -316,9 +373,18 @@ function Header() {
       return;
     }
 
+    if (isRelaxation) {
+      window.dispatchEvent(
+        new Event(
+          "relaxation-back",
+        ),
+      );
+
+      return;
+    }
+
     navigate(-1);
   };
-
 
   /*
    * 회복 세션 - 중단
@@ -328,6 +394,15 @@ function Header() {
       window.dispatchEvent(
         new Event(
           "recovery-stop",
+        ),
+      );
+    };
+
+  const handleRelaxationAction =
+    () => {
+      window.dispatchEvent(
+        new Event(
+          "relaxation-action",
         ),
       );
     };
@@ -395,7 +470,6 @@ function Header() {
           {title}
         </h1>
 
-
         {/* 회복 세션 - 중단 */}
         {isRecoverySession &&
           recoveryHeader.showStopButton && (
@@ -417,6 +491,31 @@ function Header() {
               "
             >
               중단
+            </button>
+          )}
+
+        {isRelaxation &&
+          relaxationHeader.actionLabel && (
+            <button
+              type="button"
+              onClick={
+                handleRelaxationAction
+              }
+              className="
+                absolute
+                right-6
+                font-sans
+                text-[16px]
+                leading-[18px]
+                font-medium
+                text-[#87CBE6]
+                transition-opacity
+                active:opacity-60
+              "
+            >
+              {
+                relaxationHeader.actionLabel
+              }
             </button>
           )}
       </div>

@@ -131,9 +131,6 @@ function FeedbackPage() {
   const loadEvaluation = useCallback(async () => {
     const uuid = getUserUuid();
 
-    setIsLoading(true);
-    setErrorMessage(null);
-
     if (!uuid) {
       setIsLoading(false);
       setErrorMessage(MISSING_USER_MESSAGE);
