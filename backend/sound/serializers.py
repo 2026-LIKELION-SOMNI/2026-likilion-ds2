@@ -62,6 +62,17 @@ class GenerateTodaySoundRequestSerializer(serializers.Serializer):
         required=False,
     )
 
+    background = serializers.ChoiceField(
+        choices=[
+            "rain",
+            "stream",
+            "ocean",
+            "air",
+        ],
+        required=False,
+        allow_null=True,
+    )
+
 
 # 사용자가 최종 선택한 배경 자연음
 # 실제 오디오 변경은 프론트(Web Audio API)에서 수행

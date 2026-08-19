@@ -98,7 +98,7 @@ function DataDeleteCompletePage() {
     >
         <button
           type="button"
-          onClick={() => navigate("/onboarding")}
+          onClick={() => navigate("/my")}
           className="
             flex
             h-[54px]

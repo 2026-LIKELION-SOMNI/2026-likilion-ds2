@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-
+import { useLocation, useNavigate, } from "react-router-dom";
 import BottomNav from "../../components/navigation/BottomNav";
 import ExclamationMark from "../../assets/icons/ExclamationMark.svg";
 
 import { getMyPageProfileSummary, type MyPageProfileSummary, } from "../../api/mypage";
 
 import { getUserUuid } from "../../utils/userStorage";
+import { deleteAllUserData, } from "../../api/data";
 
 function ChevronRight() {
   return (
@@ -31,8 +31,17 @@ function ChevronRight() {
 function MyPage() {
   const navigate = useNavigate();
 
+  const location = useLocation();
   const [showDeleteModal, setShowDeleteModal] =
     useState(false);
+
+  const [
+    isDeleting,
+    setIsDeleting,
+  ] = useState(false);
+
+  const isDataDeleted =
+    localStorage.getItem("somni-data-deleted") === "true";
 
   const [
     profileSummary,
@@ -40,6 +49,16 @@ function MyPage() {
   ] = useState<MyPageProfileSummary | null>(
     null,
   );
+
+  const TONE_TYPE_LABEL: Record<
+    string,
+    string
+  > = {
+    high: "삐- 소리",
+    low: "윙- 소리",
+    wide: "쉬익- 소리",
+    multiple: "여러 소리",
+  };
 
   useEffect(() => {
     const uuid = getUserUuid();
@@ -65,7 +84,80 @@ function MyPage() {
     };
 
     void loadProfileSummary();
-  }, []);
+  }, [location.key]);
+  
+  const handleDeleteAllData =
+    async () => {
+      const uuid =
+        getUserUuid();
+
+      if (
+        !uuid ||
+        isDeleting
+      ) {
+        return;
+      }
+
+      try {
+        setIsDeleting(true);
+
+        const result =
+          await deleteAllUserData(
+            uuid,
+          );
+
+        console.log(
+          "전체 데이터 삭제 완료:",
+          result,
+        );
+
+        /*
+        * 프론트 화면 상태용
+        */
+        localStorage.setItem(
+          "somni-data-deleted",
+          "true",
+        );
+
+        /*
+        * 기존 세션 관련 임시값 제거
+        */
+        sessionStorage.removeItem(
+          "somni-current-sound-session-id",
+        );
+
+        sessionStorage.removeItem(
+          "somni-selected-nature-sound",
+        );
+
+        sessionStorage.removeItem(
+          "somni-selected-nature-sound-label",
+        );
+
+        sessionStorage.removeItem(
+          "somni-previous-nature-sound-label",
+        );
+
+        sessionStorage.removeItem(
+          "somni-sound-setup-completed",
+        );
+
+        setShowDeleteModal(
+          false,
+        );
+
+        navigate(
+          "/my/delete-complete",
+        );
+      } catch (error) {
+        console.error(
+          "전체 데이터 삭제 실패",
+          error,
+        );
+      } finally {
+        setIsDeleting(false);
+      }
+    };
 
   return (
     <div className="flex min-h-full flex-col px-5 pb-[94px]">      {/* 마이 */}
@@ -82,163 +174,269 @@ function MyPage() {
         마이
       </h1>
 
-    {/* 내 이명 프로필 */}
-    <section
-    className="
-        relative
-        mt-10
-        h-[167px]
-        shrink-0
-        rounded-[20px]
-        border
-        border-[#24464E]
-        bg-[#112126]
-    "
-    >
-    {/* 내 이명 프로필 */}
-    <h2
-        className="
-        absolute
-        left-[17px]
-        top-[18px]
-        font-sans
-        text-[15px]
-        font-bold
-        leading-normal
-        text-[#E8F5F2]
-        "
-    >
-        내 이명 프로필
-    </h2>
-
-    {/* 삐- 소리 */}
-    <p
-        className="
-        absolute
-        left-[17px]
-        top-[60px]
-        font-sans
-        text-[17px]
-        font-bold
-        leading-normal
-        text-[#E8F5F2]
-        "
-    >
-        삐- 소리
-    </p>
-
-    {/* 대표 음역 */}
-    <div
-        className="
-        absolute
-        left-[137px]
-        top-[59px]
-        flex
-        items-center
-        "
-    >
-        <span
-        className="
-            font-sans
-            text-[11px]
-            font-normal
-            leading-normal
-            text-[#759CA3]
-        "
+      {/* 내 이명 프로필 / 데이터 삭제 후 재설정 */}
+      {isDataDeleted ? (
+        <section
+          className="
+            mt-10
+            rounded-[20px]
+            border
+            border-[#24464E]
+            bg-[#112126]
+            p-[16px]
+          "
         >
-        대표 음역
-        </span>
+          <p
+            className="
+              font-sans
+              text-[15px]
+              font-medium
+              leading-normal
+              text-[#E8F5F2]
+            "
+          >
+            설정이 초기화 되었어요.
+          </p>
 
-        <strong
-        className="
-            ml-[10px]
-            font-sans
-            text-[18px]
-            font-bold
-            leading-normal
-            text-[#E8F5F2]
-        "
+          <h2
+            className="
+              mt-[8px]
+              font-sans
+              text-[20px]
+              font-bold
+              leading-normal
+              text-[#E8F5F2]
+            "
+          >
+            다시 나만의 사운드를 만들어볼까요?
+          </h2>
+
+          <p
+            className="
+              mt-[8px]
+              font-sans
+              text-[11px]
+              font-normal
+              leading-normal
+              text-[#759CA3]
+            "
+          >
+            약 5분 · 이명 음역을 측정하고 나에게 딱 맞는 소리를 찾을 수 있어요
+          </p>
+
+          <button
+            type="button"
+            onClick={() => {
+              localStorage.removeItem(
+                "somni-data-deleted",
+              );
+
+              navigate("/frequency");
+            }}
+            className="
+              mt-[30px]
+              flex
+              w-full
+              items-center
+              justify-center
+              rounded-[12px]
+              bg-[#61DBB8]
+              pb-[11px]
+              pt-[9px]
+              font-sans
+              text-[12px]
+              font-bold
+              leading-normal
+              text-[#0D1417]
+              active:opacity-60
+            "
+          >
+            개인화 다시 시작하기
+          </button>
+        </section>
+      ) : (
+        <section
+          className="
+            relative
+            mt-10
+            h-[167px]
+            shrink-0
+            rounded-[20px]
+            border
+            border-[#24464E]
+            bg-[#112126]
+          "
         >
-        {profileSummary?.center_frequency != null
-          ? `${Math.round(
-              profileSummary.center_frequency,
-            )}Hz`
-          : "-"}
-        </strong>
-    </div>
+          <h2
+            className="
+              absolute
+              left-[17px]
+              top-[18px]
+              font-sans
+              text-[15px]
+              font-bold
+              leading-normal
+              text-[#E8F5F2]
+            "
+          >
+            내 이명 프로필
+          </h2>
 
-    {/* 추정 범위 */}
-    <div
-        className="
-        absolute
-        left-[137px]
-        top-[88px]
-        flex
-        items-center
-        "
-    >
-        <span
-        className="
-            font-sans
-            text-[11px]
-            font-medium
-            leading-normal
-            text-[#759CA3]
-        "
-        >
-        추정 범위
-        </span>
+          <p
+            className="
+              absolute
+              left-[17px]
+              top-[60px]
+              font-sans
+              text-[17px]
+              font-bold
+              leading-normal
+              text-[#E8F5F2]
+            "
+          >
+            {profileSummary?.tone_type
+              ? TONE_TYPE_LABEL[
+                  profileSummary.tone_type
+                ] ?? "-"
+              : "-"}
+          </p>
 
-        <span
-        className="
-            ml-[10px]
-            font-sans
-            text-[11px]
-            font-medium
-            leading-normal
-            text-[#759CA3]
-        "
-        >
-        {profileSummary?.lower_bound != null &&
-          profileSummary?.upper_bound != null
-            ? `${Math.round(
-                profileSummary.lower_bound,
-              )}–${Math.round(
-                profileSummary.upper_bound,
-              )}Hz`
-            : "-"}
-        </span>
-    </div>
+          <div
+            className="
+              absolute
+              left-[137px]
+              top-[59px]
+              flex
+              items-center
+            "
+          >
+            <span
+              className="
+                font-sans
+                text-[11px]
+                font-normal
+                leading-normal
+                text-[#759CA3]
+              "
+            >
+              대표 음역
+            </span>
 
-    {/* 유형 · 음역 다시 설정 */}
-    <button
-    type="button"
-    onClick={() => navigate("/frequency")}
-    className="
-        absolute
-        bottom-[10px]
-        left-[17px]
-        right-[17px]
-        flex
-        items-center
-        justify-center
-        rounded-[12px]
-        border
-        border-[#1F3D45]
-        bg-[#0E1D21]
-        pb-[11px]
-        pt-[9px]
-        font-sans
-        text-[12px]
-        font-medium
-        leading-normal
-        text-[#E8F5F2]
-        active:opacity-60
-    "
-    >
-    유형 · 음역 다시 설정
-    </button>
-    </section>
+            <strong
+              className="
+                ml-[10px]
+                font-sans
+                text-[18px]
+                font-bold
+                leading-normal
+                text-[#E8F5F2]
+              "
+            >
+              {profileSummary?.center_frequency != null
+                ? `${Math.round(
+                    profileSummary.center_frequency,
+                  )}Hz`
+                : "-"}
+            </strong>
+          </div>
+
+          <div
+            className="
+              absolute
+              left-[137px]
+              top-[88px]
+              flex
+              items-center
+            "
+          >
+            <span
+              className="
+                font-sans
+                text-[11px]
+                font-medium
+                leading-normal
+                text-[#759CA3]
+              "
+            >
+              추정 범위
+            </span>
+
+            <span
+              className="
+                ml-[10px]
+                font-sans
+                text-[11px]
+                font-medium
+                leading-normal
+                text-[#759CA3]
+              "
+            >
+              {profileSummary?.lower_bound != null &&
+              profileSummary?.upper_bound != null
+                ? `${Math.round(
+                    profileSummary.lower_bound,
+                  )}–${Math.round(
+                    profileSummary.upper_bound,
+                  )}Hz`
+                : "-"}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              sessionStorage.removeItem(
+                "somni-current-sound-session-id",
+              );
+
+              sessionStorage.removeItem(
+                "somni-sound-setup-completed",
+              );
+
+              sessionStorage.removeItem(
+                "somni-pitch-match-session",
+              );
+
+              sessionStorage.removeItem(
+                "somni-selected-nature-sound",
+              );
+
+              sessionStorage.removeItem(
+                "somni-selected-nature-sound-label",
+              );
+
+              sessionStorage.removeItem(
+                "somni-previous-nature-sound-label",
+              );
+
+              navigate("/frequency");
+            }}
+            className="
+              absolute
+              bottom-[10px]
+              left-[17px]
+              right-[17px]
+              flex
+              items-center
+              justify-center
+              rounded-[12px]
+              border
+              border-[#1F3D45]
+              bg-[#0E1D21]
+              pb-[11px]
+              pt-[9px]
+              font-sans
+              text-[12px]
+              font-medium
+              leading-normal
+              text-[#E8F5F2]
+              active:opacity-60
+            "
+          >
+            유형 · 음역 다시 설정
+          </button>
+        </section>
+      )}
 
 
       {/* 개인화 설정 */}
@@ -257,8 +455,10 @@ function MyPage() {
 
         <div
           className="
+            relative
             mt-[14px]
             w-full
+            overflow-hidden
             rounded-[18px]
             border
             border-[#1F3D45]
@@ -366,9 +566,12 @@ function MyPage() {
 
           <div className="h-px w-full bg-[#1F3D45]" />
 
-          {/* 나의 사운드 - 아직 연결 X */}
+          {/* 나의 사운드 */}
           <button
             type="button"
+              onClick={() =>
+                navigate("/my/sounds")
+              }
             className="
               flex
               w-full
@@ -410,6 +613,19 @@ function MyPage() {
               <ChevronRight />
             </span>
           </button>
+
+          {isDataDeleted && (
+            <div
+              className="
+                absolute
+                inset-0
+                z-10
+                rounded-[18px]
+                bg-[rgba(0,0,0,0.58)]
+              "
+              aria-hidden="true"
+            />
+          )}
         </div>
       </section>
 
@@ -701,14 +917,14 @@ function MyPage() {
               </p>
             </div>
 
-            {/* 실제 삭제 API는 아직 연결 X */}
+            {/* 실제 삭제 */}
             <div className="mt-[36px] w-full">
               <button
                 type="button"
-                  onClick={() => {
-                    setShowDeleteModal(false);
-                    navigate("/my/delete-complete");
-                  }}
+                disabled={isDeleting}
+                onClick={() => {
+                  void handleDeleteAllData();
+                }}
                 className="
                   flex
                   h-[54px]
@@ -723,7 +939,9 @@ function MyPage() {
                   text-[#F0F7FA]
                 "
               >
-                모든 데이터 삭제
+                {isDeleting
+                  ? "삭제 중..."
+                  : "모든 데이터 삭제"}
               </button>
 
               <button

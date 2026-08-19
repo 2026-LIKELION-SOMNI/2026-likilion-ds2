@@ -1,3 +1,7 @@
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ??
+  "http://127.0.0.1:8000";
+
 export type SoundFitAxis =
   | "texture"
   | "layer_mix";
@@ -88,13 +92,27 @@ async function request<T>(
 }
 
 /*
+ * 이전 단계
+ */
+export async function goToPreviousSoundFitStep(
+  sessionId: number,
+) {
+  return request<SoundFitSession>(
+    `${API_BASE_URL}/api/soundfit/previous/${sessionId}/`,
+    {
+      method: "POST",
+    },
+  );
+}
+
+/*
  * Sound Fit 시작
  */
 export async function startSoundFit(
   uuid: string,
 ) {
-  return request<SoundFitSession>(
-    `/api/soundfit/start/${uuid}/`,
+    return request<SoundFitSession>(
+      `${API_BASE_URL}/api/soundfit/start/${uuid}/`,
     {
       method: "POST",
     },
@@ -109,7 +127,7 @@ export async function selectSoundFitOption(
   selected: "A" | "B",
 ) {
   return request<SoundFitSession>(
-    `/api/soundfit/select/${sessionId}/`,
+    `${API_BASE_URL}/api/soundfit/select/${sessionId}/`,
     {
       method: "POST",
       body: JSON.stringify({
@@ -126,6 +144,6 @@ export async function getSoundFitProfile(
   uuid: string,
 ) {
   return request<SoundFitProfile>(
-    `/api/soundfit/profile/${uuid}/`,
+    `${API_BASE_URL}/api/soundfit/profile/${uuid}/`,
   );
 }

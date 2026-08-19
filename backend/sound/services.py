@@ -87,12 +87,14 @@ class GenerationInput:
     # fallback sound 후보 선택용
     past_discomfort_reasons: list[str]
 
+    # 사용자가 선택한 자연음
+    selected_background: Optional[str] = None
+
     # soundfit 결과
-    # personalization 결과가 없을 때만 fallback으로 사용
     sound_fit_texture: Optional[str] = None
     sound_fit_layer_mix: Optional[str] = None
 
-    # personalization이 결정한 고수준 사운드 전략
+    # personalization 결과
     personalization_background: Optional[str] = None
     personalization_masking_ratio: Optional[float] = None
     personalization_modulation_intensity: Optional[str] = None
@@ -221,6 +223,14 @@ def decide_parameters(
 
     # 자연음 결정
     if (
+        gi.selected_background
+        in BACKGROUND_CANDIDATES
+    ):
+        preferred_bg = (
+            gi.selected_background
+        )
+
+    elif (
         gi.personalization_background
         in BACKGROUND_CANDIDATES
     ):
@@ -228,23 +238,18 @@ def decide_parameters(
             gi.personalization_background
         )
 
-        sources.append(
-            {
-                "type": "background",
-                "asset_tag": preferred_bg,
-                "role": "ambient",
-            }
+    else:
+        preferred_bg = (
+            DEFAULT_BACKGROUND
         )
 
-    #personalization 결과가 없는 예외 흐름
-    else:
-        sources.append(
-            {
-                "type": "background",
-                "asset_tag": DEFAULT_BACKGROUND,
-                "role": "ambient",
-            }
-        )
+    sources.append(
+        {
+            "type": "background",
+            "asset_tag": preferred_bg,
+            "role": "ambient",
+        }
+    )
 
     # 혼합 비율
     # personalization이 결정한 masking_ratio가 있으면 그대로 사용 /없는 경우에만 soundfit -> 기존 sound 규칙 순으로 fallback.

@@ -1,7 +1,4 @@
-import {
-  useEffect,
-  useState,
-} from "react";
+import { useEffect, useState, } from "react";
 import { useNavigate } from "react-router-dom";
 
 import BottomNav from "../../components/navigation/BottomNav";
@@ -14,26 +11,21 @@ import airAudio from "../../assets/audio/nature/air.mp3";
 import oceanAudio from "../../assets/audio/nature/ocean.mp3";
 import streamAudio from "../../assets/audio/nature/stream.mp3";
 
-import {
-  playNatureAudio,
-  stopNatureAudio,
-} from "../../audio/natureAudio";
+import { playNatureAudio, stopNatureAudio, } from "../../audio/natureAudio";
+
+import { pauseRecoveryAudio, playRecoveryAudio, resumeRecoveryAudio,
+  stopRecoveryAudio, } from "../../audio/recoveryAudio";
 
 import {
-  pauseRecoveryAudio,
-  playRecoveryAudio,
-  resumeRecoveryAudio,
-  stopRecoveryAudio,
-} from "../../audio/recoveryAudio";
-
-import {
-  getSoundSession,
+  getLatestSoundSession,
   type SoundSession,
 } from "../../api/sound";
-
 import {
-  getUserUuid,
-} from "../../utils/userStorage";
+  getMyPageProfileSummary,
+  type MyPageProfileSummary,
+} from "../../api/mypage";
+
+import { getUserUuid, } from "../../utils/userStorage";
 
 const PREVIEW_SOUNDS = [
   {
@@ -96,6 +88,12 @@ function SoundPage() {
   ] = useState<SoundSession | null>(
     null,
   );
+  const [
+    profileSummary,
+    setProfileSummary,
+  ] = useState<MyPageProfileSummary | null>(
+    null,
+  );
 
   /*
    * 상단 개인화 사운드 상태
@@ -131,28 +129,73 @@ function SoundPage() {
         const uuid =
           getUserUuid();
 
-        const sessionId =
-          sessionStorage.getItem(
-            "somni-current-sound-session-id",
-          );
-
-        if (
-          !uuid ||
-          !sessionId
-        ) {
+        if (!uuid) {
           console.warn(
-            "현재 사운드 세션 정보를 찾을 수 없습니다.",
+            "사용자 정보를 찾을 수 없습니다.",
           );
 
           return;
         }
+        let currentProfile:
+          MyPageProfileSummary | null = null;
+
+        try {
+          currentProfile =
+            await getMyPageProfileSummary(
+              uuid,
+            );
+
+          setProfileSummary(
+            currentProfile,
+          );
+        } catch (error) {
+          console.error(
+            "개인화 사운드 프로필 조회 실패",
+            error,
+          );
+        }
 
         try {
           const session =
-            await getSoundSession(
+            await getLatestSoundSession(
               uuid,
-              sessionId,
             );
+
+          const sessionParams =
+            session.final_params ??
+            session.generated_params;
+
+          const sessionCenterFrequency =
+            sessionParams
+              ?.frequency_bands?.[0]
+              ?.center_hz;
+
+          const currentCenterFrequency =
+            currentProfile
+              ?.center_frequency;
+
+          const isCurrentSoundSession =
+            currentCenterFrequency != null &&
+            sessionCenterFrequency != null &&
+            Math.abs(
+              currentCenterFrequency -
+                sessionCenterFrequency,
+            ) < 1;
+
+          /*
+          * 새 음역매칭은 끝났지만
+          * 아직 해당 음역으로 회복세션을
+          * 생성하지 않은 상태
+          */
+          if (!isCurrentSoundSession) {
+            setCurrentSoundSession(null);
+            return;
+          }
+
+          sessionStorage.setItem(
+            "somni-current-sound-session-id",
+            session.session_id,
+          );
 
           console.log(
             "현재 사운드 세션:",
@@ -164,9 +207,11 @@ function SoundPage() {
           );
         } catch (error) {
           console.error(
-            "현재 사운드 조회 실패",
+            "최신 사운드 세션 조회 실패",
             error,
           );
+
+          setCurrentSoundSession(null);
         }
       };
 
@@ -198,6 +243,13 @@ function SoundPage() {
       ?.generated_params ??
     null;
 
+    const hasPersonalizedProfile =
+      profileSummary?.center_frequency != null &&
+      profileSummary?.texture != null &&
+      profileSummary?.layer_mix != null;
+
+    const canPlayPersonalizedSound =
+      activeSoundParams !== null;
   /*
    * =========================
    * 현재 자연음 이름
@@ -206,7 +258,7 @@ function SoundPage() {
   const getBackgroundSoundLabel =
     () => {
       if (!activeSoundParams) {
-        return "개인화 사운드";
+        return "아직 생성된 사운드가 없어요";
       }
 
       const backgroundSource =
@@ -427,11 +479,15 @@ function SoundPage() {
           {/* 상세 화면 이동 */}
           <button
             type="button"
-            onClick={() =>
-              navigate(
-                "/sound/my-sound",
-              )
-            }
+            onClick={() => {
+              if (
+                hasPersonalizedProfile
+              ) {
+                navigate(
+                  "/sound/my-sound",
+                );
+              }
+            }}
             className="
               block
               w-full
@@ -471,30 +527,55 @@ function SoundPage() {
               </span>
             </div>
 
-            {/* 실제 현재 자연음 */}
+            {/* 개인화 사운드 상태 */}
             <p
               className="
                 mt-4
+                font-sans
                 text-[22px]
                 font-bold
                 text-text-primary
               "
             >
-              {getBackgroundSoundLabel()}
+              {!hasPersonalizedProfile
+                ? "개인화 회복 사운드가 없습니다."
+                : !canPlayPersonalizedSound
+                  ? "개인화 회복 사운드"
+                  : getBackgroundSoundLabel()}
             </p>
 
-            {/* 실제 노이즈 구성 */}
-            {getNoiseLabel() && (
+            {!canPlayPersonalizedSound ? (
               <p
                 className="
                   mt-1
+                  font-sans
                   text-[14px]
-                  text-[#87A3A7]
+                  font-medium
+                  leading-normal
+                  text-[#809EA8]
                 "
               >
-                {getNoiseLabel()}
+                {hasPersonalizedProfile
+                  ? "회복 세션 기록이 생기면 다시 들어볼 수 있어요."
+                  : "음역 매칭으로 개인화를 시작해보세요."}
               </p>
+            ) : (
+              getNoiseLabel() && (
+                <p
+                  className="
+                    mt-1
+                    font-sans
+                    text-[14px]
+                    font-medium
+                    leading-normal
+                    text-[#809EA8]
+                  "
+                >
+                  {getNoiseLabel()}
+                </p>
+              )
             )}
+
           </button>
 
           <div
@@ -508,11 +589,15 @@ function SoundPage() {
             {/* 파형 클릭 → 상세 이동 */}
             <button
               type="button"
-              onClick={() =>
-                navigate(
-                  "/sound/my-sound",
-                )
-              }
+              onClick={() => {
+                if (
+                  hasPersonalizedProfile
+                ) {
+                  navigate(
+                    "/sound/my-sound",
+                  );
+                }
+              }}
               className="
                 flex
                 h-[58px]
@@ -548,15 +633,17 @@ function SoundPage() {
             <button
               type="button"
               disabled={
-                !activeSoundParams
+                !canPlayPersonalizedSound
               }
               onClick={
                 handlePlayToggle
               }
               aria-label={
-                playing
-                  ? "일시정지"
-                  : "재생"
+                !canPlayPersonalizedSound
+                  ? "회복 세션 시작 후 재생 가능"
+                  : playing
+                    ? "일시정지"
+                    : "재생"
               }
               className="
                 flex
@@ -714,12 +801,17 @@ function SoundPage() {
 
           <button
             type="button"
-            onClick={() =>
+            disabled={!canPlayPersonalizedSound}
+            onClick={() => {
+              if (!canPlayPersonalizedSound) {
+                return;
+              }
+
               navigate(
                 "/sound/change-nature",
-              )
-            }
-            className="
+              );
+            }}
+            className={`
               mt-4
               flex
               w-full
@@ -727,12 +819,22 @@ function SoundPage() {
               justify-between
               rounded-[14px]
               border
-              border-[#24464A]
-              bg-[#102126]
               px-4
               py-5
               text-left
-            "
+              ${
+                canPlayPersonalizedSound
+                  ? `
+                    border-[#24464A]
+                    bg-[#102126]
+                  `
+                  : `
+                    border-[#1B3339]
+                    bg-[#0D1B1F]
+                    opacity-50
+                  `
+              }
+            `}
           >
             <div>
               <p className="text-[14px] font-semibold text-text-primary">
@@ -740,7 +842,9 @@ function SoundPage() {
               </p>
 
               <p className="mt-2 text-[11px] text-text-secondary">
-                비 · 시냇물 · 파도 · 공기음
+                {canPlayPersonalizedSound
+                  ? "비 · 시냇물 · 파도 · 공기음"
+                  : "첫 회복 세션 이후 변경할 수 있어요."}
               </p>
             </div>
 
@@ -751,11 +855,41 @@ function SoundPage() {
 
           <button
             type="button"
-            onClick={() =>
-              navigate(
-                "/frequency",
-              )
-            }
+            onClick={() => {
+              stopNatureAudio();
+              stopRecoveryAudio();
+
+              sessionStorage.removeItem(
+                "somni-current-sound-session-id",
+              );
+
+              sessionStorage.removeItem(
+                "somni-sound-setup-completed",
+              );
+
+              sessionStorage.removeItem(
+                "somni-pitch-match-session",
+              );
+
+              sessionStorage.removeItem(
+                "somni-selected-nature-sound",
+              );
+
+              sessionStorage.removeItem(
+                "somni-selected-nature-sound-label",
+              );
+
+              sessionStorage.removeItem(
+                "somni-previous-nature-sound-label",
+              );
+
+              sessionStorage.setItem(
+                "somni-personal-sound-pending",
+                "true",
+              );
+
+              navigate("/frequency");
+            }}
             className="
               mt-3
               flex
