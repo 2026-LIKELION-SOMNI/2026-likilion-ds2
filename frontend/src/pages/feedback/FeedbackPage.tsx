@@ -1,5 +1,4 @@
 import {
-  useCallback,
   useEffect,
   useState,
 } from "react";
@@ -101,14 +100,20 @@ function formatStartedAt(value: string | null) {
 function FeedbackPage() {
   const navigate = useNavigate();
 
+  const [uuid] = useState(() => getUserUuid());
   const [evaluation, setEvaluation] =
     useState<NightlyEvaluation | null>(null);
+
   const [isLoading, setIsLoading] =
-    useState(true);
+    useState(uuid !== null);
+
   const [isSaving, setIsSaving] =
     useState(false);
+
   const [errorMessage, setErrorMessage] =
-    useState<string | null>(null);
+    useState<string | null>(
+      uuid ? null : MISSING_USER_MESSAGE,
+    );
 
   const [sleepLatency, setSleepLatency] =
     useState<SleepLatency | null>(null);
@@ -128,49 +133,186 @@ function FeedbackPage() {
     useState<number | null>(null);
   const [note, setNote] = useState("");
 
-  const loadEvaluation = useCallback(async () => {
-    const uuid = getUserUuid();
+const applyEvaluation = (
+  data: NightlyEvaluation | null,
+) => {
+  setEvaluation(data);
 
-    if (!uuid) {
-      setIsLoading(false);
-      setErrorMessage(MISSING_USER_MESSAGE);
-      return;
-    }
+  if (!data) {
+    return;
+  }
 
-    try {
-      const data = await getTodayEvaluation(uuid);
+  setSleepLatency(data.sleep_latency);
+  setDiscomfortAfter(data.discomfort_after);
+  setAnxietyAfter(data.anxiety_after);
+  setRoutineHelpfulness(
+    data.routine_helpfulness,
+  );
+  setSoundReactions(
+    data.sound_reactions ?? [],
+  );
+  setCurrentFatigue(data.current_fatigue);
+  setNote(data.note ?? "");
+};
 
-      setEvaluation(data);
+const loadEvaluation = async () => {
+  if (!uuid) {
+    return;
+  }
 
-      if (data) {
-        setSleepLatency(data.sleep_latency);
-        setDiscomfortAfter(data.discomfort_after);
-        setAnxietyAfter(data.anxiety_after);
-        setRoutineHelpfulness(
-          data.routine_helpfulness,
-        );
-        setSoundReactions(
-          data.sound_reactions ?? [],
-        );
-        setCurrentFatigue(data.current_fatigue);
-        setNote(data.note ?? "");
-      }
-    } catch (error) {
-      setEvaluation(null);
-      setErrorMessage(
-        toErrorMessage(
-          error,
-          "기록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.",
-        ),
+  setIsLoading(true);
+  setErrorMessage(null);
+
+  try {
+    const data =
+      await getTodayEvaluation(uuid);
+
+    setEvaluation(data);
+
+    if (data) {
+      setSleepLatency(data.sleep_latency);
+      setDiscomfortAfter(
+        data.discomfort_after,
       );
-    } finally {
-      setIsLoading(false);
+      setAnxietyAfter(data.anxiety_after);
+      setRoutineHelpfulness(
+        data.routine_helpfulness,
+      );
+      setSoundReactions(
+        data.sound_reactions ?? [],
+      );
+      setCurrentFatigue(
+        data.current_fatigue,
+      );
+      setNote(data.note ?? "");
     }
-  }, []);
+  } catch (error) {
+    setEvaluation(null);
 
-  useEffect(() => {
-    loadEvaluation();
-  }, [loadEvaluation]);
+    setErrorMessage(
+      toErrorMessage(
+        error,
+        "기록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.",
+      ),
+    );
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+useEffect(() => {
+  if (!uuid) {
+    return;
+  }
+
+  let cancelled = false;
+
+  const loadInitialEvaluation =
+    async () => {
+      try {
+        const data =
+          await getTodayEvaluation(uuid);
+
+        if (cancelled) {
+          return;
+        }
+
+        applyEvaluation(data);
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        setEvaluation(null);
+
+        setErrorMessage(
+          toErrorMessage(
+            error,
+            "기록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.",
+          ),
+        );
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+  void loadInitialEvaluation();
+
+  return () => {
+    cancelled = true;
+  };
+}, [uuid]);
+
+useEffect(() => {
+  if (!uuid) {
+    return;
+  }
+
+  let cancelled = false;
+
+  const loadInitialEvaluation =
+    async () => {
+      try {
+        const data =
+          await getTodayEvaluation(uuid);
+
+        if (cancelled) {
+          return;
+        }
+
+        setEvaluation(data);
+
+        if (data) {
+          setSleepLatency(
+            data.sleep_latency,
+          );
+          setDiscomfortAfter(
+            data.discomfort_after,
+          );
+          setAnxietyAfter(
+            data.anxiety_after,
+          );
+          setRoutineHelpfulness(
+            data.routine_helpfulness,
+          );
+          setSoundReactions(
+            data.sound_reactions ?? [],
+          );
+          setCurrentFatigue(
+            data.current_fatigue,
+          );
+          setNote(
+            data.note ?? "",
+          );
+        }
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        setEvaluation(null);
+
+        setErrorMessage(
+          toErrorMessage(
+            error,
+            "기록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.",
+          ),
+        );
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+  void loadInitialEvaluation();
+
+  return () => {
+    cancelled = true;
+  };
+}, [uuid]);
 
   const toggleSoundReaction = (
     value: SoundReaction,
