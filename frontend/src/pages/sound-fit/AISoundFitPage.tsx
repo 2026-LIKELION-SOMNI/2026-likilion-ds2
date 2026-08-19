@@ -5,8 +5,14 @@ import SoundFitOptionCard from "../../components/sound-fit/SoundFitOptionCard";
 
 import soundFitIntroWave from "../../assets/icons/sound-fit-intro-wave.svg";
 import soundFitProfileWave from "../../assets/icons/sound-fit-profile-wave.svg";
-import { getSoundFitProfile, selectSoundFitOption, startSoundFit,
-  type SoundFitProfile, type SoundFitSession, } from "../../api/soundFit";
+import {
+  getSoundFitProfile,
+  goToPreviousSoundFitStep,
+  selectSoundFitOption,
+  startSoundFit,
+  type SoundFitProfile,
+  type SoundFitSession,
+} from "../../api/soundFit";
 import { playSoundFitPreview, stopSoundFitAudio, } from "../../audio/soundFitAudio";
 
 
@@ -524,54 +530,132 @@ function AISoundFitPage() {
    * 이전 화면
    * =========================
    */
-    const handleBack = () => {
-        stopSoundFitAudio();
-
-        setPlayingOption(null);
+  const handleBack = async () => {
+    stopSoundFitAudio();
+    setPlayingOption(null);
     setErrorMessage("");
 
     /*
     * 2/2 → 1/2
+    *
+    * 프론트 화면뿐 아니라
+    * 백엔드 SoundFitSession도
+    * 이전 라운드로 rollback
     */
     if (
-        screen === "compare" &&
-        visibleRound === 2
+      screen === "compare" &&
+      visibleRound === 2 &&
+      session
     ) {
-        setVisibleRound(1);
+      try {
+        setIsLoading(true);
 
-        setSelectedOption(
-        roundOneSelection,
+        const previousSession =
+          await goToPreviousSoundFitStep(
+            session.id,
+          );
+
+        setSession(
+          previousSession,
         );
 
-        return;
+        setVisibleRound(1);
+
+        /*
+        * 이전에 1단계에서 골랐던
+        * A/B를 다시 표시
+        */
+        setSelectedOption(
+          roundOneSelection,
+        );
+      } catch (error) {
+        console.error(
+          "Sound Fit 이전 단계 이동 실패",
+          error,
+        );
+
+        setErrorMessage(
+          "이전 단계로 돌아가지 못했어요.",
+        );
+      } finally {
+        setIsLoading(false);
+      }
+
+      return;
+    }
+
+    /*
+    * 결과 화면 → 2/2
+    *
+    * 백엔드의 done=true도 취소하고
+    * 마지막 layer_mix 라운드로 복귀
+    */
+    if (
+      screen === "result" &&
+      session
+    ) {
+      try {
+        setIsLoading(true);
+
+        const previousSession =
+          await goToPreviousSoundFitStep(
+            session.id,
+          );
+
+        setSession(
+          previousSession,
+        );
+
+        setScreen(
+          "compare",
+        );
+
+        setVisibleRound(2);
+
+        setSelectedOption(
+          null,
+        );
+      } catch (error) {
+        console.error(
+          "Sound Fit 결과 이전 이동 실패",
+          error,
+        );
+
+        setErrorMessage(
+          "이전 단계로 돌아가지 못했어요.",
+        );
+      } finally {
+        setIsLoading(false);
+      }
+
+      return;
     }
 
     /*
     * 1/2 → 시작 화면
+    *
+    * 아직 선택 제출 전이므로
+    * backend previous API 호출 필요 없음
     */
     if (
-        screen === "compare" &&
-        visibleRound === 1
+      screen === "compare" &&
+      visibleRound === 1
     ) {
-        setSelectedOption(null);
-        setScreen("intro");
+      setSelectedOption(
+        null,
+      );
 
-        return;
+      setScreen(
+        "intro",
+      );
+
+      return;
     }
 
-    /*
-    * 결과 → 2/2
-    */
-    if (screen === "result") {
-        setScreen("compare");
-        setVisibleRound(2);
-        setSelectedOption(null);
-
-        return;
-    }
-
-    setScreen("intro");
-    };
+    setScreen(
+      "intro",
+    );
+  };
 
   /*
    * =====================================
@@ -790,7 +874,9 @@ function AISoundFitPage() {
         >
           <button
             type="button"
-            onClick={handleBack}
+            onClick={() => {
+              void handleBack();
+            }}
             aria-label="이전 화면"
             className="
               absolute
@@ -936,7 +1022,7 @@ function AISoundFitPage() {
             <button
               type="button"
               onClick={() =>
-                navigate("/my")
+                navigate("/")
               }
               className="
                 h-[54px]
@@ -1065,7 +1151,7 @@ function AISoundFitPage() {
               text-[#809EA8]
             "
           >
-            {visibleRound}/3
+            {visibleRound}/2
           </p>
 
           <h2

@@ -10,7 +10,7 @@ import {
 } from "../../services/tinnitusService";
 
 import {
-  getSoundSession,
+  getLatestSoundSession,
   type SoundSession,
 } from "../../api/sound";
 
@@ -85,28 +85,20 @@ function MySoundPage() {
           /*
            * 현재 개인화 사운드 세션
            */
-          const sessionId =
-            sessionStorage.getItem(
-              "somni-current-sound-session-id",
+          try {
+            const currentSound =
+              await getLatestSoundSession(
+                uuid,
+              );
+
+            setSoundSession(
+              currentSound,
             );
-
-          if (sessionId) {
-            try {
-              const currentSound =
-                await getSoundSession(
-                  uuid,
-                  sessionId,
-                );
-
-              setSoundSession(
-                currentSound,
-              );
-            } catch (soundError) {
-              console.error(
-                "현재 사운드 조회 실패",
-                soundError,
-              );
-            }
+          } catch (soundError) {
+            console.error(
+              "최신 사운드 조회 실패",
+              soundError,
+            );
           }
         } catch (error) {
           console.error(

@@ -1,11 +1,9 @@
-import type {
-  GeneratedSoundParams,
-} from "../api/sound";
-
-import {
-  getAudioContext,
-  resumeAudioContext,
-} from "./audioContext";
+import type { GeneratedSoundParams, } from "../api/sound";
+import { getAudioContext, resumeAudioContext, } from "./audioContext";
+import rainAudio from "../assets/audio/nature/rain.mp3";
+import streamAudio from "../assets/audio/nature/stream.mp3";
+import oceanAudio from "../assets/audio/nature/ocean.mp3";
+import airAudio from "../assets/audio/nature/air.mp3";
 
 /*
  * 현재 회복 세션에서 사용하는 오디오 노드
@@ -16,6 +14,26 @@ let currentNodes: AudioNode[] = [];
 let masterGain: GainNode | null = null;
 
 let isRecoveryAudioPlaying = false;
+async function loadAudioBuffer(
+  context: AudioContext,
+  url: string,
+) {
+  const response =
+    await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(
+      `자연음 파일을 불러오지 못했어요: ${url}`,
+    );
+  }
+
+  const arrayBuffer =
+    await response.arrayBuffer();
+
+  return context.decodeAudioData(
+    arrayBuffer,
+  );
+}
 
 /*
  * white noise 생성
@@ -319,24 +337,56 @@ export async function playRecoveryAudio(
     const ambientSource =
       context.createBufferSource();
 
-    /*
-     * 현재 백엔드에서
-     * white_noise가 올 수 있으므로
-     * 우선 Web Audio API로 생성한다.
-     *
-     * rain / ocean / wind는
-     * 다음 단계에서 실제 mp3와 연결 예정.
-     */
+/*
+ * 백엔드의 asset_tag에 맞는
+ * 실제 자연음 mp3를 불러와 재생한다.
+ *
+ * rain / stream / ocean / air
+ *
+ * 예외적으로 알 수 없는 값이 오면
+ * white noise로 fallback한다.
+ */
     switch (
       ambientSourceSpec.asset_tag
     ) {
+      case "rain":
+        ambientSource.buffer =
+          await loadAudioBuffer(
+            context,
+            rainAudio,
+          );
+        break;
+
+      case "stream":
+        ambientSource.buffer =
+          await loadAudioBuffer(
+            context,
+            streamAudio,
+          );
+        break;
+
+      case "ocean":
+        ambientSource.buffer =
+          await loadAudioBuffer(
+            context,
+            oceanAudio,
+          );
+        break;
+
+      case "air":
+        ambientSource.buffer =
+          await loadAudioBuffer(
+            context,
+            airAudio,
+          );
+        break;
+
       case "white_noise":
       default:
         ambientSource.buffer =
           createWhiteNoiseBuffer(
             context,
           );
-
         break;
     }
 

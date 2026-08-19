@@ -3,7 +3,7 @@ export interface MyPageProfileSummary {
   center_frequency: number | null;
   lower_bound: number | null;
   upper_bound: number | null;
-
+  tone_type: string | null;
   texture: string | null;
   layer_mix: string | null;
 }

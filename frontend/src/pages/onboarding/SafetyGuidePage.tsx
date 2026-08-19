@@ -152,7 +152,7 @@ function SafetyGuidePage() {
       </section>
 
       <div className="mt-auto">
-        <Button onClick={() => navigate("/")}>계속</Button>
+        <Button onClick={() => navigate("/frequency")}>계속</Button>
       </div>
     </div>
   );

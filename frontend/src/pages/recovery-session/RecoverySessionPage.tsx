@@ -1,8 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useRef, useState, } from "react";
 import { useNavigate } from "react-router-dom";
 
 import playIcon from "../../assets/icons/Play.svg";
@@ -10,26 +6,25 @@ import pauseIcon from "../../assets/icons/pause-recovery.svg";
 import recoveryEndRings from "../../assets/icons/recovery-end-rings.svg";
 import recoverySessionVisual from "../../assets/icons/recovery-session-visual.svg";
 
-import {
-  pauseRecoveryAudio,
-  playRecoveryAudio,
-  resumeRecoveryAudio,
-  stopRecoveryAudio,
-} from "../../audio/recoveryAudio";
+import { pauseRecoveryAudio, playRecoveryAudio, resumeRecoveryAudio,
+  stopRecoveryAudio, } from "../../audio/recoveryAudio";
 
 import {
   generateTodaySound,
+  getSoundSession,
+  getComfortableSounds,
+  switchToComfortableSound,
   regenerateSound,
   reportSoundDiscomfort,
   updateSoundPlayback,
   useFallbackSound as requestFallbackSound,
+  type ComfortableSoundItem,
   type DiscomfortReason,
   type SoundSession,
 } from "../../api/sound";
 
-import {
-  getUserUuid,
-} from "../../utils/userStorage";
+import { getUserUuid, } from "../../utils/userStorage";
+import previousSoundEmptyIcon from "../../assets/icons/my-sound-empty.svg";
 
 type RecoveryScreen =
   | "initial-loading"
@@ -70,30 +65,25 @@ const FEEDBACK_REASON_MAP: Record<
     "dislike_background",
 };
 
-interface PreviousComfortSound {
-  id: number;
-  title: string;
-  date: string;
-  durationMinutes: number;
-}
 
-const PREVIOUS_COMFORT_SOUNDS: PreviousComfortSound[] = [
-  // 백엔드 연동 전 테스트용.
-  // 아래 두 개를 주석 처리하면 "아직 다시 들을 사운드가 없어요." 화면이 뜸.
 
-  {
-    id: 1,
-    title: "잔잔한 빗소리 + 핑크노이즈",
-    date: "8월 12일",
-    durationMinutes: 35,
-  },
-  {
-    id: 2,
-    title: "팬 · 공기음 + 핑크노이즈",
-    date: "8월 1일",
-    durationMinutes: 35,
-  },
-];
+// const PREVIOUS_COMFORT_SOUNDS: PreviousComfortSound[] = [
+//   // 백엔드 연동 전 테스트용.
+//   // 아래 두 개를 주석 처리하면 "아직 다시 들을 사운드가 없어요." 화면이 뜸.
+
+//   {
+//     id: 1,
+//     title: "잔잔한 빗소리 + 핑크노이즈",
+//     date: "8월 12일",
+//     durationMinutes: 35,
+//   },
+//   {
+//     id: 2,
+//     title: "팬 · 공기음 + 핑크노이즈",
+//     date: "8월 1일",
+//     durationMinutes: 35,
+//   },
+// ];
 
 function RecoverySessionPage() {
   const navigate = useNavigate();
@@ -111,9 +101,16 @@ function RecoverySessionPage() {
   const [
     selectedPreviousSoundId,
     setSelectedPreviousSoundId,
-  ] = useState<number | null>(
+  ] = useState<string| null>(
     null,
   );
+  const [
+    previousSounds,
+    setPreviousSounds,
+  ] =
+    useState<ComfortableSoundItem[]>(
+      [],
+    );
 
   const [screen, setScreen] =
     useState<RecoveryScreen>(
@@ -306,10 +303,38 @@ function RecoverySessionPage() {
 
           setSoundError(null);
 
-          const session =
-            await generateTodaySound(
-              uuid,
+          const existingSessionId =
+            sessionStorage.getItem(
+              "somni-recovery-existing-session-id",
             );
+
+            const selectedBackground =
+              sessionStorage.getItem(
+                "somni-selected-nature-sound",
+              ) as
+                | "rain"
+                | "stream"
+                | "ocean"
+                | "air"
+                | null;
+
+            const session =
+              existingSessionId
+                ? await getSoundSession(
+                    uuid,
+                    existingSessionId,
+                  )
+                : await generateTodaySound(
+                    uuid,
+                    false,
+                    selectedBackground ?? undefined,
+                  );
+
+          if (existingSessionId) {
+            sessionStorage.removeItem(
+              "somni-recovery-existing-session-id",
+            );
+          }
 
           console.log(
             "오늘의 사운드 생성 결과:",
@@ -324,18 +349,22 @@ function RecoverySessionPage() {
           );
 
           
-          if (
-            session.status ===
-            "generation_failed"
-          ) {
-            setScreen(
-              "initial-error",
-            );
+        if (
+          session.status ===
+          "generation_failed"
+        ) {
+          setScreen(
+            "initial-error",
+          );
 
-            return;
-          }
+          return;
+        }
 
-          setScreen("session");
+        localStorage.removeItem(
+          "somni-data-deleted",
+        );
+
+        setScreen("session");
         } catch (error) {
           console.error(
             "오늘의 사운드 생성 실패",
@@ -883,11 +912,9 @@ function RecoverySessionPage() {
           newSession.session_id,
         );
 
-        setSoundSession(
-          newSession,
+        localStorage.removeItem(
+          "somni-data-deleted",
         );
-
-
         setSoundSession(
           newSession,
         );
@@ -976,6 +1003,56 @@ function RecoverySessionPage() {
       setScreen(
         "end-confirm",
       );
+    };
+
+  const handleUsePreviousSound =
+    async () => {
+      if (
+        !selectedPreviousSoundId
+      ) {
+        return;
+      }
+
+      const uuid =
+        getUserUuid();
+
+      if (!uuid) {
+        return;
+      }
+
+      try {
+        stopRecoveryAudio();
+
+        const newSession =
+          await switchToComfortableSound(
+            uuid,
+            selectedPreviousSoundId,
+          );
+
+        setSoundSession(
+          newSession,
+        );
+
+        sessionStorage.setItem(
+          "somni-current-sound-session-id",
+          newSession.session_id,
+        );
+
+        setElapsedSeconds(0);
+        setHasStarted(false);
+        setPlaying(false);
+        setSelectedFeedback([]);
+        setSelectedPreviousSoundId(
+          null,
+        );
+
+        setScreen("session");
+      } catch (error) {
+        console.error(
+          "이전 사운드 전환 실패",
+          error,
+        );
+      }
     };
 
   /*
@@ -1069,9 +1146,7 @@ function RecoverySessionPage() {
             <button
               type="button"
               onClick={() =>
-                setChangeSoundOption(
-                  "regenerate",
-                )
+                setChangeSoundOption("regenerate")
               }
               className={`
                 mt-[38px]
@@ -1085,44 +1160,50 @@ function RecoverySessionPage() {
                 py-5
                 text-left
                 ${
-                  changeSoundOption ===
-                  "regenerate"
+                  changeSoundOption === "regenerate"
                     ? `
-                      border-[#32B996]
-                      bg-[#103D30]
+                      border-[#2B8E78]
+                      bg-[#12382E]
                     `
                     : `
-                      border-[#244C55]
-                      bg-[#102126]
+                      border-[#24464E]
+                      bg-[#112126]
                     `
                 }
               `}
             >
               <span
                 className={`
-                  mt-[2px]
+                  mt-[1px]
                   flex
-                  size-[24px]
+                  h-[22px]
+                  w-[22px]
                   shrink-0
                   items-center
                   justify-center
                   rounded-full
-                  border-2
                   ${
-                    changeSoundOption ===
-                    "regenerate"
-                      ? "border-[#60CEA7]"
-                      : "border-[#295866]"
+                    changeSoundOption === "regenerate"
+                      ? `
+                        border-2
+                        border-[#2B8E78]
+                      `
+                      : `
+                        border
+                        border-[#24464E]
+                      `
                   }
                 `}
               >
-                {changeSoundOption ===
-                  "regenerate" && (
+                {changeSoundOption === "regenerate" && (
                   <span
                     className="
-                      size-[12px]
+                      h-[12px]
+                      w-[12px]
                       rounded-full
-                      bg-[#60CEA7]
+                      border
+                      border-[#61DBB8]
+                      bg-[#61DBB8]
                     "
                   />
                 )}
@@ -1149,8 +1230,7 @@ function RecoverySessionPage() {
                     text-[#809EA8]
                   "
                 >
-                  불편했던 요소를 줄여 오늘
-                  상태에 맞는
+                  불편했던 요소를 줄여 오늘 상태에 맞는
                   <br />
                   새 조합을 다시 만들어요.
                 </span>
@@ -1161,9 +1241,7 @@ function RecoverySessionPage() {
             <button
               type="button"
               onClick={() =>
-                setChangeSoundOption(
-                  "previous",
-                )
+                setChangeSoundOption("previous")
               }
               className={`
                 mt-[18px]
@@ -1177,44 +1255,50 @@ function RecoverySessionPage() {
                 py-5
                 text-left
                 ${
-                  changeSoundOption ===
-                  "previous"
+                  changeSoundOption === "previous"
                     ? `
-                      border-[#32B996]
-                      bg-[#103D30]
+                      border-[#2B8E78]
+                      bg-[#12382E]
                     `
                     : `
-                      border-[#244C55]
-                      bg-[#102126]
+                      border-[#24464E]
+                      bg-[#112126]
                     `
                 }
               `}
             >
               <span
                 className={`
-                  mt-[2px]
+                  mt-[1px]
                   flex
-                  size-[24px]
+                  h-[22px]
+                  w-[22px]
                   shrink-0
                   items-center
                   justify-center
                   rounded-full
-                  border-2
                   ${
-                    changeSoundOption ===
-                    "previous"
-                      ? "border-[#60CEA7]"
-                      : "border-[#295866]"
+                    changeSoundOption === "previous"
+                      ? `
+                        border-2
+                        border-[#2B8E78]
+                      `
+                      : `
+                        border
+                        border-[#24464E]
+                      `
                   }
                 `}
               >
-                {changeSoundOption ===
-                  "previous" && (
+                {changeSoundOption === "previous" && (
                   <span
                     className="
-                      size-[12px]
+                      h-[12px]
+                      w-[12px]
                       rounded-full
-                      bg-[#60CEA7]
+                      border
+                      border-[#61DBB8]
+                      bg-[#61DBB8]
                     "
                   />
                 )}
@@ -1241,11 +1325,9 @@ function RecoverySessionPage() {
                     text-[#809EA8]
                   "
                 >
-                  이전 평가에서 “편안했어요”로
-                  남긴
+                  이전 평가에서 “편안했어요”로 남긴
                   <br />
-                  사운드를 골라 바로 이어 들을 수
-                  있어요.
+                  사운드를 골라 바로 이어 들을 수 있어요.
                 </span>
               </span>
             </button>
@@ -1256,7 +1338,7 @@ function RecoverySessionPage() {
             <button
               type="button"
               disabled={!changeSoundOption}
-              onClick={() => {
+              onClick={async () => {
                 if (
                   changeSoundOption ===
                   "regenerate"
@@ -1269,8 +1351,48 @@ function RecoverySessionPage() {
                   changeSoundOption ===
                   "previous"
                 ) {
-                  setSelectedPreviousSoundId(null);
-                  setScreen("previous-sounds");
+                  const uuid =
+                    getUserUuid();
+
+                  if (!uuid) {
+                    return;
+                  }
+
+                  setSelectedPreviousSoundId(
+                    null,
+                  );
+
+                  /*
+                  * 기존 regenerating 화면을
+                  * 목록 로딩 화면으로도 사용
+                  */
+                  setScreen("regenerating");
+
+                  try {
+                    const data =
+                      await getComfortableSounds(
+                        uuid,
+                      );
+
+                    setPreviousSounds(data);
+
+                    setScreen(
+                      "previous-sounds",
+                    );
+                  } catch (error) {
+                    console.error(
+                      "이전 사운드 조회 실패",
+                      error,
+                    );
+
+                    setSoundError(
+                      "이전 사운드를 불러오지 못했어요.",
+                    );
+
+                    setScreen(
+                      "change-select",
+                    );
+                  }
                 }
               }}
               className="
@@ -1319,7 +1441,7 @@ function RecoverySessionPage() {
       */
 
       const hasPreviousSounds =
-        PREVIOUS_COMFORT_SOUNDS.length > 0;
+        previousSounds.length > 0;
 
       /*
       * 1. 이전에 편안했던 사운드가 없는 경우
@@ -1332,33 +1454,31 @@ function RecoverySessionPage() {
               h-full
               min-h-0
               flex-col
-              overflow-hidden
               px-5
               pb-6
             "
           >
-            {/* 중앙 그래픽 */}
             <div
               className="
-                mt-[110px]
+                pt-[110px]
                 flex
                 justify-center
               "
             >
-              <div
+              <img
+                src={previousSoundEmptyIcon}
+                alt=""
+                aria-hidden="true"
                 className="
-                  h-[190px]
-                  w-[190px]
-                  rounded-full
-                  bg-[radial-gradient(circle,#2EA694_0%,rgba(46,166,148,0.28)_35%,rgba(46,166,148,0)_72%)]
+                  h-[120px]
+                  w-[120px]
                 "
               />
             </div>
 
-            {/* 문구 */}
             <div
               className="
-                mt-[46px]
+                mt-[38px]
                 text-center
               "
             >
@@ -1376,21 +1496,20 @@ function RecoverySessionPage() {
 
               <p
                 className="
-                  mt-[18px]
+                  mt-[15px]
                   font-sans
-                  text-[12px]
-                  leading-[18px]
+                  text-[14px]
                   font-normal
+                  leading-normal
                   text-[#809EA8]
                 "
               >
-                편하게 들은 사운드가 생기면
+                편안하게 들은 사운드가 생기면
                 <br />
                 여기에서 바로 다시 들을 수 있어요.
               </p>
             </div>
 
-            {/* 하단 */}
             <div className="mt-auto">
               <button
                 type="button"
@@ -1405,7 +1524,7 @@ function RecoverySessionPage() {
                   h-14
                   w-full
                   rounded-[12px]
-                  bg-[#60CEA7]
+                  bg-[#61DBB8]
                   font-sans
                   text-[14px]
                   font-bold
@@ -1421,13 +1540,13 @@ function RecoverySessionPage() {
                   setScreen("session")
                 }
                 className="
-                  mt-4
+                  mt-[16px]
                   h-14
                   w-full
                   rounded-[12px]
                   border
                   border-[#24464E]
-                  bg-[#102126]
+                  bg-[#112126]
                   font-sans
                   text-[14px]
                   font-bold
@@ -1456,14 +1575,23 @@ function RecoverySessionPage() {
             pb-6
           "
         >
-          <section className="mt-[42px]">
+          <section
+            className="
+              flex
+              min-h-0
+              flex-1
+              flex-col
+              pt-[50px]
+            "
+          >
             <h2
               className="
+                shrink-0
                 font-sans
-                text-[24px]
-                leading-[34px]
+                text-[25px]
                 font-bold
-                text-[#F0F7FA]
+                leading-[38px]
+                text-[#ECF3F2]
               "
             >
               편안하게 들었던 사운드를
@@ -1471,108 +1599,143 @@ function RecoverySessionPage() {
               다시 들을 수 있어요.
             </h2>
 
-            {/* 이전 사운드 목록 */}
             <div
               className="
-                mt-[36px]
-                flex
-                flex-col
-                gap-3
+                hide-scrollbar
+                mt-[30px]
+                min-h-0
+                flex-1
+                overflow-y-auto
+                overscroll-y-contain
+                pb-6
               "
             >
-              {PREVIOUS_COMFORT_SOUNDS.map(
-                (sound) => {
-                  const selected =
-                    selectedPreviousSoundId ===
-                    sound.id;
+              <div
+                className="
+                  flex
+                  flex-col
+                  gap-[15px]
+                "
+              >
+                {previousSounds.map(
+                  (sound) => {
+                    const selected =
+                      selectedPreviousSoundId ===
+                      sound.session_id;
 
-                  return (
-                    <button
-                      key={sound.id}
-                      type="button"
-                      onClick={() =>
-                        setSelectedPreviousSoundId(
-                          sound.id,
-                        )
-                      }
-                      className={`
-                        flex
-                        min-h-[88px]
-                        w-full
-                        items-start
-                        rounded-[18px]
-                        border
-                        px-4
-                        py-4
-                        text-left
-                        ${
-                          selected
-                            ? "border-[#38A887] bg-[#103D30]"
-                            : "border-[#24464E] bg-[#102126]"
+                    return (
+                      <button
+                        key={sound.session_id}
+                        type="button"
+                        onClick={() =>
+                          setSelectedPreviousSoundId(
+                            sound.session_id,
+                          )
                         }
-                      `}
-                    >
-                      {/* 라디오 */}
-                      <span
                         className={`
-                          mt-[2px]
                           flex
-                          h-[24px]
-                          w-[24px]
+                          h-[77px]
+                          w-full
                           shrink-0
-                          items-center
-                          justify-center
-                          rounded-full
-                          border-2
+                          items-start
+                          rounded-[18px]
+                          border
+                          px-[14px]
+                          pt-[14px]
+                          pb-[15px]
+                          text-left
                           ${
                             selected
-                              ? "border-[#60CEA7]"
-                              : "border-[#295866]"
+                              ? `
+                                border-[#2B8E78]
+                                bg-[#12382E]
+                              `
+                              : `
+                                border-[#24464E]
+                                bg-[#112126]
+                              `
                           }
                         `}
                       >
-                        {selected && (
+                        <span
+                          className={`
+                            mt-[1px]
+                            flex
+                            h-[22px]
+                            w-[22px]
+                            shrink-0
+                            items-center
+                            justify-center
+                            rounded-full
+                            ${
+                              selected
+                                ? `
+                                  border-2
+                                  border-[#2B8E78]
+                                `
+                                : `
+                                  border
+                                  border-[#24464E]
+                                `
+                            }
+                          `}
+                        >
+                          {selected && (
+                            <span
+                              className="
+                                h-[12px]
+                                w-[12px]
+                                rounded-full
+                                border
+                                border-[#61DBB8]
+                                bg-[#61DBB8]
+                              "
+                            />
+                          )}
+                        </span>
+
+                        <span className="ml-[14px]">
                           <span
                             className="
-                              h-[12px]
-                              w-[12px]
-                              rounded-full
-                              bg-[#60CEA7]
+                              block
+                              font-sans
+                              text-[15px]
+                              font-bold
+                              leading-normal
+                              text-[#F0F7FA]
                             "
-                          />
-                        )}
-                      </span>
+                          >
+                            {sound.sound_summary ??
+                              "개인화 사운드"}
+                          </span>
 
-                      <span className="ml-4">
-                        <span
-                          className="
-                            block
-                            font-sans
-                            text-[15px]
-                            font-bold
-                            text-[#F0F7FA]
-                          "
-                        >
-                          {sound.title}
+                          <span
+                            className="
+                              mt-[13px]
+                              block
+                              font-sans
+                              text-[11px]
+                              font-normal
+                              leading-normal
+                              text-[#809EA8]
+                            "
+                          >
+                            {new Date(
+                              sound.evaluated_at,
+                            ).toLocaleDateString(
+                              "ko-KR",
+                              {
+                                month: "long",
+                                day: "numeric",
+                              },
+                            )}
+                          </span>
                         </span>
-
-                        <span
-                          className="
-                            mt-3
-                            block
-                            font-sans
-                            text-[12px]
-                            text-[#809EA8]
-                          "
-                        >
-                          {sound.date} ·{" "}
-                          {sound.durationMinutes}분
-                        </span>
-                      </span>
-                    </button>
-                  );
-                },
-              )}
+                      </button>
+                    );
+                  },
+                )}
+              </div>
             </div>
           </section>
 
@@ -1585,20 +1748,7 @@ function RecoverySessionPage() {
                 null
               }
               onClick={() => {
-                /*
-                * TODO:
-                * 백엔드 API 생기면
-                * 선택한 이전 SoundSession을
-                * 여기서 실제로 불러와 재생.
-                *
-                * 현재는 화면 흐름 확인용.
-                */
-
-                setElapsedSeconds(0);
-                setHasStarted(false);
-                setPlaying(false);
-
-                setScreen("session");
+                void handleUsePreviousSound();
               }}
               className="
                 h-14
@@ -1609,7 +1759,7 @@ function RecoverySessionPage() {
                 text-[14px]
                 font-bold
                 text-[#07100D]
-                disabled:bg-[#214750]
+                disabled:bg-[#1F4047]
                 disabled:text-[#0D1719]
               "
             >
@@ -1691,10 +1841,12 @@ function RecoverySessionPage() {
         >
           <h2
             className="
-              font-sans
-              text-[28px]
-              font-bold
-              text-[#F0F7FA]
+            shrink-0
+            font-sans
+            text-[25px]
+            font-bold
+            leading-[38px]
+            text-[#ECF3F2]
             "
           >
             사운드를 준비하고
@@ -1737,16 +1889,30 @@ function RecoverySessionPage() {
             "initial-loading",
           );
 
+          const selectedBackground =
+            sessionStorage.getItem(
+              "somni-selected-nature-sound",
+            ) as
+              | "rain"
+              | "stream"
+              | "ocean"
+              | "air"
+              | null;
+
           const session =
             await generateTodaySound(
               uuid,
               true,
+              selectedBackground ?? undefined,
             );
 
           setSoundSession(
             session,
           );
-
+          sessionStorage.setItem(
+            "somni-current-sound-session-id",
+            session.session_id,
+          );
           if (
             session.status ===
             "generation_failed"
@@ -1757,6 +1923,10 @@ function RecoverySessionPage() {
 
             return;
           }
+
+          localStorage.removeItem(
+            "somni-data-deleted",
+          );
 
           setScreen("session");
         } catch (error) {
@@ -2531,7 +2701,7 @@ function RecoverySessionPage() {
                               whitespace-nowrap
                               ${
                                 selected
-                                  ? "border-[#38A887] bg-[#154638] text-[#61DBB8]"
+                                  ? "border-[#2B8E78] bg-[#12382E] text-[#61DBB8]"
                                   : "border-[#24464E] bg-[#112126] text-[#809EA8]"
                               }
                             `}
