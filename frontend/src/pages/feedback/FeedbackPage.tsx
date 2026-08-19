@@ -133,28 +133,6 @@ function FeedbackPage() {
     useState<number | null>(null);
   const [note, setNote] = useState("");
 
-const applyEvaluation = (
-  data: NightlyEvaluation | null,
-) => {
-  setEvaluation(data);
-
-  if (!data) {
-    return;
-  }
-
-  setSleepLatency(data.sleep_latency);
-  setDiscomfortAfter(data.discomfort_after);
-  setAnxietyAfter(data.anxiety_after);
-  setRoutineHelpfulness(
-    data.routine_helpfulness,
-  );
-  setSoundReactions(
-    data.sound_reactions ?? [],
-  );
-  setCurrentFatigue(data.current_fatigue);
-  setNote(data.note ?? "");
-};
-
 const loadEvaluation = async () => {
   if (!uuid) {
     return;
@@ -200,50 +178,6 @@ const loadEvaluation = async () => {
   }
 };
 
-useEffect(() => {
-  if (!uuid) {
-    return;
-  }
-
-  let cancelled = false;
-
-  const loadInitialEvaluation =
-    async () => {
-      try {
-        const data =
-          await getTodayEvaluation(uuid);
-
-        if (cancelled) {
-          return;
-        }
-
-        applyEvaluation(data);
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-
-        setEvaluation(null);
-
-        setErrorMessage(
-          toErrorMessage(
-            error,
-            "기록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.",
-          ),
-        );
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-  void loadInitialEvaluation();
-
-  return () => {
-    cancelled = true;
-  };
-}, [uuid]);
 
 useEffect(() => {
   if (!uuid) {
