@@ -3,6 +3,9 @@ import {
   saveUserUuid,
   removeUserUuid,
 } from "../utils/userStorage";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ??
+  "http://127.0.0.1:8000";
 
 interface AnonymousUserResponse {
   uuid: string;
@@ -18,7 +21,7 @@ interface ReconnectResponse {
 
 async function registerAnonymousUser() {
   const response = await fetch(
-    "/api/accounts/register/",
+    `${API_BASE_URL}/api/accounts/register/`,
     {
       method: "POST",
       headers: {
@@ -52,7 +55,7 @@ async function registerAnonymousUser() {
 
 async function reconnectAnonymousUser(uuid: string) {
   const response = await fetch(
-    "/api/accounts/reconnect/",
+    `${API_BASE_URL}/api/accounts/reconnect/`,
     {
       method: "POST",
       headers: {
