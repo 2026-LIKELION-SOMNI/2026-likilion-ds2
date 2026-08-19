@@ -1,7 +1,3 @@
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ??
-  "http://127.0.0.1:8000";
-
 export interface StateSnapshot {
   tinnitus_center_hz: number | null;
   tinnitus_freq_min_hz: number | null;
@@ -104,76 +100,11 @@ export interface InterventionDecision {
   decided_at: string;
 }
 
-export interface SoundStrategy {
-  background: string;
-  masking_ratio: number;
-  modulation_intensity:
-    | "low"
-    | "medium"
-    | "high";
-
-  mixing_point_gain:
-    | number
-    | null;
-
-  duration_minutes: number;
-  soundfit_applied: {
-    texture:
-      | "soft"
-      | "balanced"
-      | "clear"
-      | null;
-
-    layer_mix:
-      | "low"
-      | "medium"
-      | "high"
-      | null;
-  };
-}
-
-export interface InterventionDecision {
-  id: number;
-
-  intervention_type:
-    | "sound_only"
-    | "sound_with_relaxation"
-    | "none";
-
-  relaxation_activity_type:
-    | "thought_distancing"
-    | "tension_release"
-    | "attention_shift"
-    | null;
-  relaxation_recommendation_source:
-    | "rule_based"
-    | "personalized"
-    | null;
-
-  sound_strategy: SoundStrategy;
-
-  state_snapshot: StateSnapshot;
-
-  has_sufficient_data: boolean;
-
-  missing_data_sources: string[];
-
-  sound_session_id:
-    | number
-    | null;
-
-  relaxation_session_id:
-    | number
-    | null;
-
-  decided_at: string;
-}
-
 export async function getLatestInterventionDecision(
   uuid: string,
 ): Promise<InterventionDecision> {
   const response = await fetch(
-    `${API_BASE_URL}/api/personalization/${uuid}/decision/latest/`,
+    `/api/personalization/${uuid}/decision/latest/`,
   );
 
   if (!response.ok) {

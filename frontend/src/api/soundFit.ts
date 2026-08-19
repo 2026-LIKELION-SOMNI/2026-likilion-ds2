@@ -1,7 +1,3 @@
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ??
-  "http://127.0.0.1:8000";
-
 export type SoundFitAxis =
   | "texture"
   | "layer_mix";
@@ -98,7 +94,7 @@ export async function goToPreviousSoundFitStep(
   sessionId: number,
 ) {
   return request<SoundFitSession>(
-    `${API_BASE_URL}/api/soundfit/previous/${sessionId}/`,
+    `/api/soundfit/previous/${sessionId}/`,
     {
       method: "POST",
     },
@@ -112,7 +108,7 @@ export async function startSoundFit(
   uuid: string,
 ) {
     return request<SoundFitSession>(
-      `${API_BASE_URL}/api/soundfit/start/${uuid}/`,
+      `/api/soundfit/start/${uuid}/`,
     {
       method: "POST",
     },
@@ -127,7 +123,7 @@ export async function selectSoundFitOption(
   selected: "A" | "B",
 ) {
   return request<SoundFitSession>(
-    `${API_BASE_URL}/api/soundfit/select/${sessionId}/`,
+    `/api/soundfit/select/${sessionId}/`,
     {
       method: "POST",
       body: JSON.stringify({
@@ -144,6 +140,6 @@ export async function getSoundFitProfile(
   uuid: string,
 ) {
   return request<SoundFitProfile>(
-    `${API_BASE_URL}/api/soundfit/profile/${uuid}/`,
+    `/api/soundfit/profile/${uuid}/`,
   );
 }

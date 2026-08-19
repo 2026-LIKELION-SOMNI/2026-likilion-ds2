@@ -1,13 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-        {
-        "source": "/api/:path*",
-        "destination": "http://1.201.116.178/api/:path*"
-        },
-        {
-        "source": "/(.*)",
-        "destination": "/index.html"
-        }
-    ]
+    {
+      "source": "/api/:path*",
+      "destination": "https://api.likelion-somni.site/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
