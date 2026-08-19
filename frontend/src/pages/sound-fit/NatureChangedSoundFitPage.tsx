@@ -2,7 +2,7 @@ import {
   useNavigate,
 } from "react-router-dom";
 
-import infoIcon from "../../assets/icons/info.svg";
+import infoIcon from "../../assets/icons/Info.svg";
 
 function NatureChangedSoundFitPage() {
   const navigate =
