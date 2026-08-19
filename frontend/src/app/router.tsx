@@ -6,10 +6,13 @@ import OnboardingLayout from "../layouts/OnboardingLayout";
 import StartPage from "../pages/onboarding/StartPage";
 import HomePage from "../pages/home/HomePage";
 import CheckInPage from "../pages/check-in/CheckInPage";
+import FeedbackPage from "../pages/feedback/FeedbackPage";
 import FrequencyPage from "../pages/frequency/FrequencyPage";
 import NatureSoundPage from "../pages/nature-sound/NatureSoundPage";
 import SoundSetupPage from "../pages/sound-setup/SoundSetupPage";
 import RecoverySessionPage from "../pages/recovery-session/RecoverySessionPage";
+import RelaxationIntroPage from "../pages/relaxation/RelaxationIntroPage";
+import RelaxationSessionPage from "../pages/relaxation/RelaxationSessionPage";
 import SoundPage from "../pages/sound/SoundPage";
 import MySoundPage from "../pages/sound/MySoundPage";
 import ChangeNatureSoundPage from "../pages/sound/ChangeNatureSoundPage";
@@ -45,6 +48,10 @@ const router = createBrowserRouter([
         element: <CheckInPage />,
       },
       {
+        path: "/feedback",
+        element: <FeedbackPage />,
+      },
+      {
         path: "/frequency",
         element: <FrequencyPage />,
       },
@@ -59,6 +66,14 @@ const router = createBrowserRouter([
       {
         path: "/recovery-session",
         element: <RecoverySessionPage />,
+      },
+      {
+        path: "/relaxation",
+        element: <RelaxationIntroPage />,
+      },
+      {
+        path: "/relaxation/session",
+        element: <RelaxationSessionPage />,
       },
       {
         path: "/sound",
