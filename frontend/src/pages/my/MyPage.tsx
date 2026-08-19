@@ -127,6 +127,14 @@ function MyPage() {
         );
 
         sessionStorage.removeItem(
+          "somni-recovery-existing-session-id",
+        );
+
+        sessionStorage.removeItem(
+          "somni-pitch-match-session",
+        );
+
+        sessionStorage.removeItem(
           "somni-selected-nature-sound",
         );
 
@@ -140,6 +148,10 @@ function MyPage() {
 
         sessionStorage.removeItem(
           "somni-sound-setup-completed",
+        );
+
+        sessionStorage.removeItem(
+          "somni-personal-sound-pending",
         );
 
         setShowDeleteModal(

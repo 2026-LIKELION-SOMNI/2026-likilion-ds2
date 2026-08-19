@@ -9,8 +9,9 @@ function MainLayout() {
     location.pathname === "/sound" ||
     location.pathname === "/my" ||
     location.pathname === "/my/delete-complete" ||
-    location.pathname === "/sound-fit";
-  return (
+    location.pathname === "/sound-fit" ||
+    location.pathname === "/feedback";
+    return (
     <div
       className="
         app-container

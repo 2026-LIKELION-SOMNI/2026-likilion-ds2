@@ -1,13 +1,28 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState, } from "react";
 
 import plusIcon from "../../assets/icons/Plus.svg";
 import minusIcon from "../../assets/icons/Minus.svg";
+import {
+  generateTodaySound,
+} from "../../api/sound";
 
-import { playMixingPointNoise, setMixingPointGain, stopTinnitusAudio,} from "../../audio/tinnitusAudio";
+import {
+  getUserUuid,
+} from "../../utils/userStorage";
+import {
+  playMixingPointNoise,
+  setMixingPointGain,
+  stopTinnitusAudio,
+} from "../../audio/tinnitusAudio";
 
-import { getPitchMatchSession, } from "../../utils/pitchMatchStorage";
-import { saveMixingPoint, } from "../../services/tinnitusService";
+import {
+  getPitchMatchSession,
+} from "../../utils/pitchMatchStorage";
+
+import {
+  saveMixingPoint,
+} from "../../services/tinnitusService";
 
 const MIXING_WAVE_HEIGHTS = [
   48, 42, 34, 28, 24, 22, 24, 28,
@@ -33,18 +48,40 @@ function volumeToGain(
 function MixingPointPage() {
   const navigate = useNavigate();
 
+  const pitchMatchSession =
+    getPitchMatchSession();
+
   const [
     volume,
     setVolume,
-  ] = useState(22);
+  ] = useState(
+    INITIAL_VOLUME,
+  );
 
   const [
     errorMessage,
     setErrorMessage,
   ] = useState("");
 
+  const [
+    isSaving,
+    setIsSaving,
+  ] = useState(false);
+
+  /*
+   * 혼합점 저장 후
+   * 회복 세션 시작
+   */
   const handleStart =
     async () => {
+      /*
+       * 저장 요청 중에는
+       * 중복 요청 방지
+       */
+      if (isSaving) {
+        return;
+      }
+
       if (!pitchMatchSession) {
         setErrorMessage(
           "음역 매칭 정보를 찾지 못했어요.",
@@ -53,6 +90,9 @@ function MixingPointPage() {
       }
 
       try {
+        setIsSaving(true);
+        setErrorMessage("");
+
         const mixingPointGain =
           volumeToGain(volume);
 
@@ -63,9 +103,44 @@ function MixingPointPage() {
           mixingPointGain,
         );
 
+        const uuid =
+          getUserUuid();
+
+        if (!uuid) {
+          throw new Error(
+            "사용자 UUID가 없습니다.",
+          );
+        }
+
+        const selectedBackground =
+          sessionStorage.getItem(
+            "somni-selected-nature-sound",
+          ) as
+            | "rain"
+            | "stream"
+            | "ocean"
+            | "air"
+            | null;
+
+        const soundSession =
+          await generateTodaySound(
+            uuid,
+            false,
+            selectedBackground ?? undefined,
+          );
+
+        sessionStorage.setItem(
+          "somni-current-sound-session-id",
+          soundSession.session_id,
+        );
+
         sessionStorage.setItem(
           "somni-sound-setup-completed",
           "true",
+        );
+
+        sessionStorage.removeItem(
+          "somni-personal-sound-pending",
         );
 
         navigate(
@@ -83,11 +158,14 @@ function MixingPointPage() {
         setErrorMessage(
           "볼륨 설정을 저장하지 못했어요.",
         );
+
+        /*
+         * 실패한 경우에만
+         * 다시 시도할 수 있도록 해제
+         */
+        setIsSaving(false);
       }
     };
-
-  const pitchMatchSession =
-    getPitchMatchSession();
 
   /*
    * 페이지 진입 시
@@ -109,7 +187,9 @@ function MixingPointPage() {
 
         try {
           const gain =
-            volumeToGain(INITIAL_VOLUME);
+            volumeToGain(
+              INITIAL_VOLUME,
+            );
 
           await playMixingPointNoise(
             pitchMatchSession
@@ -185,9 +265,10 @@ function MixingPointPage() {
     (
       value: number,
     ) => {
-      updateVolume(value);
+      updateVolume(
+        value,
+      );
     };
-
 
   return (
     <div className="flex min-h-full flex-col px-5 pb-6">
@@ -268,6 +349,9 @@ function MixingPointPage() {
             onClick={
               handleVolumeDown
             }
+            disabled={
+              isSaving
+            }
             aria-label="볼륨 낮추기"
             className="
               flex
@@ -279,6 +363,7 @@ function MixingPointPage() {
               rounded-full
               border
               border-[#2B8E78]
+              disabled:opacity-50
             "
           >
             <img
@@ -293,6 +378,9 @@ function MixingPointPage() {
             min="0"
             max="100"
             value={volume}
+            disabled={
+              isSaving
+            }
             onChange={(
               event,
             ) =>
@@ -309,6 +397,7 @@ function MixingPointPage() {
               min-w-0
               flex-1
               accent-[#60CEA7]
+              disabled:opacity-50
             "
           />
 
@@ -316,6 +405,9 @@ function MixingPointPage() {
             type="button"
             onClick={
               handleVolumeUp
+            }
+            disabled={
+              isSaving
             }
             aria-label="볼륨 높이기"
             className="
@@ -328,6 +420,7 @@ function MixingPointPage() {
               rounded-full
               border
               border-[#2B8E78]
+              disabled:opacity-50
             "
           >
             <img
@@ -367,7 +460,9 @@ function MixingPointPage() {
 
             {errorMessage && (
               <p className="mt-3 text-[12px] text-[#F09292]">
-                {errorMessage}
+                {
+                  errorMessage
+                }
               </p>
             )}
           </div>
@@ -378,10 +473,13 @@ function MixingPointPage() {
       <div className="mt-auto pt-10">
         <button
           type="button"
+          disabled={
+            isSaving ||
+            !pitchMatchSession
+          }
           onClick={() => {
             void handleStart();
           }}
-          
           className="
             h-14
             w-full
@@ -390,9 +488,13 @@ function MixingPointPage() {
             text-[0.875rem]
             font-bold
             text-[#07100D]
+            disabled:cursor-not-allowed
+            disabled:opacity-60
           "
         >
-          시작하기
+          {isSaving
+            ? "저장 중..."
+            : "시작하기"}
         </button>
       </div>
     </div>
