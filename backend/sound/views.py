@@ -29,6 +29,7 @@ def _gather_generation_input(
     user,
     regenerate_avoid_reasons=None,
     decision=None,
+    selected_background=None,
 ) -> tuple[
     services.GenerationInput,
     InterventionDecision | None,
@@ -120,6 +121,7 @@ def _gather_generation_input(
         past_discomfort_reasons=(
             past_discomfort_reasons
         ),
+        selected_background=selected_background,
 
         # soundfit 결과
         sound_fit_texture=getattr(
@@ -186,10 +188,17 @@ class GenerateTodaySoundView(APIView):
             raise_exception=True
         )
 
+        selected_background = (
+            req.validated_data.get(
+                "background"
+            )
+        )
+
         try:
             gi, decision = (
                 _gather_generation_input(
-                    user
+                    user,
+                    selected_background=selected_background,
                 )
             )
 
@@ -201,6 +210,74 @@ class GenerateTodaySoundView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        if decision is None:
+            from checkin.models import CheckinRecord
+
+            latest_checkin = (
+                CheckinRecord.objects
+                .filter(user=user)
+                .order_by("-created_at")
+                .first()
+            )
+
+            state = (
+                personalization_services
+                .build_current_state(
+                    user=user,
+                    tinnitus_discomfort=(
+                        latest_checkin.discomfort
+                        if latest_checkin
+                        else 3
+                    ),
+                    anxiety=(
+                        latest_checkin.tension
+                        if latest_checkin
+                        else 3
+                    ),
+                    stress=(
+                        "stress"
+                        in (
+                            latest_checkin.daily_factors
+                            if latest_checkin
+                            else []
+                        )
+                    ),
+                    fatigue=None,
+                    caffeine=(
+                        "caffeine"
+                        in (
+                            latest_checkin.daily_factors
+                            if latest_checkin
+                            else []
+                        )
+                    ),
+                )
+            )
+
+            decision_data = (
+                personalization_services
+                .decide_intervention(
+                    user=user,
+                    state=state,
+                )
+            )
+
+            decision = (
+                personalization_services
+                .record_decision(
+                    user=user,
+                    state=state,
+                    decision=decision_data,
+                )
+            )
+
+            gi, decision = (
+                _gather_generation_input(
+                    user,
+                    decision=decision,
+                    selected_background=selected_background,
+                )
+            )
         input_snapshot = (
             services.build_input_snapshot(
                 gi
@@ -214,7 +291,7 @@ class GenerateTodaySoundView(APIView):
             status=SoundSession.Status.GENERATING,
         )
 
-            # personalization 결정과 실제 sound session 연결
+        # personalization 결정과 실제 sound session 연결
         if decision is not None:
             personalization_services.attach_sessions(
                 decision,
