@@ -576,7 +576,7 @@ function NotificationSettingsPage() {
                 mt-5
                 rounded-[18px]
                 border border-[#244D54]
-                bg-[#102326]
+                bg-[#112126]
                 px-4
               "
             >
@@ -659,7 +659,7 @@ function NotificationSettingsPage() {
                 mt-5
                 rounded-[18px]
                 border border-[#244D54]
-                bg-[#102326]
+                bg-[#112126]
                 px-4
               "
             >
@@ -802,7 +802,6 @@ function NotificationSettingsPage() {
               w-full
               max-w-[480px]
               rounded-t-[24px]
-              border-x
               border-t
               border-[#244D54]
               bg-[#0D1719]
@@ -846,7 +845,7 @@ function NotificationSettingsPage() {
             </div>
 
             <p className="
-                  mt-5
+                  mt-4
                   font-sans
                   text-[12px]
                   font-normal

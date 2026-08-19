@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import InterventionDecision, UserPersonalizationProfile
+from sound.services import build_summary_label_from_strategy
 
 # 오늘 개인화 개입 결정을 생성할 때 받는 입력값
 class InterventionDecisionCreateSerializer(serializers.Serializer):
@@ -31,6 +32,10 @@ class InterventionDecisionCreateSerializer(serializers.Serializer):
 # 오늘 생성된 개인화 결정 응답
 class InterventionDecisionSerializer(serializers.ModelSerializer):
 
+    # sound_strategy(background 등)를 사람이 읽을 수 있는 문구로 변환
+    # 예: "잔잔한 빗소리 + 핑크노이즈"
+    sound_summary = serializers.SerializerMethodField()
+
     class Meta:
         model = InterventionDecision
         fields = [
@@ -46,9 +51,13 @@ class InterventionDecisionSerializer(serializers.ModelSerializer):
             "relaxation_session_id",
             "decided_at",
             "relaxation_recommendation_source",
+            "sound_summary",
         ]
 
         read_only_fields = fields
+
+    def get_sound_summary(self, obj):
+        return build_summary_label_from_strategy(obj.sound_strategy or {})
 
 
 # 사용자별 누적 개인화 프로필 응답

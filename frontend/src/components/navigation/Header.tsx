@@ -1,11 +1,6 @@
-import {
-  useEffect,
-  useState,
-} from "react";
-import {
-  useLocation,
-  useNavigate,
-} from "react-router-dom";
+import { useEffect, useState, } from "react";
+import { useLocation, useNavigate, } from "react-router-dom";
+import { stopTinnitusAudio } from "../../audio/tinnitusAudio";
 
 interface HeaderInfo {
   title: string;
@@ -61,11 +56,23 @@ const HEADER_INFO: Record<
     title: "AI Sound Fit",
     showBackButton: true,
   },
+  "/routine-ready": {
+    title: "오늘의 루틴",
+    showBackButton: true,
+  },
+
+  "/mixing-point": {
+    title: "오늘의 루틴",
+    showBackButton: true,
+  },
   "/sound/my-sound": {
     title: "나만의 사운드",
     showBackButton: true,
   },
-
+    "/my/sounds": {
+    title: "나의 사운드",
+    showBackButton: true,
+  },
   "/sound/change-nature": {
     title: "자연음 선택",
     showBackButton: true,
@@ -341,6 +348,15 @@ function Header() {
       "/sound-setup"
     ) {
       navigate("/nature-sound");
+      return;
+    }
+
+    if (
+      location.pathname ===
+      "/mixing-point"
+    ) {
+      stopTinnitusAudio();
+      navigate(-1);
       return;
     }
 

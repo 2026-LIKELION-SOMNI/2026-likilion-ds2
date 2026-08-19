@@ -11,6 +11,7 @@ let currentSources: Array<
 
 let currentGainNode: GainNode | null = null;
 let currentNodes: AudioNode[] = [];
+let playbackGeneration = 0;
 
 /*
  * 백엔드 sound/services.py와 동일한 노치 설계값
@@ -151,11 +152,22 @@ function octaveBandwidthToQ(
  * 현재 재생 중인 모든 소리 종료
  */
 export function stopTinnitusAudio() {
+  /*
+   * 아직 await 중인 재생 요청도 무효화
+   */
+  playbackGeneration += 1;
+
   currentSources.forEach((source) => {
     try {
       source.stop();
     } catch {
       // 이미 종료된 경우 무시
+    }
+
+    try {
+      source.disconnect();
+    } catch {
+      // 이미 연결 해제된 경우 무시
     }
   });
 
@@ -368,8 +380,25 @@ export async function playMixingPointNoise(
 ) {
   stopTinnitusAudio();
 
+  /*
+   * 이번 재생 요청의 번호
+   */
+  const generation =
+    playbackGeneration;
+
   const context =
     await resumeAudioContext();
+
+  /*
+   * await 하는 동안 stop이 호출됐다면
+   * 페이지를 이미 나간 것이므로 재생하지 않음
+   */
+  if (
+    generation !==
+    playbackGeneration
+  ) {
+    return;
+  }
 
   const source =
     context.createBufferSource();
@@ -451,6 +480,35 @@ export async function playMixingPointNoise(
   previousNode
     .connect(gain)
     .connect(context.destination);
+
+  if (
+    generation !==
+    playbackGeneration
+  ) {
+    try {
+      source.disconnect();
+    } catch {
+      // 무시
+    }
+
+    notchNodes.forEach(
+      (node) => {
+        try {
+          node.disconnect();
+        } catch {
+          // 무시
+        }
+      },
+    );
+
+    try {
+      gain.disconnect();
+    } catch {
+      // 무시
+    }
+
+    return;
+  }
 
   source.start();
 

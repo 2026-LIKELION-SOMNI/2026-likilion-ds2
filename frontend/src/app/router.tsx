@@ -4,6 +4,7 @@ import MainLayout from "../layouts/MainLayout";
 import OnboardingLayout from "../layouts/OnboardingLayout";
 
 import StartPage from "../pages/onboarding/StartPage";
+import SafetyGuidePage from "../pages/onboarding/SafetyGuidePage";
 import HomePage from "../pages/home/HomePage";
 import CheckInPage from "../pages/check-in/CheckInPage";
 import FeedbackPage from "../pages/feedback/FeedbackPage";
@@ -23,7 +24,10 @@ import ConnectedDataPage from "../pages/my/ConnectedDataPage";
 import DataDeleteCompletePage from "../pages/my/DataDeleteCompletePage";
 import AISoundFitPage from "../pages/sound-fit/AISoundFitPage";
 import NatureChangedSoundFitPage from "../pages/sound-fit/NatureChangedSoundFitPage";
-
+import RoutineReadyPage from "../pages/routine/RoutineReadyPage";
+import MixingPointPage from "../pages/sound-setup/MixingPointPage";
+import MySoundsPage from "../pages/my/MySoundsPage";
+import FeedbackPage from "../pages/feedback/FeedbackPage";
 
 const router = createBrowserRouter([
   {
@@ -32,6 +36,10 @@ const router = createBrowserRouter([
       {
         path: "/onboarding",
         element: <StartPage />,
+      },
+      {
+        path: "/onboarding/safety",
+        element: <SafetyGuidePage />,
       },
     ],
   },
@@ -108,12 +116,23 @@ const router = createBrowserRouter([
         element: <DataDeleteCompletePage />,
       },
       {
+        path: "/my/sounds",
+        element: <MySoundsPage />,
+      },
+      {
         path: "/sound-fit",
         element: <AISoundFitPage />,
       },
       {
         path: "/sound-fit/nature-changed",
         element: <NatureChangedSoundFitPage />,
+      },{
+        path: "/routine-ready",
+        element: <RoutineReadyPage />,
+      },
+      {
+        path: "/mixing-point",
+        element: <MixingPointPage />,
       },
     ],
   },

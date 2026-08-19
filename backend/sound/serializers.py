@@ -62,6 +62,17 @@ class GenerateTodaySoundRequestSerializer(serializers.Serializer):
         required=False,
     )
 
+    background = serializers.ChoiceField(
+        choices=[
+            "rain",
+            "stream",
+            "ocean",
+            "air",
+        ],
+        required=False,
+        allow_null=True,
+    )
+
 
 # 사용자가 최종 선택한 배경 자연음
 # 실제 오디오 변경은 프론트(Web Audio API)에서 수행
@@ -153,3 +164,10 @@ class SoundDiscomfortReportSerializer(serializers.ModelSerializer):
             )
 
         return value
+
+
+# 편안했던 사운드 1건 요약 (홈 카드 / 마이페이지 목록 공용)
+class ComfortableSoundItemSerializer(serializers.Serializer):
+    session_id = serializers.UUIDField()
+    sound_summary = serializers.CharField(allow_null=True)
+    evaluated_at = serializers.DateTimeField()

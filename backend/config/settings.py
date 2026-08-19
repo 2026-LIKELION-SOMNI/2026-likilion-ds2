@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'soundfit',
     'mypage',
     'personalization',
+    'home',
 ]
 
 MIDDLEWARE = [
@@ -71,9 +72,10 @@ REST_FRAMEWORK = {
 }
 
 # 로컬 프론트엔드 CORS 허용
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5273',
-]
+CORS_ALLOWED_ORIGINS = os.getenv(
+    'CORS_ALLOWED_ORIGINS',
+    'http://localhost:5273'
+).split(',')
 
 ROOT_URLCONF = 'config.urls'
 
