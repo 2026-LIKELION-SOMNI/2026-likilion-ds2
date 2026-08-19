@@ -68,6 +68,12 @@ function RoutineReadyPage() {
   ] =
     useState("");
 
+  const [
+    starting,
+    setStarting,
+  ] =
+    useState(false);
+
     useEffect(() => {
     const uuid = getUserUuid();
 
@@ -156,7 +162,12 @@ function RoutineReadyPage() {
           return;
         }
 
+        if (starting) {
+          return;
+        }
+
         try {
+          setStarting(true);
           setErrorMessage("");
           const selectedBackground =
             sessionStorage.getItem(
@@ -181,6 +192,16 @@ function RoutineReadyPage() {
           sessionStorage.removeItem(
             "somni-personal-sound-pending",
           );
+
+          if (
+            decision?.relaxation_activity_type
+          ) {
+            navigate(
+              "/relaxation",
+            );
+            return;
+          }
+
           navigate(
             "/mixing-point",
           );
@@ -193,6 +214,8 @@ function RoutineReadyPage() {
           setErrorMessage(
             "개인화 사운드를 준비하지 못했어요.",
           );
+
+          setStarting(false);
         }
       };
 
@@ -711,6 +734,7 @@ function RoutineReadyPage() {
         >
           <button
             type="button"
+            disabled={starting}
             onClick={() => {
               void handleStartRoutine();
             }}
@@ -725,9 +749,11 @@ function RoutineReadyPage() {
               text-[14px]
               font-bold
               text-[#07100D]
+              disabled:bg-[#27423C]
+              disabled:text-[#6B8580]
             "
           >
-            계속
+            {starting ? "준비 중..." : "계속"}
           </button>
         </div>
       </main>
