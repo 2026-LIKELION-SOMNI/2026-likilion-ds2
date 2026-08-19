@@ -16,12 +16,44 @@ import {
 } from "../../api/relaxation";
 import type { RelaxationSession } from "../../api/relaxation";
 import { getRelaxationGuide } from "./guideScript";
+import { primeSpeech } from "../../audio/guideSpeech";
 import { getUserUuid } from "../../utils/userStorage";
 
 const NEXT_PATH = "/recovery-session";
 
 interface RelaxationIntroLocationState {
   session?: RelaxationSession;
+}
+
+let pendingRecommendation: {
+  uuid: string;
+  promise: Promise<RelaxationSession>;
+} | null = null;
+
+function requestRecommendationOnce(
+  uuid: string,
+) {
+  if (pendingRecommendation?.uuid === uuid) {
+    return pendingRecommendation.promise;
+  }
+
+  const promise =
+    createRelaxationRecommendation(uuid);
+
+  pendingRecommendation = { uuid, promise };
+
+  promise
+    .catch(() => {})
+    .finally(() => {
+      if (
+        pendingRecommendation?.promise ===
+        promise
+      ) {
+        pendingRecommendation = null;
+      }
+    });
+
+  return promise;
 }
 
 function RelaxationIntroPage() {
@@ -73,7 +105,7 @@ function RelaxationIntroPage() {
     const loadSession = async () => {
       try {
         const created =
-          await createRelaxationRecommendation(
+          await requestRecommendationOnce(
             uuid,
           );
 
@@ -112,7 +144,7 @@ function RelaxationIntroPage() {
       return;
     }
 
-    if (session.activity_type === "none") {
+    if (!guide) {
       navigate(NEXT_PATH, { replace: true });
       return;
     }
@@ -129,7 +161,7 @@ function RelaxationIntroPage() {
     if (session.status !== "recommended") {
       navigate(NEXT_PATH, { replace: true });
     }
-  }, [navigate, session]);
+  }, [guide, navigate, session]);
 
   const handleSkip = useCallback(async () => {
     const uuid = getUserUuid();
@@ -169,6 +201,8 @@ function RelaxationIntroPage() {
 
     setIsSubmitting(true);
     setErrorMessage(null);
+
+    primeSpeech();
 
     try {
       const started =
@@ -376,6 +410,21 @@ function RelaxationIntroPage() {
         >
           {errorMessage}
         </p>
+      )}
+
+      {errorMessage && (
+        <div className="mt-[0.875rem]">
+          <Button
+            variant="text"
+            onClick={() =>
+              navigate(NEXT_PATH, {
+                replace: true,
+              })
+            }
+          >
+            사운드로 넘어가기
+          </Button>
+        </div>
       )}
 
       <div className="mt-auto pt-[2rem]">

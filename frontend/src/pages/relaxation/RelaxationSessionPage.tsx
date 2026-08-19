@@ -24,12 +24,30 @@ import {
   playNatureAudio,
   stopNatureAudio,
 } from "../../audio/natureAudio";
-import natureAudioSource from "../../assets/audio/nature/rain.mp3";
+import {
+  isSpeechSupported,
+  speakGuideLine,
+  stopSpeech,
+} from "../../audio/guideSpeech";
+import airAudio from "../../assets/audio/nature/air.mp3";
+import oceanAudio from "../../assets/audio/nature/ocean.mp3";
+import rainAudio from "../../assets/audio/nature/rain.mp3";
+import streamAudio from "../../assets/audio/nature/stream.mp3";
 import { getUserUuid } from "../../utils/userStorage";
 
 const NEXT_PATH = "/recovery-session";
 
 const TICK_MS = 200;
+
+const NATURE_AUDIO_SOURCES: Record<
+  string,
+  string
+> = {
+  rain: rainAudio,
+  stream: streamAudio,
+  ocean: oceanAudio,
+  air: airAudio,
+};
 
 interface RelaxationSessionLocationState {
   session?: RelaxationSession;
@@ -53,6 +71,38 @@ function formatTime(seconds: number) {
   )}:${String(restSeconds).padStart(2, "0")}`;
 }
 
+function resolveNatureAudioSource() {
+  const selected = sessionStorage.getItem(
+    "somni-selected-nature-sound",
+  );
+
+  return (
+    NATURE_AUDIO_SOURCES[selected ?? ""] ??
+    rainAudio
+  );
+}
+
+function getElapsedFromStartedAt(
+  startedAt: string | null | undefined,
+) {
+  if (!startedAt) {
+    return 0;
+  }
+
+  const startedTime = new Date(
+    startedAt,
+  ).getTime();
+
+  if (Number.isNaN(startedTime)) {
+    return 0;
+  }
+
+  return Math.max(
+    0,
+    (Date.now() - startedTime) / 1000,
+  );
+}
+
 function RelaxationSessionPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -67,25 +117,38 @@ function RelaxationSessionPage() {
     ? getRelaxationGuide(session.activity_type)
     : null;
 
+  const totalSeconds =
+    guide?.durationSeconds ?? 0;
+
   const audioRef = useRef<HTMLAudioElement | null>(
     null,
   );
 
-  const isAudioReadyRef = useRef(false);
-
   const isFinishingRef = useRef(false);
+
+  const spokenIndexRef = useRef(-1);
+
+  const [hasGuideAudio, setHasGuideAudio] =
+    useState<boolean | null>(null);
 
   const [isPlaying, setIsPlaying] =
     useState(true);
 
   const [elapsedSeconds, setElapsedSeconds] =
-    useState(0);
+    useState(() =>
+      Math.min(
+        getElapsedFromStartedAt(
+          session?.started_at,
+        ),
+        guide?.durationSeconds ?? 0,
+      ),
+    );
 
   const [errorMessage, setErrorMessage] =
     useState<string | null>(null);
 
-  const totalSeconds =
-    guide?.durationSeconds ?? 0;
+  const elapsedRef = useRef(elapsedSeconds);
+  elapsedRef.current = elapsedSeconds;
 
   const remainingSeconds = Math.max(
     0,
@@ -111,6 +174,10 @@ function RelaxationSessionPage() {
     );
   }, [elapsedSeconds, guide]);
 
+  const usesSpeech =
+    hasGuideAudio === false &&
+    isSpeechSupported();
+
   useEffect(() => {
     if (!session || !guide) {
       navigate("/relaxation", {
@@ -129,14 +196,15 @@ function RelaxationSessionPage() {
     );
 
     audio.preload = "auto";
+    audio.currentTime = elapsedRef.current;
     audioRef.current = audio;
 
     const handleCanPlay = () => {
-      isAudioReadyRef.current = true;
+      setHasGuideAudio(true);
     };
 
     const handleAudioError = () => {
-      isAudioReadyRef.current = false;
+      setHasGuideAudio(false);
     };
 
     audio.addEventListener(
@@ -150,11 +218,15 @@ function RelaxationSessionPage() {
     );
 
     audio.play().catch(() => {
-      isAudioReadyRef.current = false;
+      setHasGuideAudio((previous) =>
+        previous === true ? previous : false,
+      );
     });
 
     if (guide.withNatureSound) {
-      playNatureAudio(natureAudioSource).catch(() => {});
+      playNatureAudio(
+        resolveNatureAudioSource(),
+      ).catch(() => {});
     }
 
     return () => {
@@ -170,8 +242,8 @@ function RelaxationSessionPage() {
 
       audio.pause();
       audioRef.current = null;
-      isAudioReadyRef.current = false;
 
+      stopSpeech();
       stopNatureAudio();
     };
   }, [guide]);
@@ -181,40 +253,73 @@ function RelaxationSessionPage() {
       return;
     }
 
-    const timer = window.setInterval(() => {
-      setElapsedSeconds((previous) => {
-        const audio = audioRef.current;
+    const startedAt = Date.now();
+    const baseSeconds = elapsedRef.current;
 
-        const canUseAudioTime =
-          audio !== null &&
-          isAudioReadyRef.current &&
-          !audio.paused;
+    const tick = () => {
+      setElapsedSeconds(() =>
+        Math.min(
+          baseSeconds +
+            (Date.now() - startedAt) / 1000,
+          totalSeconds,
+        ),
+      );
+    };
 
-        const next = canUseAudioTime
-          ? audio.currentTime
-          : previous + TICK_MS / 1000;
+    const timer = window.setInterval(
+      tick,
+      TICK_MS,
+    );
 
-        return Math.min(next, totalSeconds);
-      });
-    }, TICK_MS);
+    document.addEventListener(
+      "visibilitychange",
+      tick,
+    );
 
     return () => {
       window.clearInterval(timer);
+
+      document.removeEventListener(
+        "visibilitychange",
+        tick,
+      );
     };
   }, [isPlaying, totalSeconds]);
 
-  const finishSession = useCallback(async () => {
-    const uuid = getUserUuid();
-
+  useEffect(() => {
     if (
-      !uuid ||
-      !session ||
-      isFinishingRef.current
+      !guide ||
+      !usesSpeech ||
+      !isPlaying ||
+      spokenIndexRef.current === activeIndex
     ) {
       return;
     }
 
+    spokenIndexRef.current = activeIndex;
+
+    speakGuideLine(
+      guide.lines[activeIndex].text,
+    );
+  }, [activeIndex, guide, isPlaying, usesSpeech]);
+
+  const leaveToNextStep = useCallback(() => {
+    navigate(NEXT_PATH, { replace: true });
+  }, [navigate]);
+
+  const finishSession = useCallback(async () => {
+    if (isFinishingRef.current) {
+      return;
+    }
+
     isFinishingRef.current = true;
+
+    const uuid = getUserUuid();
+
+    if (!uuid || !session) {
+      leaveToNextStep();
+      return;
+    }
 
     try {
       await completeRelaxationSession(
@@ -229,25 +334,28 @@ function RelaxationSessionPage() {
         ),
       );
     } finally {
-      navigate(NEXT_PATH, { replace: true });
+      leaveToNextStep();
     }
-  }, [navigate, session]);
+  }, [leaveToNextStep, session]);
 
   const handleCancel = useCallback(async () => {
-    const uuid = getUserUuid();
-
-    if (
-      !uuid ||
-      !session ||
-      isFinishingRef.current
-    ) {
+    if (isFinishingRef.current) {
       return;
     }
 
     isFinishingRef.current = true;
 
     audioRef.current?.pause();
+    stopSpeech();
+    stopNatureAudio();
     setIsPlaying(false);
+
+    const uuid = getUserUuid();
+
+    if (!uuid || !session) {
+      leaveToNextStep();
+      return;
+    }
 
     try {
       await cancelRelaxationSession(
@@ -262,9 +370,9 @@ function RelaxationSessionPage() {
         ),
       );
     } finally {
-      navigate(NEXT_PATH, { replace: true });
+      leaveToNextStep();
     }
-  }, [navigate, session]);
+  }, [leaveToNextStep, session]);
 
   useEffect(() => {
     if (
@@ -279,18 +387,34 @@ function RelaxationSessionPage() {
 
   const handlePlayToggle = () => {
     const audio = audioRef.current;
+    const next = !isPlaying;
 
-    setIsPlaying((previous) => {
-      const next = !previous;
+    setIsPlaying(next);
 
-      if (next) {
-        audio?.play().catch(() => {});
-      } else {
-        audio?.pause();
+    if (next) {
+      if (audio) {
+        audio.currentTime = Math.min(
+          elapsedRef.current,
+          totalSeconds,
+        );
+
+        audio.play().catch(() => {});
       }
 
-      return next;
-    });
+      if (guide?.withNatureSound) {
+        playNatureAudio(
+          resolveNatureAudioSource(),
+        ).catch(() => {});
+      }
+
+      spokenIndexRef.current = -1;
+
+      return;
+    }
+
+    audio?.pause();
+    stopSpeech();
+    stopNatureAudio();
   };
 
   useEffect(() => {
@@ -315,9 +439,19 @@ function RelaxationSessionPage() {
       handleCancel,
     );
 
+    window.addEventListener(
+      "relaxation-back",
+      handleCancel,
+    );
+
     return () => {
       window.removeEventListener(
         "relaxation-action",
+        handleCancel,
+      );
+
+      window.removeEventListener(
+        "relaxation-back",
         handleCancel,
       );
     };
@@ -418,28 +552,13 @@ function RelaxationSessionPage() {
             {errorMessage}
           </p>
         )}
-
       </div>
 
       <div className="mt-auto pt-[2rem]">
-        <p
-          className="
-            text-center
-            font-sans
-            text-[0.75rem]
-            font-normal
-            leading-normal
-            text-[#8DA2A6]
-          "
-        >
-          화면을 꺼도 오디오는 계속돼요
-        </p>
-
         <button
           type="button"
           onClick={handlePlayToggle}
           className="
-            mt-[1rem]
             flex
             h-[3.375rem]
             w-full
