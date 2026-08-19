@@ -2,10 +2,8 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import MainLayout from "../layouts/MainLayout";
 import OnboardingLayout from "../layouts/OnboardingLayout";
-
-import StartPage from "../pages/onboarding/StartPage";
+import { RootPage, OnboardingStartPage, } from "./OnboardingRouteGuard";
 import SafetyGuidePage from "../pages/onboarding/SafetyGuidePage";
-import HomePage from "../pages/home/HomePage";
 import CheckInPage from "../pages/check-in/CheckInPage";
 import FrequencyPage from "../pages/frequency/FrequencyPage";
 import NatureSoundPage from "../pages/nature-sound/NatureSoundPage";
@@ -26,27 +24,28 @@ import MixingPointPage from "../pages/sound-setup/MixingPointPage";
 import MySoundsPage from "../pages/my/MySoundsPage";
 import FeedbackPage from "../pages/feedback/FeedbackPage";
 
+
 const router = createBrowserRouter([
   {
     element: <OnboardingLayout />,
     children: [
       {
         path: "/onboarding",
-        element: <StartPage />,
+        element: <OnboardingStartPage />,
       },
       {
         path: "/onboarding/safety",
         element: <SafetyGuidePage />,
       },
     ],
-  },
+  }, 
 
   {
     element: <MainLayout />,
     children: [
       {
         path: "/",
-        element: <HomePage />,
+        element: <RootPage />,
       },
       {
         path: "/check-in",
