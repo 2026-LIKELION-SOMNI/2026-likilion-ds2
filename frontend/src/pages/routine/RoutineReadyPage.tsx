@@ -169,17 +169,16 @@ function RoutineReadyPage() {
           setStarting(true);
           setErrorMessage("");
 
-          if (
-            decision?.relaxation_activity_type
-          ) {
-            navigate(
-              "/relaxation",
-            );
-            return;
-          }
-
           navigate(
             "/mixing-point",
+            {
+              state: {
+                shouldRelax:
+                  Boolean(
+                    decision?.relaxation_activity_type,
+                  ),
+              },
+            },
           );
         } catch (error) {
           console.error(

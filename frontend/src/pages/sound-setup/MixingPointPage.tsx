@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-
+import { useLocation, useNavigate, } from "react-router-dom";
 import plusIcon from "../../assets/icons/Plus.svg";
 import minusIcon from "../../assets/icons/Minus.svg";
 import {
@@ -47,6 +46,18 @@ function volumeToGain(
 
 function MixingPointPage() {
   const navigate = useNavigate();
+    const location = useLocation();
+
+    const shouldRelax =
+      Boolean(
+        (
+          location.state as
+            | {
+                shouldRelax?: boolean;
+              }
+            | null
+        )?.shouldRelax,
+      );
 
   const pitchMatchSession =
     getPitchMatchSession();
@@ -144,7 +155,9 @@ function MixingPointPage() {
         );
 
         navigate(
-          "/recovery-session",
+          shouldRelax
+            ? "/relaxation"
+            : "/recovery-session",
           {
             replace: true,
           },

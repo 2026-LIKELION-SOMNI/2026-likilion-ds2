@@ -35,8 +35,7 @@ import rainAudio from "../../assets/audio/nature/rain.mp3";
 import streamAudio from "../../assets/audio/nature/stream.mp3";
 import { getUserUuid } from "../../utils/userStorage";
 
-const NEXT_PATH = "/mixing-point";
-
+const NEXT_PATH = "/recovery-session"
 const TICK_MS = 200;
 
 const NATURE_AUDIO_SOURCES: Record<

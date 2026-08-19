@@ -19,8 +19,7 @@ import { getRelaxationGuide } from "./guideScript";
 import { primeSpeech } from "../../audio/guideSpeech";
 import { getUserUuid } from "../../utils/userStorage";
 
-const NEXT_PATH = "/mixing-point";
-
+const NEXT_PATH = "/recovery-session"
 interface RelaxationIntroLocationState {
   session?: RelaxationSession;
 }
