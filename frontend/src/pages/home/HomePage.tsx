@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
@@ -14,6 +15,7 @@ import type {
   TodayRoutineSummary,
 } from "../../api/home";
 import { getLatestCheckin } from "../../api/checkin";
+import type { CheckinRecord } from "../../api/checkin";
 import { getPendingEvaluations } from "../../api/feedback";
 import { getMyPageProfileSummary } from "../../api/mypage";
 import {
@@ -41,6 +43,58 @@ const SOUND_WAVE_HEIGHTS = [
   20, 30, 24, 16, 22, 28, 34, 26, 18, 14,
   24, 30, 20, 16, 26, 32, 22, 18, 28, 24,
 ];
+
+function toDateKey(value: string) {
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toDateString();
+}
+
+function countEvaluationsBeforeToday(
+  evaluations: { for_date: string }[],
+) {
+  const today = new Date().toDateString();
+
+  return evaluations.filter((evaluation) => {
+    const key = toDateKey(evaluation.for_date);
+
+    return key !== null && key !== today;
+  }).length;
+}
+
+function isDecisionOlderThanCheckin(
+  decidedAt: string | null,
+  checkin: CheckinRecord | null,
+) {
+  if (!checkin) {
+    return false;
+  }
+
+  if (!decidedAt) {
+    return true;
+  }
+
+  const decidedTime = new Date(
+    decidedAt,
+  ).getTime();
+
+  const checkinTime = new Date(
+    checkin.created_at,
+  ).getTime();
+
+  if (
+    Number.isNaN(decidedTime) ||
+    Number.isNaN(checkinTime)
+  ) {
+    return false;
+  }
+
+  return decidedTime < checkinTime;
+}
 
 function formatDurationLabel(seconds: number) {
   if (seconds >= 60) {
@@ -209,6 +263,18 @@ function HomePage() {
   const [pendingCount, setPendingCount] =
     useState<number | null>(null);
 
+  const [
+    isRoutineStale,
+    setIsRoutineStale,
+  ] = useState(false);
+
+  const [hasLoadFailed, setHasLoadFailed] =
+    useState(false);
+
+  const loadSequenceRef = useRef(0);
+
+  const isStartingRef = useRef(false);
+
   const [isLoading, setIsLoading] =
     useState(true);
 
@@ -224,11 +290,21 @@ function HomePage() {
     ) === "true";
 
   const loadHome = useCallback(async () => {
+    loadSequenceRef.current += 1;
+    const sequence = loadSequenceRef.current;
+
+    const isLatest = () =>
+      sequence === loadSequenceRef.current;
+
     setErrorMessage(null);
 
     try {
       const profile =
         await ensureAnonymousUser();
+
+      if (!isLatest()) {
+        return;
+      }
 
       setNickname(profile.nickname);
 
@@ -240,10 +316,11 @@ function HomePage() {
         profileSummary,
         decision,
         pendingEvaluations,
+        latestCheckin,
       ] = await Promise.all([
         getHomeSummary(uuid),
         getMyPageProfileSummary(uuid).catch(
-          () => null,
+          () => "error" as const,
         ),
         getLatestInterventionDecision(
           uuid,
@@ -251,26 +328,51 @@ function HomePage() {
         getPendingEvaluations(uuid).catch(
           () => null,
         ),
+        getLatestCheckin(uuid).catch(
+          () => null,
+        ),
       ]);
 
-      setPendingCount(
-        pendingEvaluations
-          ? pendingEvaluations.length
-          : null,
-      );
+      if (!isLatest()) {
+        return;
+      }
 
+      setHasLoadFailed(false);
       setSummary(homeSummary);
 
-      setIsSetupDone(
-        profileSummary?.center_frequency !=
-          null,
-      );
+      if (profileSummary !== "error") {
+        setIsSetupDone(
+          profileSummary?.center_frequency !=
+            null,
+        );
+      }
 
       setSoundMinutes(
         decision?.sound_strategy
           ?.duration_minutes ?? null,
       );
+
+      setPendingCount(
+        pendingEvaluations
+          ? countEvaluationsBeforeToday(
+              pendingEvaluations,
+            )
+          : null,
+      );
+
+      setIsRoutineStale(
+        isDecisionOlderThanCheckin(
+          decision?.decided_at ?? null,
+          latestCheckin,
+        ),
+      );
     } catch (error) {
+      if (!isLatest()) {
+        return;
+      }
+
+      setHasLoadFailed(true);
+
       setErrorMessage(
         toErrorMessage(
           error,
@@ -278,7 +380,9 @@ function HomePage() {
         ),
       );
     } finally {
-      setIsLoading(false);
+      if (isLatest()) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
@@ -310,9 +414,11 @@ function HomePage() {
   }, [loadHome]);
 
   const handleStartRoutine = async () => {
-    if (isStarting) {
+    if (isStartingRef.current) {
       return;
     }
+
+    isStartingRef.current = true;
 
     const uuid = getUserUuid();
 
@@ -328,7 +434,10 @@ function HomePage() {
     setErrorMessage(null);
 
     try {
-      if (!summary?.today_routine) {
+      if (
+        !summary?.today_routine ||
+        isRoutineStale
+      ) {
         const checkin =
           await getLatestCheckin(uuid);
 
@@ -338,6 +447,7 @@ function HomePage() {
           );
 
           setIsStarting(false);
+          isStartingRef.current = false;
           return;
         }
 
@@ -374,6 +484,7 @@ function HomePage() {
       );
 
       setIsStarting(false);
+      isStartingRef.current = false;
     }
   };
 
@@ -499,7 +610,15 @@ function HomePage() {
         </p>
       )}
 
-      {!isSetupDone && (
+      {hasLoadFailed && (
+        <div className="mt-[16px]">
+          <Button onClick={() => loadHome()}>
+            다시 불러오기
+          </Button>
+        </div>
+      )}
+
+      {!hasLoadFailed && !isSetupDone && (
         <div className="mt-[24px]">
           <SectionCard>
             <p
@@ -540,9 +659,13 @@ function HomePage() {
 
             <div className="mt-[18px]">
               <Button
-                onClick={() =>
-                  navigate("/frequency")
-                }
+                onClick={() => {
+                  localStorage.removeItem(
+                    "somni-data-deleted",
+                  );
+
+                  navigate("/frequency");
+                }}
               >
                 개인화 다시 시작하기
               </Button>
@@ -551,7 +674,7 @@ function HomePage() {
         </div>
       )}
 
-      {isSetupDone && (
+      {!hasLoadFailed && isSetupDone && (
         <>
           {hasPendingEvaluation && (
             <div className="mt-[24px]">

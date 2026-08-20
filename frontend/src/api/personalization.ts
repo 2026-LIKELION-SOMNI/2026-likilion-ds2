@@ -1,6 +1,4 @@
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ??
-  "http://127.0.0.1:8000";
+import { request } from "./client";
 
 export interface StateSnapshot {
   tinnitus_center_hz: number | null;
@@ -112,42 +110,23 @@ export interface InterventionDecisionPayload {
   caffeine?: boolean;
 }
 
-export async function getLatestInterventionDecision(
+export function getLatestInterventionDecision(
   uuid: string,
-): Promise<InterventionDecision> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/personalization/${uuid}/decision/latest/`,
+) {
+  return request<InterventionDecision>(
+    `/api/personalization/${uuid}/decision/latest/`,
   );
-
-  if (!response.ok) {
-    throw new Error(
-      "오늘의 루틴을 불러오지 못했어요.",
-    );
-  }
-
-  return response.json();
 }
 
-export async function createInterventionDecision(
+export function createInterventionDecision(
   uuid: string,
   payload: InterventionDecisionPayload,
-): Promise<InterventionDecision> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/personalization/${uuid}/decision/`,
+) {
+  return request<InterventionDecision>(
+    `/api/personalization/${uuid}/decision/`,
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify(payload),
     },
   );
-
-  if (!response.ok) {
-    throw new Error(
-      "오늘의 루틴을 준비하지 못했어요.",
-    );
-  }
-
-  return response.json();
 }
