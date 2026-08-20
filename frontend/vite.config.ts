@@ -19,23 +19,28 @@ export default defineConfig({
       manifest: {
         name: "Somni",
         short_name: "Somni",
-        description: "이명으로 잠들기 어려운 사용자를 위한 AI 맞춤 수면 서비스",
 
-        theme_color: "#ffffff",
-        background_color: "#ffffff",
+        description:
+          "이명으로 잠들기 어려운 사용자를 위한 AI 맞춤 수면 서비스",
+
+        theme_color: "#69F7E9",
+        background_color: "#000000",
+
         display: "standalone",
         start_url: "/",
 
         icons: [
           {
-            src: "/icons/pwa-192x192.png",
+            src: "/icons/pwa-192x192.svg",
             sizes: "192x192",
-            type: "image/png",
+            type: "image/svg+xml",
+            purpose: "any",
           },
           {
-            src: "/icons/pwa-512x512.png",
+            src: "/icons/pwa-512x512.svg",
             sizes: "512x512",
-            type: "image/png",
+            type: "image/svg+xml",
+            purpose: "any",
           },
         ],
       },

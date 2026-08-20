@@ -121,6 +121,7 @@ function CheckInPage() {
   const toggleNoFactor =
     () => {
       setFactors([]);
+
       setHasNoFactor(
         (previous) =>
           !previous,
@@ -184,6 +185,18 @@ function CheckInPage() {
                 "stress",
               ),
 
+            /*
+             * 피로를 선택했다면
+             * 현재 personalization 구조에 맞춰
+             * 대표값 4를 사용.
+             */
+            fatigue:
+              factors.includes(
+                "fatigue",
+              )
+                ? 4
+                : null,
+
             caffeine:
               factors.includes(
                 "caffeine",
@@ -192,12 +205,30 @@ function CheckInPage() {
         );
 
         /*
-         * 3. 홈으로 이동
+         * 3. 새 체크인을 완료했으므로
+         * 이전 회복 세션에서 사용했던
+         * 체크인 상태를 해제한다.
          *
-         * 이후 RoutineReadyPage에서는
-         * latest decision을 정상 조회할 수 있음
+         * 이제 홈에서는
+         * "체크인 완료 상태"로 보여야 함.
          */
-        navigate("/");
+        sessionStorage.removeItem(
+          "somni-checkin-consumed",
+        );
+
+        /*
+         * 4. 홈으로 이동
+         *
+         * 홈에서는 새 decision을 조회해서
+         * CBT 포함 여부에 따라
+         * 오늘의 추천 루틴을 보여준다.
+         */
+        navigate(
+          "/",
+          {
+            replace: true,
+          },
+        );
       } catch (error) {
         setErrorMessage(
           toErrorMessage(

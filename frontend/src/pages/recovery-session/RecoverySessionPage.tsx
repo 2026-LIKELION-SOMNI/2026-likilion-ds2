@@ -792,6 +792,15 @@ function RecoverySessionPage() {
             error,
           );
         } finally {
+          /*
+          * 이번 체크인은 회복 세션에서
+          * 이미 사용 완료.
+          */
+          sessionStorage.setItem(
+            "somni-checkin-consumed",
+            "true",
+          );
+
           setScreen(
             "end-complete",
           );
@@ -1149,7 +1158,20 @@ function RecoverySessionPage() {
   const handleEndSession =
     async () => {
       stopRecoveryAudio();
+
       setPlaying(false);
+
+      /*
+      * 이번 체크인은
+      * 이 회복 세션에 사용 완료.
+      *
+      * 이후 홈에서는 다시
+      * 오늘 상태 기록하기를 보여준다.
+      */
+      sessionStorage.setItem(
+        "somni-checkin-consumed",
+        "true",
+      );
 
       if (!soundSession) {
         setScreen(
@@ -3196,7 +3218,18 @@ function RecoverySessionPage() {
             type="button"
             onClick={() => {
               stopRecoveryAudio();
-              navigate("/");
+
+              sessionStorage.setItem(
+                "somni-checkin-consumed",
+                "true",
+              );
+
+              navigate(
+                "/",
+                {
+                  replace: true,
+                },
+              );
             }}
             className="
               h-14
