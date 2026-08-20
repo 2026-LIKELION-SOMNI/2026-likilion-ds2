@@ -1,16 +1,44 @@
-import { useCallback, useEffect, useState, } from "react";
-import { useLocation, useNavigate, } from "react-router-dom";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 
 import FrequencyCard from "../../components/frequency/FrequencyCard";
-import { clearPitchMatchSession, getPitchMatchSession, savePitchMatchSession,} from "../../utils/pitchMatchStorage";import playIcon from "../../assets/icons/Play.svg";
+
+import {
+  clearPitchMatchSession,
+  getPitchMatchSession,
+  savePitchMatchSession,
+} from "../../utils/pitchMatchStorage";
+
+import playIcon from "../../assets/icons/Play.svg";
 import pauseIcon from "../../assets/icons/Pause.svg";
 
-import { saveTinnitusProfile, startPitchMatching, selectPitchMatch, selectOctave, goBackPitchMatch,
-  type PitchMatchSession, type ToneType, } from "../../services/tinnitusService";
+import {
+  saveTinnitusProfile,
+  startPitchMatching,
+  selectPitchMatch,
+  selectOctave,
+  goBackPitchMatch,
+  type PitchMatchSession,
+  type ToneType,
+} from "../../services/tinnitusService";
 
-import { playMatchingNoise, playTinnitusTypePreview, stopTinnitusAudio, } from "../../audio/tinnitusAudio";
+import {
+  playMatchingNoise,
+  playTinnitusTypePreview,
+  stopTinnitusAudio,
+} from "../../audio/tinnitusAudio";
 
-type FrequencyOptionId = "A" | "B";
+type FrequencyOptionId =
+  | "A"
+  | "B";
 
 type OctaveOptionId =
   | "half"
@@ -24,7 +52,8 @@ type FrequencyScreen =
   | "octave"
   | "result";
 
-type TinnitusTypeId = ToneType;
+type TinnitusTypeId =
+  ToneType;
 
 interface TinnitusTypeOption {
   id: TinnitusTypeId;
@@ -33,135 +62,222 @@ interface TinnitusTypeOption {
   waveHeights: number[];
 }
 
-const TINNITUS_TYPE_OPTIONS: TinnitusTypeOption[] = [
-  {
-    id: "high",
-    title: "삐- 한 음이 선명해요",
-    description:
-      "한 가지 높이의 소리가 또렷하게 느껴져요.",
-    waveHeights: [
-      30, 27, 23, 19, 15, 12, 9,
-    ],
-  },
-  {
-    id: "low",
-    title: "윙- 중심이 되는 울림이 있어요",
-    description:
-      "울림이 있지만 중심이 되는 높이가 있어요.",
-    waveHeights: [
-      22, 30, 38, 42, 36, 28, 20,
-    ],
-  },
-  {
-    id: "wide",
-    title: "쉬익- 넓게 퍼져 들려요",
-    description:
-      "한 음보다 넓은 대역의 소리처럼 느껴져요.",
-    waveHeights: [
-      18, 24, 30, 35, 34, 30, 25, 20,
-    ],
-  },
-  {
-    id: "multiple",
-    title: "여러 소리가 함께 들려요",
-    description:
-      "두 가지 이상의 소리가 겹쳐 들려요.",
-    waveHeights: [
-      20, 30, 22, 36, 26, 32, 18,
-    ],
-  },
-];
+const TINNITUS_TYPE_OPTIONS:
+  TinnitusTypeOption[] = [
+    {
+      id: "high",
+      title:
+        "삐- 한 음이 선명해요",
+      description:
+        "한 가지 높이의 소리가 또렷하게 느껴져요.",
+      waveHeights: [
+        30, 27, 23, 19, 15, 12, 9,
+      ],
+    },
+    {
+      id: "low",
+      title:
+        "윙- 중심이 되는 울림이 있어요",
+      description:
+        "울림이 있지만 중심이 되는 높이가 있어요.",
+      waveHeights: [
+        22, 30, 38, 42, 36, 28, 20,
+      ],
+    },
+    {
+      id: "wide",
+      title:
+        "쉬익- 넓게 퍼져 들려요",
+      description:
+        "한 음보다 넓은 대역의 소리처럼 느껴져요.",
+      waveHeights: [
+        18, 24, 30, 35,
+        34, 30, 25, 20,
+      ],
+    },
+    {
+      id: "multiple",
+      title:
+        "여러 소리가 함께 들려요",
+      description:
+        "두 가지 이상의 소리가 겹쳐 들려요.",
+      waveHeights: [
+        20, 30, 22, 36, 26, 32, 18,
+      ],
+    },
+  ];
 
-const TOTAL_MATCHING_STEPS = 7;
+const TOTAL_MATCHING_STEPS =
+  7;
+
 const TOTAL_FLOW_STEPS =
   TOTAL_MATCHING_STEPS + 4;
 
+/*
+ * 공통 파형
+ *
+ * playing=true일 때만
+ * soundWave 애니메이션 실행.
+ */
+interface AnimatedWaveProps {
+  heights: number[];
+  playing: boolean;
+}
+
+function AnimatedWave({
+  heights,
+  playing,
+}: AnimatedWaveProps) {
+  return (
+    <div className="flex items-center gap-[3px]">
+      {heights.map(
+        (
+          height,
+          index,
+        ) => (
+          <span
+            key={index}
+            className={`
+              w-[3px]
+              shrink-0
+              rounded-full
+              bg-[#60CEA7]
+              origin-center
+              ${
+                playing
+                  ? "animate-[soundWave_0.8s_ease-in-out_infinite_alternate]"
+                  : ""
+              }
+            `}
+            style={{
+              height: `${height}px`,
+
+              animationDelay:
+                playing
+                  ? `${index * 65}ms`
+                  : undefined,
+
+              animationDuration:
+                playing
+                  ? `${
+                      540 +
+                      (index % 4) *
+                        100
+                    }ms`
+                  : undefined,
+            }}
+          />
+        ),
+      )}
+    </div>
+  );
+}
+
 function FrequencyPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const navigate =
+    useNavigate();
+
+  const location =
+    useLocation();
 
   const savedMatchSession =
     getPitchMatchSession();
 
-  const [screen, setScreen] =
+  const [
+    screen,
+    setScreen,
+  ] =
     useState<FrequencyScreen>(
-      location.state?.screen === "result" &&
+      location.state?.screen ===
+        "result" &&
         savedMatchSession
         ? "result"
         : "type",
     );
 
-  const [currentStep, setCurrentStep] =
-    useState(0);
+  const [
+    currentStep,
+    setCurrentStep,
+  ] = useState(0);
 
   const [
     selectedTinnitusType,
     setSelectedTinnitusType,
-  ] = useState<TinnitusTypeId | null>(
-    null,
-  );
+  ] =
+    useState<TinnitusTypeId | null>(
+      null,
+    );
 
   const [
     playingTinnitusType,
     setPlayingTinnitusType,
-  ] = useState<TinnitusTypeId | null>(
-    null,
-  );
+  ] =
+    useState<TinnitusTypeId | null>(
+      null,
+    );
 
   const [
     representativeType,
     setRepresentativeType,
-  ] = useState<TinnitusTypeId | null>(
-    null,
-  );
+  ] =
+    useState<TinnitusTypeId | null>(
+      null,
+    );
 
   const [
     selectedOptionId,
     setSelectedOptionId,
-  ] = useState<FrequencyOptionId | null>(
-    null,
-  );
+  ] =
+    useState<FrequencyOptionId | null>(
+      null,
+    );
 
   const [
     playingOptionId,
     setPlayingOptionId,
-  ] = useState<FrequencyOptionId | null>(
-    null,
-  );
+  ] =
+    useState<FrequencyOptionId | null>(
+      null,
+    );
 
   const [
     matchSession,
     setMatchSession,
-  ] = useState<PitchMatchSession | null>(
-    savedMatchSession,
-  );
+  ] =
+    useState<PitchMatchSession | null>(
+      savedMatchSession,
+    );
 
   const [
     selectedOctave,
     setSelectedOctave,
-  ] = useState<OctaveOptionId | null>(
-    null,
-  );
+  ] =
+    useState<OctaveOptionId | null>(
+      null,
+    );
 
   const [
     playingOctave,
     setPlayingOctave,
-  ] = useState<OctaveOptionId | null>(
-    null,
-  );
+  ] =
+    useState<OctaveOptionId | null>(
+      null,
+    );
 
-  const [isLoading, setIsLoading] =
+  const [
+    isLoading,
+    setIsLoading,
+  ] =
     useState(false);
 
   const [
     errorMessage,
     setErrorMessage,
-  ] = useState("");
+  ] =
+    useState("");
 
   /*
-   * 화면이 바뀌거나
-   * FrequencyPage가 사라질 때
-   * 재생 중인 소리 정리
+   * 화면 이탈 시 재생 정리
    */
   useEffect(() => {
     return () => {
@@ -170,57 +286,74 @@ function FrequencyPage() {
   }, []);
 
   /*
-   * 공통 Header 제목 변경
+   * Header 제목
    */
   useEffect(() => {
     const title =
-      screen === "representative"
+      screen ===
+      "representative"
         ? "대표 소리 선택"
         : "음역 매칭";
 
     window.dispatchEvent(
-      new CustomEvent("frequency-title", {
-        detail: title,
-      }),
+      new CustomEvent(
+        "frequency-title",
+        {
+          detail: title,
+        },
+      ),
     );
   }, [screen]);
 
   /*
    * 진행률
    */
-  const progressWidth = (() => {
-    if (screen === "type") {
-      return (
-        (1 / TOTAL_FLOW_STEPS) *
-        100
-      );
-    }
+  const progressWidth =
+    (() => {
+      if (
+        screen === "type"
+      ) {
+        return (
+          (1 /
+            TOTAL_FLOW_STEPS) *
+          100
+        );
+      }
 
-    if (screen === "representative") {
-      return (
-        (2 / TOTAL_FLOW_STEPS) *
-        100
-      );
-    }
+      if (
+        screen ===
+        "representative"
+      ) {
+        return (
+          (2 /
+            TOTAL_FLOW_STEPS) *
+          100
+        );
+      }
 
-    if (screen === "matching") {
-      return (
-        ((currentStep + 3) /
-          TOTAL_FLOW_STEPS) *
-        100
-      );
-    }
+      if (
+        screen === "matching"
+      ) {
+        return (
+          ((currentStep + 3) /
+            TOTAL_FLOW_STEPS) *
+          100
+        );
+      }
 
-    if (screen === "octave") {
-      return (
-        ((TOTAL_MATCHING_STEPS + 3) /
-          TOTAL_FLOW_STEPS) *
-        100
-      );
-    }
+      if (
+        screen === "octave"
+      ) {
+        return (
+          ((TOTAL_MATCHING_STEPS +
+            3) /
+            TOTAL_FLOW_STEPS) *
+          100
+        );
+      }
 
-    return 100;
-  })();
+      return 100;
+    })();
 
   /*
    * =========================
@@ -228,41 +361,53 @@ function FrequencyPage() {
    * =========================
    */
 
-  const handleTinnitusTypeSelect = (
-    typeId: TinnitusTypeId,
-  ) => {
-    setSelectedTinnitusType(typeId);
-    setErrorMessage("");
-  };
-
-  const handleTinnitusTypePlay = async (
-    typeId: TinnitusTypeId,
-  ) => {
-    if (
-      playingTinnitusType === typeId
-    ) {
-      stopTinnitusAudio();
-
-      setPlayingTinnitusType(null);
-
-      return;
-    }
-
-    try {
-      stopTinnitusAudio();
-
-      await playTinnitusTypePreview(
+  const handleTinnitusTypeSelect =
+    (
+      typeId:
+        TinnitusTypeId,
+    ) => {
+      setSelectedTinnitusType(
         typeId,
       );
 
-      setPlayingTinnitusType(typeId);
-    } catch (error) {
-      console.error(
-        "예시음 재생 실패",
-        error,
-      );
-    }
-  };
+      setErrorMessage("");
+    };
+
+  const handleTinnitusTypePlay =
+    async (
+      typeId:
+        TinnitusTypeId,
+    ) => {
+      if (
+        playingTinnitusType ===
+        typeId
+      ) {
+        stopTinnitusAudio();
+
+        setPlayingTinnitusType(
+          null,
+        );
+
+        return;
+      }
+
+      try {
+        stopTinnitusAudio();
+
+        await playTinnitusTypePreview(
+          typeId,
+        );
+
+        setPlayingTinnitusType(
+          typeId,
+        );
+      } catch (error) {
+        console.error(
+          "예시음 재생 실패",
+          error,
+        );
+      }
+    };
 
   const handleTinnitusTypeConfirm =
     async () => {
@@ -274,7 +419,11 @@ function FrequencyPage() {
       }
 
       stopTinnitusAudio();
-      setPlayingTinnitusType(null);
+
+      setPlayingTinnitusType(
+        null,
+      );
+
       setErrorMessage("");
 
       try {
@@ -284,14 +433,17 @@ function FrequencyPage() {
           selectedTinnitusType,
         );
 
-        /*
-        * 어떤 유형을 선택했든
-        * 다음은 대표 소리 선택 화면
-        */
-        setRepresentativeType(null);
-        setPlayingTinnitusType(null);
+        setRepresentativeType(
+          null,
+        );
 
-        setScreen("representative");
+        setPlayingTinnitusType(
+          null,
+        );
+
+        setScreen(
+          "representative",
+        );
       } catch (error) {
         console.error(
           "이명 프로필 저장 실패",
@@ -308,16 +460,21 @@ function FrequencyPage() {
 
   /*
    * =========================
-   * 2. 복합형 대표 소리 선택
+   * 2. 대표 소리 선택
    * =========================
    */
 
-  const handleRepresentativeSelect = (
-    typeId: TinnitusTypeId,
-  ) => {
-    setRepresentativeType(typeId);
-    setErrorMessage("");
-  };
+  const handleRepresentativeSelect =
+    (
+      typeId:
+        TinnitusTypeId,
+    ) => {
+      setRepresentativeType(
+        typeId,
+      );
+
+      setErrorMessage("");
+    };
 
   const handleRepresentativeConfirm =
     async () => {
@@ -329,12 +486,16 @@ function FrequencyPage() {
       }
 
       stopTinnitusAudio();
-      setPlayingTinnitusType(null);
+
+      setPlayingTinnitusType(
+        null,
+      );
+
       setErrorMessage("");
 
       try {
         setIsLoading(true);
-        
+
         const primaryTone =
           representativeType as Exclude<
             ToneType,
@@ -352,23 +513,33 @@ function FrequencyPage() {
         clearPitchMatchSession();
 
         const session =
-          selectedTinnitusType === "multiple"
+          selectedTinnitusType ===
+          "multiple"
             ? await startPitchMatching(
                 primaryTone,
               )
             : await startPitchMatching();
 
-
-        setMatchSession(session);
-
-        setCurrentStep(
-          session.round_number - 1,
+        setMatchSession(
+          session,
         );
 
-        setSelectedOptionId(null);
-        setPlayingOptionId(null);
+        setCurrentStep(
+          session.round_number -
+            1,
+        );
 
-        setScreen("matching");
+        setSelectedOptionId(
+          null,
+        );
+
+        setPlayingOptionId(
+          null,
+        );
+
+        setScreen(
+          "matching",
+        );
       } catch (error) {
         console.error(
           "음역 매칭 시작 실패",
@@ -385,163 +556,199 @@ function FrequencyPage() {
 
   /*
    * =========================
-   * 3. A/B 음역 매칭
+   * 3. A/B 매칭
    * =========================
    */
 
-  const handleSelect = (
-    optionId: FrequencyOptionId,
-  ) => {
-    setSelectedOptionId(optionId);
-    setErrorMessage("");
-  };
-
-  const handlePlay = async (
-    optionId: FrequencyOptionId,
-    frequency: number,
-  ) => {
-    if (!matchSession) {
-      return;
-    }
-
-    if (
-      playingOptionId === optionId
-    ) {
-      stopTinnitusAudio();
-
-      setPlayingOptionId(null);
-
-      return;
-    }
-
-    try {
-      stopTinnitusAudio();
-
-      await playMatchingNoise(
-        frequency,
-        matchSession.bandwidth_octave,
+  const handleSelect =
+    (
+      optionId:
+        FrequencyOptionId,
+    ) => {
+      setSelectedOptionId(
+        optionId,
       );
 
-      setPlayingOptionId(optionId);
-    } catch (error) {
-      console.error(
-        "비교음 재생 실패",
-        error,
-      );
-    }
-  };
-
-  const handleConfirm = async () => {
-    if (
-      !selectedOptionId ||
-      !matchSession
-    ) {
-      setErrorMessage(
-        "음역대를 선택해 주세요.",
-      );
-
-      return;
-    }
-
-    if (isLoading) {
-      return;
-    }
-
-    stopTinnitusAudio();
-    setPlayingOptionId(null);
-
-    try {
-      setIsLoading(true);
-
-      const nextSession =
-        await selectPitchMatch(
-          matchSession.id,
-          selectedOptionId,
-        );
-
-      setMatchSession(nextSession);
-
-      setSelectedOptionId(null);
       setErrorMessage("");
+    };
 
-      /*
-       * 7회 완료
-       * → octave test
-       */
+  const handlePlay =
+    async (
+      optionId:
+        FrequencyOptionId,
+      frequency: number,
+    ) => {
+      if (!matchSession) {
+        return;
+      }
 
       if (
-        nextSession.octave_test_started
+        playingOptionId ===
+        optionId
       ) {
-        setSelectedOctave(null);
-        setPlayingOctave(null);
+        stopTinnitusAudio();
 
-        setScreen("octave");
+        setPlayingOptionId(
+          null,
+        );
 
         return;
       }
 
-      setCurrentStep(
-        nextSession.round_number - 1,
-      );
-    } catch (error) {
-      console.error(
-        "음역 선택 제출 실패",
-        error,
+      try {
+        stopTinnitusAudio();
+
+        await playMatchingNoise(
+          frequency,
+          matchSession
+            .bandwidth_octave,
+        );
+
+        setPlayingOptionId(
+          optionId,
+        );
+      } catch (error) {
+        console.error(
+          "비교음 재생 실패",
+          error,
+        );
+      }
+    };
+
+  const handleConfirm =
+    async () => {
+      if (
+        !selectedOptionId ||
+        !matchSession
+      ) {
+        setErrorMessage(
+          "음역대를 선택해 주세요.",
+        );
+
+        return;
+      }
+
+      if (isLoading) {
+        return;
+      }
+
+      stopTinnitusAudio();
+
+      setPlayingOptionId(
+        null,
       );
 
-      setErrorMessage(
-        "선택 결과를 저장하지 못했어요.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      try {
+        setIsLoading(true);
+
+        const nextSession =
+          await selectPitchMatch(
+            matchSession.id,
+            selectedOptionId,
+          );
+
+        setMatchSession(
+          nextSession,
+        );
+
+        setSelectedOptionId(
+          null,
+        );
+
+        setErrorMessage("");
+
+        if (
+          nextSession
+            .octave_test_started
+        ) {
+          setSelectedOctave(
+            null,
+          );
+
+          setPlayingOctave(
+            null,
+          );
+
+          setScreen(
+            "octave",
+          );
+
+          return;
+        }
+
+        setCurrentStep(
+          nextSession
+            .round_number -
+            1,
+        );
+      } catch (error) {
+        console.error(
+          "음역 선택 제출 실패",
+          error,
+        );
+
+        setErrorMessage(
+          "선택 결과를 저장하지 못했어요.",
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
   /*
    * =========================
-   * 4. Octave Confusion Test
+   * 4. Octave
    * =========================
    */
 
-  const handleOctavePlay = async (
-    optionId: OctaveOptionId,
-    frequency: number,
-  ) => {
-    if (!matchSession) {
-      return;
-    }
+  const handleOctavePlay =
+    async (
+      optionId:
+        OctaveOptionId,
+      frequency: number,
+    ) => {
+      if (!matchSession) {
+        return;
+      }
 
-    if (
-      playingOctave === optionId
-    ) {
-      stopTinnitusAudio();
+      if (
+        playingOctave ===
+        optionId
+      ) {
+        stopTinnitusAudio();
 
-      setPlayingOctave(null);
+        setPlayingOctave(
+          null,
+        );
 
-      return;
-    }
+        return;
+      }
 
-    try {
-      stopTinnitusAudio();
+      try {
+        stopTinnitusAudio();
 
-      await playMatchingNoise(
-        frequency,
-        matchSession.bandwidth_octave,
-      );
+        await playMatchingNoise(
+          frequency,
+          matchSession
+            .bandwidth_octave,
+        );
 
-      setPlayingOctave(optionId);
-    } catch (error) {
-      console.error(
-        "옥타브 비교음 재생 실패",
-        error,
-      );
-    }
-  };
+        setPlayingOctave(
+          optionId,
+        );
+      } catch (error) {
+        console.error(
+          "옥타브 비교음 재생 실패",
+          error,
+        );
+      }
+    };
 
   const handleOctaveConfirm =
     async () => {
       if (
-        selectedOctave === null ||
+        selectedOctave ===
+          null ||
         !matchSession ||
         isLoading
       ) {
@@ -549,15 +756,16 @@ function FrequencyPage() {
       }
 
       stopTinnitusAudio();
-      setPlayingOctave(null);
 
-      /*
-      * 결과 화면에서 뒤로 돌아올 때
-      * 옥타브 후보를 다시 표시하기 위해 저장
-      */
+      setPlayingOctave(
+        null,
+      );
+
       sessionStorage.setItem(
         "somni-octave-session",
-        JSON.stringify(matchSession),
+        JSON.stringify(
+          matchSession,
+        ),
       );
 
       try {
@@ -579,7 +787,9 @@ function FrequencyPage() {
 
         setErrorMessage("");
 
-        setScreen("result");
+        setScreen(
+          "result",
+        );
       } catch (error) {
         console.error(
           "옥타브 선택 실패",
@@ -596,198 +806,295 @@ function FrequencyPage() {
 
   /*
    * =========================
-   * 5. 결과
+   * 결과
    * =========================
    */
 
-  const handleResultNext = () => {
-    stopTinnitusAudio();
+  const handleResultNext =
+    () => {
+      stopTinnitusAudio();
 
-    navigate("/nature-sound");
-  };
+      navigate(
+        "/nature-sound",
+      );
+    };
 
-  const handleRestart = () => {
-    stopTinnitusAudio();
+  const handleRestart =
+    () => {
+      stopTinnitusAudio();
 
-    setScreen("type");
+      setScreen("type");
 
-    setCurrentStep(0);
+      setCurrentStep(0);
 
-    setSelectedTinnitusType(null);
-    setPlayingTinnitusType(null);
+      setSelectedTinnitusType(
+        null,
+      );
 
-    setRepresentativeType(null);
+      setPlayingTinnitusType(
+        null,
+      );
 
-    setSelectedOptionId(null);
-    setPlayingOptionId(null);
+      setRepresentativeType(
+        null,
+      );
 
-    setMatchSession(null);
+      setSelectedOptionId(
+        null,
+      );
 
-    setSelectedOctave(null);
-    setPlayingOctave(null);
+      setPlayingOptionId(
+        null,
+      );
 
-    setErrorMessage("");
-  };
+      setMatchSession(
+        null,
+      );
+
+      setSelectedOctave(
+        null,
+      );
+
+      setPlayingOctave(
+        null,
+      );
+
+      setErrorMessage("");
+    };
 
   /*
    * =========================
-   * Header 뒤로가기
+   * 뒤로가기
    * =========================
    */
 
-const handlePreviousStep =
-  useCallback(async () => {
-    stopTinnitusAudio();
+  const handlePreviousStep =
+    useCallback(
+      async () => {
+        stopTinnitusAudio();
 
-    if (screen === "representative") {
-      setRepresentativeType(null);
-      setPlayingTinnitusType(null);
-      setScreen("type");
-      return;
-    }
-
-    if (screen === "type") {
-      navigate(-1);
-      return;
-    }
-
-    if (
-      screen === "matching" &&
-      matchSession
-    ) {
-      /*
-       * 1/7에서는 더 이전 A/B 라운드가 없으므로
-       * 대표 소리 선택 화면으로 이동
-       */
-      if (matchSession.round_number === 1) {
-        setSelectedOptionId(null);
-        setPlayingOptionId(null);
-        setScreen("representative");
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        setErrorMessage("");
-
-        const previousSession =
-          await goBackPitchMatch(
-            matchSession.id,
+        if (
+          screen ===
+          "representative"
+        ) {
+          setRepresentativeType(
+            null,
           );
 
-          sessionStorage.removeItem(
-            "somni-octave-session",
-          );
-        setMatchSession(previousSession);
-
-        setCurrentStep(
-          previousSession.round_number - 1,
-        );
-
-        setSelectedOptionId(null);
-        setPlayingOptionId(null);
-      } catch (error) {
-        console.error(
-          "이전 음역 단계 이동 실패",
-          error,
-        );
-
-        setErrorMessage(
-          "이전 단계로 이동하지 못했어요.",
-        );
-      } finally {
-        setIsLoading(false);
-      }
-
-      return;
-    }
-
-    if (screen === "result") {
-      const savedOctaveSession =
-        sessionStorage.getItem(
-          "somni-octave-session",
-        );
-
-      if (!savedOctaveSession) {
-        console.error(
-          "저장된 옥타브 세션이 없습니다.",
-        );
-        return;
-      }
-
-      try {
-        const previousOctaveSession =
-          JSON.parse(
-            savedOctaveSession,
-          ) as PitchMatchSession;
-
-        setMatchSession(
-          previousOctaveSession,
-        );
-
-        setSelectedOctave(null);
-        setPlayingOctave(null);
-        setErrorMessage("");
-
-        setScreen("octave");
-      } catch (error) {
-        console.error(
-          "옥타브 세션 복원 실패",
-          error,
-        );
-      }
-
-      return;
-    }
-
-
-    if (
-      screen === "octave" &&
-      matchSession
-    ) {
-      try {
-        setIsLoading(true);
-        setErrorMessage("");
-
-        const previousSession =
-          await goBackPitchMatch(
-            matchSession.id,
+          setPlayingTinnitusType(
+            null,
           );
 
-        setMatchSession(previousSession);
+          setScreen(
+            "type",
+          );
 
-        setCurrentStep(
-          previousSession.round_number - 1,
-        );
+          return;
+        }
 
-        setSelectedOctave(null);
-        setPlayingOctave(null);
+        if (
+          screen === "type"
+        ) {
+          navigate(-1);
 
-        setSelectedOptionId(null);
-        setPlayingOptionId(null);
+          return;
+        }
 
-        setScreen("matching");
-      } catch (error) {
-        console.error(
-          "옥타브 이전 단계 이동 실패",
-          error,
-        );
+        if (
+          screen ===
+            "matching" &&
+          matchSession
+        ) {
+          if (
+            matchSession
+              .round_number ===
+            1
+          ) {
+            setSelectedOptionId(
+              null,
+            );
 
-        setErrorMessage(
-          "이전 단계로 이동하지 못했어요.",
-        );
-      } finally {
-        setIsLoading(false);
-      }
+            setPlayingOptionId(
+              null,
+            );
 
-      return;
-    }
+            setScreen(
+              "representative",
+            );
 
-    }, [
-      screen,
-      navigate,
-      matchSession,
-    ]);
+            return;
+          }
+
+          try {
+            setIsLoading(
+              true,
+            );
+
+            setErrorMessage("");
+
+            const previousSession =
+              await goBackPitchMatch(
+                matchSession.id,
+              );
+
+            sessionStorage.removeItem(
+              "somni-octave-session",
+            );
+
+            setMatchSession(
+              previousSession,
+            );
+
+            setCurrentStep(
+              previousSession
+                .round_number -
+                1,
+            );
+
+            setSelectedOptionId(
+              null,
+            );
+
+            setPlayingOptionId(
+              null,
+            );
+          } catch (error) {
+            console.error(
+              "이전 음역 단계 이동 실패",
+              error,
+            );
+
+            setErrorMessage(
+              "이전 단계로 이동하지 못했어요.",
+            );
+          } finally {
+            setIsLoading(
+              false,
+            );
+          }
+
+          return;
+        }
+
+        if (
+          screen === "result"
+        ) {
+          const savedOctaveSession =
+            sessionStorage.getItem(
+              "somni-octave-session",
+            );
+
+          if (
+            !savedOctaveSession
+          ) {
+            console.error(
+              "저장된 옥타브 세션이 없습니다.",
+            );
+
+            return;
+          }
+
+          try {
+            const previousOctaveSession =
+              JSON.parse(
+                savedOctaveSession,
+              ) as PitchMatchSession;
+
+            setMatchSession(
+              previousOctaveSession,
+            );
+
+            setSelectedOctave(
+              null,
+            );
+
+            setPlayingOctave(
+              null,
+            );
+
+            setErrorMessage("");
+
+            setScreen(
+              "octave",
+            );
+          } catch (error) {
+            console.error(
+              "옥타브 세션 복원 실패",
+              error,
+            );
+          }
+
+          return;
+        }
+
+        if (
+          screen ===
+            "octave" &&
+          matchSession
+        ) {
+          try {
+            setIsLoading(
+              true,
+            );
+
+            setErrorMessage("");
+
+            const previousSession =
+              await goBackPitchMatch(
+                matchSession.id,
+              );
+
+            setMatchSession(
+              previousSession,
+            );
+
+            setCurrentStep(
+              previousSession
+                .round_number -
+                1,
+            );
+
+            setSelectedOctave(
+              null,
+            );
+
+            setPlayingOctave(
+              null,
+            );
+
+            setSelectedOptionId(
+              null,
+            );
+
+            setPlayingOptionId(
+              null,
+            );
+
+            setScreen(
+              "matching",
+            );
+          } catch (error) {
+            console.error(
+              "옥타브 이전 단계 이동 실패",
+              error,
+            );
+
+            setErrorMessage(
+              "이전 단계로 이동하지 못했어요.",
+            );
+          } finally {
+            setIsLoading(
+              false,
+            );
+          }
+        }
+      },
+      [
+        screen,
+        navigate,
+        matchSession,
+      ],
+    );
 
   useEffect(() => {
     window.addEventListener(
@@ -801,31 +1108,29 @@ const handlePreviousStep =
         handlePreviousStep,
       );
     };
-  }, [handlePreviousStep]);
+  }, [
+    handlePreviousStep,
+  ]);
 
   /*
    * =========================
    * 화면 1
-   * 이명 소리 유형
    * =========================
    */
 
-  if (screen === "type") {
+  if (
+    screen === "type"
+  ) {
     return (
       <div className="flex min-h-full flex-col px-5 pb-6">
         <ProgressSection
-          width={progressWidth}
+          width={
+            progressWidth
+          }
         />
 
         <section className="pt-16">
-          <h1
-            className="
-              text-[1.25rem]
-              leading-[1.75rem]
-              font-bold
-              text-text-primary
-            "
-          >
+          <h1 className="text-[1.25rem] leading-[1.75rem] font-bold text-text-primary">
             어떤 소리와 가장 비슷한가요?
           </h1>
 
@@ -835,7 +1140,9 @@ const handlePreviousStep =
 
           <div className="mt-10 flex flex-col gap-3">
             {TINNITUS_TYPE_OPTIONS.map(
-              (option) => {
+              (
+                option,
+              ) => {
                 const selected =
                   selectedTinnitusType ===
                   option.id;
@@ -846,7 +1153,9 @@ const handlePreviousStep =
 
                 return (
                   <div
-                    key={option.id}
+                    key={
+                      option.id
+                    }
                     role="button"
                     tabIndex={0}
                     onClick={() =>
@@ -854,11 +1163,14 @@ const handlePreviousStep =
                         option.id,
                       )
                     }
-                    onKeyDown={(event) => {
+                    onKeyDown={(
+                      event,
+                    ) => {
                       if (
                         event.key ===
                           "Enter" ||
-                        event.key === " "
+                        event.key ===
+                          " "
                       ) {
                         event.preventDefault();
 
@@ -884,60 +1196,25 @@ const handlePreviousStep =
                       }
                     `}
                   >
-                    <div
-                      className="
-                        flex
-                        h-[56px]
-                        w-[56px]
-                        shrink-0
-                        items-center
-                        justify-center
-                        rounded-[10px]
-                        bg-[#07191D]
-                      "
-                    >
-                      <div className="flex items-center gap-[3px]">
-                        {option.waveHeights.map(
-                          (
-                            height,
-                            index,
-                          ) => (
-                            <span
-                              key={
-                                index
-                              }
-                              className="
-                                w-[3px]
-                                rounded-full
-                                bg-[#60CEA7]
-                              "
-                              style={{
-                                height: `${height}px`,
-                              }}
-                            />
-                          ),
-                        )}
-                      </div>
+                    <div className="flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-[10px] bg-[#07191D]">
+                      <AnimatedWave
+                        heights={
+                          option.waveHeights
+                        }
+                        playing={
+                          playing
+                        }
+                      />
                     </div>
 
                     <div className="ml-4 min-w-0">
-                      <p
-                        className="
-                          text-[13px]
-                          font-semibold
-                          text-text-primary
-                        "
-                      >
-                        {option.title}
+                      <p className="text-[13px] font-semibold text-text-primary">
+                        {
+                          option.title
+                        }
                       </p>
 
-                      <p
-                        className="
-                          mt-1
-                          text-[10px]
-                          text-text-secondary
-                        "
-                      >
+                      <p className="mt-1 text-[10px] text-text-secondary">
                         {
                           option.description
                         }
@@ -984,11 +1261,7 @@ const handlePreviousStep =
                         }
                         alt=""
                         aria-hidden="true"
-                        className="
-                          h-[13.496px]
-                          w-[11.25px]
-                          object-contain
-                        "
+                        className="h-[13.496px] w-[11.25px] object-contain"
                       />
                     </button>
                   </div>
@@ -999,7 +1272,9 @@ const handlePreviousStep =
 
           {errorMessage && (
             <p className="mt-3 text-[12px] text-[#F09292]">
-              {errorMessage}
+              {
+                errorMessage
+              }
             </p>
           )}
         </section>
@@ -1009,7 +1284,8 @@ const handlePreviousStep =
             type="button"
             disabled={
               selectedTinnitusType ===
-                null || isLoading
+                null ||
+              isLoading
             }
             onClick={
               handleTinnitusTypeConfirm
@@ -1040,32 +1316,32 @@ const handlePreviousStep =
   /*
    * =========================
    * 화면 2
-   * 복합형 대표 소리
    * =========================
    */
 
-  if (screen === "representative") {
+  if (
+    screen ===
+    "representative"
+  ) {
     const representativeOptions =
       TINNITUS_TYPE_OPTIONS.filter(
-        (option) =>
-          option.id !== "multiple",
+        (
+          option,
+        ) =>
+          option.id !==
+          "multiple",
       );
 
     return (
       <div className="flex min-h-full flex-col px-5 pb-6">
         <ProgressSection
-          width={progressWidth}
+          width={
+            progressWidth
+          }
         />
 
         <section className="pt-16">
-          <h1
-            className="
-              text-[1.25rem]
-              leading-[1.75rem]
-              font-bold
-              text-text-primary
-            "
-          >
+          <h1 className="text-[1.25rem] leading-[1.75rem] font-bold text-text-primary">
             잠들 때 가장 신경 쓰이는
             <br />
             소리 하나를 골라주세요.
@@ -1077,7 +1353,9 @@ const handlePreviousStep =
 
           <div className="mt-10 flex flex-col gap-3">
             {representativeOptions.map(
-              (option) => {
+              (
+                option,
+              ) => {
                 const selected =
                   representativeType ===
                   option.id;
@@ -1088,7 +1366,9 @@ const handlePreviousStep =
 
                 return (
                   <div
-                    key={option.id}
+                    key={
+                      option.id
+                    }
                     role="button"
                     tabIndex={0}
                     onClick={() =>
@@ -1096,19 +1376,6 @@ const handlePreviousStep =
                         option.id,
                       )
                     }
-                    onKeyDown={(event) => {
-                      if (
-                        event.key ===
-                          "Enter" ||
-                        event.key === " "
-                      ) {
-                        event.preventDefault();
-
-                        handleRepresentativeSelect(
-                          option.id,
-                        );
-                      }
-                    }}
                     className={`
                       flex
                       min-h-[76px]
@@ -1126,60 +1393,25 @@ const handlePreviousStep =
                       }
                     `}
                   >
-                    <div
-                      className="
-                        flex
-                        h-[56px]
-                        w-[56px]
-                        shrink-0
-                        items-center
-                        justify-center
-                        rounded-[10px]
-                        bg-[#07191D]
-                      "
-                    >
-                      <div className="flex items-center gap-[3px]">
-                        {option.waveHeights.map(
-                          (
-                            height,
-                            index,
-                          ) => (
-                            <span
-                              key={
-                                index
-                              }
-                              className="
-                                w-[3px]
-                                rounded-full
-                                bg-[#60CEA7]
-                              "
-                              style={{
-                                height: `${height}px`,
-                              }}
-                            />
-                          ),
-                        )}
-                      </div>
+                    <div className="flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-[10px] bg-[#07191D]">
+                      <AnimatedWave
+                        heights={
+                          option.waveHeights
+                        }
+                        playing={
+                          playing
+                        }
+                      />
                     </div>
 
                     <div className="ml-4 min-w-0">
-                      <p
-                        className="
-                          text-[13px]
-                          font-semibold
-                          text-text-primary
-                        "
-                      >
-                        {option.title}
+                      <p className="text-[13px] font-semibold text-text-primary">
+                        {
+                          option.title
+                        }
                       </p>
 
-                      <p
-                        className="
-                          mt-1
-                          text-[10px]
-                          text-text-secondary
-                        "
-                      >
+                      <p className="mt-1 text-[10px] text-text-secondary">
                         {
                           option.description
                         }
@@ -1226,11 +1458,7 @@ const handlePreviousStep =
                         }
                         alt=""
                         aria-hidden="true"
-                        className="
-                          h-[13.496px]
-                          w-[11.25px]
-                          object-contain
-                        "
+                        className="h-[13.496px] w-[11.25px] object-contain"
                       />
                     </button>
                   </div>
@@ -1239,21 +1467,16 @@ const handlePreviousStep =
             )}
           </div>
 
-          <p
-            className="
-              mt-4
-              text-[10px]
-              leading-4
-              text-text-secondary
-            "
-          >
+          <p className="mt-4 text-[10px] leading-4 text-text-secondary">
             선택한 대표 소리는 나중에
             언제든 다시 바꿀 수 있어요.
           </p>
 
           {errorMessage && (
             <p className="mt-3 text-[12px] text-[#F09292]">
-              {errorMessage}
+              {
+                errorMessage
+              }
             </p>
           )}
         </section>
@@ -1263,7 +1486,8 @@ const handlePreviousStep =
             type="button"
             disabled={
               representativeType ===
-                null || isLoading
+                null ||
+              isLoading
             }
             onClick={
               handleRepresentativeConfirm
@@ -1294,15 +1518,18 @@ const handlePreviousStep =
   /*
    * =========================
    * 화면 3
-   * A/B 비교 1~7
    * =========================
    */
 
-  if (screen === "matching") {
+  if (
+    screen === "matching"
+  ) {
     if (
       !matchSession ||
-      matchSession.freq_a === null ||
-      matchSession.freq_b === null
+      matchSession.freq_a ===
+        null ||
+      matchSession.freq_b ===
+        null
     ) {
       return (
         <div className="flex min-h-full items-center justify-center px-5">
@@ -1313,40 +1540,37 @@ const handlePreviousStep =
       );
     }
 
-    const matchingOptions = [
-      {
-        id: "A" as const,
-        frequency:
-          matchSession.freq_a,
-      },
-      {
-        id: "B" as const,
-        frequency:
-          matchSession.freq_b,
-      },
-    ];
+    const matchingOptions =
+      [
+        {
+          id: "A" as const,
+          frequency:
+            matchSession.freq_a,
+        },
+        {
+          id: "B" as const,
+          frequency:
+            matchSession.freq_b,
+        },
+      ];
 
     return (
       <div className="flex min-h-full flex-col px-5 pb-6">
         <ProgressSection
-          width={progressWidth}
+          width={
+            progressWidth
+          }
         />
 
         <section className="pt-16">
           <p className="text-[0.75rem] font-semibold text-text-tertiary">
             {currentStep + 1}/
-            {TOTAL_MATCHING_STEPS}
+            {
+              TOTAL_MATCHING_STEPS
+            }
           </p>
 
-          <h1
-            className="
-              mt-2
-              text-[1.25rem]
-              leading-[1.75rem]
-              font-bold
-              text-text-primary
-            "
-          >
+          <h1 className="mt-2 text-[1.25rem] leading-[1.75rem] font-bold text-text-primary">
             어느 소리가 지금 들리는
             <br />
             이명과 더 비슷한가요?
@@ -1354,10 +1578,16 @@ const handlePreviousStep =
 
           <div className="mt-10 flex gap-3">
             {matchingOptions.map(
-              (option) => (
+              (
+                option,
+              ) => (
                 <FrequencyCard
-                  key={option.id}
-                  label={option.id}
+                  key={
+                    option.id
+                  }
+                  label={
+                    option.id
+                  }
                   frequency={
                     option.frequency
                   }
@@ -1390,7 +1620,9 @@ const handlePreviousStep =
 
           {errorMessage && (
             <p className="mt-3 text-[0.75rem] text-[#F09292]">
-              {errorMessage}
+              {
+                errorMessage
+              }
             </p>
           )}
         </section>
@@ -1398,8 +1630,12 @@ const handlePreviousStep =
         <div className="mt-auto pt-10">
           <button
             type="button"
-            disabled={isLoading}
-            onClick={handleConfirm}
+            disabled={
+              isLoading
+            }
+            onClick={
+              handleConfirm
+            }
             className={`
               h-14
               w-full
@@ -1426,48 +1662,57 @@ const handlePreviousStep =
   /*
    * =========================
    * 화면 4
-   * 옥타브 확인
    * =========================
    */
 
-  if (screen === "octave") {
+  if (
+    screen === "octave"
+  ) {
     const octaveTest =
-      matchSession?.octave_test;
+      matchSession
+        ?.octave_test;
 
     const octaveOptions =
       octaveTest
         ? [
             {
-              id: "half" as const,
+              id:
+                "half" as const,
               frequency:
                 octaveTest.half,
               description:
                 "한 옥타브 낮은 소리",
               waveHeights: [
-                22, 32, 38, 28, 34,
-                24, 30,
+                22, 32, 38,
+                28, 34, 24,
+                30,
               ],
             },
             {
-              id: "same" as const,
+              id:
+                "same" as const,
               frequency:
                 octaveTest.same,
               description:
                 "지금까지 찾은 중심 소리",
               waveHeights: [
-                28, 38, 34, 30, 24,
-                32, 26,
+                28, 38, 34,
+                30, 24, 32,
+                26,
               ],
             },
             {
-              id: "double" as const,
+              id:
+                "double" as const,
               frequency:
                 octaveTest.double,
               description:
                 "한 옥타브 높은 소리",
               waveHeights: [
-                18, 24, 30, 36, 40,
-                38, 34, 30, 24, 20,
+                18, 24, 30,
+                36, 40, 38,
+                34, 30, 24,
+                20,
               ],
             },
           ]
@@ -1476,32 +1721,17 @@ const handlePreviousStep =
     return (
       <div className="flex min-h-full flex-col px-5 pb-6">
         <ProgressSection
-          width={progressWidth}
+          width={
+            progressWidth
+          }
         />
 
         <section className="pt-12">
-          <h1
-            className="
-              font-sans
-              text-[24px]
-              font-bold
-              leading-[36px]
-              text-[#ECF3F2]
-            "
-          >
+          <h1 className="font-sans text-[24px] font-bold leading-[36px] text-[#ECF3F2]">
             마지막으로 확인할게요.
           </h1>
 
-          <p
-            className="
-              mt-[2px]
-              font-sans
-              text-[13px]
-              font-normal
-              leading-normal
-              text-[#809EA8]
-            "
-          >
+          <p className="mt-[2px] font-sans text-[13px] font-normal leading-normal text-[#809EA8]">
             비슷하게 느껴지는 높이 중
             <br />
             평소 들리는 소리와 가장
@@ -1510,14 +1740,19 @@ const handlePreviousStep =
 
           <div className="mt-10 flex flex-col gap-3">
             {octaveOptions.map(
-              (option) => {
+              (
+                option,
+              ) => {
                 if (
                   option.frequency ===
                   null
                 ) {
                   return null;
                 }
-                const frequency = option.frequency;
+
+                const frequency =
+                  option.frequency;
+
                 const selected =
                   selectedOctave ===
                   option.id;
@@ -1528,7 +1763,9 @@ const handlePreviousStep =
 
                 return (
                   <div
-                    key={option.id}
+                    key={
+                      option.id
+                    }
                     role="button"
                     tabIndex={0}
                     onClick={() => {
@@ -1539,25 +1776,6 @@ const handlePreviousStep =
                       setErrorMessage(
                         "",
                       );
-                    }}
-                    onKeyDown={(
-                      event,
-                    ) => {
-                      if (
-                        event.key ===
-                          "Enter" ||
-                        event.key === " "
-                      ) {
-                        event.preventDefault();
-
-                        setSelectedOctave(
-                          option.id,
-                        );
-
-                        setErrorMessage(
-                          "",
-                        );
-                      }
                     }}
                     className={`
                       flex
@@ -1576,63 +1794,26 @@ const handlePreviousStep =
                       }
                     `}
                   >
-                    <div
-                      className="
-                        flex
-                        h-[58px]
-                        w-[58px]
-                        shrink-0
-                        items-center
-                        justify-center
-                        rounded-[10px]
-                        bg-[#07191D]
-                      "
-                    >
-                      <div className="flex items-center gap-[3px]">
-                        {option.waveHeights.map(
-                          (
-                            height,
-                            index,
-                          ) => (
-                            <span
-                              key={
-                                index
-                              }
-                              className="
-                                w-[3px]
-                                rounded-full
-                                bg-[#60CEA7]
-                              "
-                              style={{
-                                height: `${height}px`,
-                              }}
-                            />
-                          ),
-                        )}
-                      </div>
+                    <div className="flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-[10px] bg-[#07191D]">
+                      <AnimatedWave
+                        heights={
+                          option.waveHeights
+                        }
+                        playing={
+                          playing
+                        }
+                      />
                     </div>
 
                     <div className="ml-4">
-                      <p
-                        className="
-                          text-[14px]
-                          font-bold
-                          text-text-primary
-                        "
-                      >
+                      <p className="text-[14px] font-bold text-text-primary">
                         {Math.round(
                           frequency,
                         ).toLocaleString()}{" "}
                         Hz
                       </p>
 
-                      <p
-                        className="
-                          mt-1
-                          text-[11px]
-                          text-text-secondary
-                        "
-                      >
+                      <p className="mt-1 text-[11px] text-text-secondary">
                         {
                           option.description
                         }
@@ -1680,11 +1861,7 @@ const handlePreviousStep =
                         }
                         alt=""
                         aria-hidden="true"
-                        className="
-                          h-[13.496px]
-                          w-[11.25px]
-                          object-contain
-                        "
+                        className="h-[13.496px] w-[11.25px] object-contain"
                       />
                     </button>
                   </div>
@@ -1693,16 +1870,7 @@ const handlePreviousStep =
             )}
           </div>
 
-          <p
-            className="
-              mt-8
-              font-sans
-              text-[11px]
-              font-normal
-              leading-normal
-              text-[#809EA8]
-            "
-          >
+          <p className="mt-8 font-sans text-[11px] font-normal leading-normal text-[#809EA8]">
             지원 범위를 벗어나는 후보는
             자동으로 제외해요.
             <br />
@@ -1712,7 +1880,9 @@ const handlePreviousStep =
 
           {errorMessage && (
             <p className="mt-3 text-[12px] text-[#F09292]">
-              {errorMessage}
+              {
+                errorMessage
+              }
             </p>
           )}
         </section>
@@ -1724,7 +1894,8 @@ const handlePreviousStep =
               handleOctaveConfirm
             }
             disabled={
-              selectedOctave === null ||
+              selectedOctave ===
+                null ||
               isLoading
             }
             className={`
@@ -1735,7 +1906,8 @@ const handlePreviousStep =
               font-bold
               ${
                 selectedOctave !==
-                  null && !isLoading
+                  null &&
+                !isLoading
                   ? "bg-[#60CEA7] text-[#07100D]"
                   : "bg-[#214750] text-[#0D1719]"
               }
@@ -1752,25 +1924,18 @@ const handlePreviousStep =
 
   /*
    * =========================
-   * 화면 5
    * 결과
    * =========================
    */
 
   return (
     <div className="flex min-h-full flex-col px-5 pb-6">
-      <ProgressSection width={100} />
+      <ProgressSection
+        width={100}
+      />
 
       <section className="pt-16">
-        <h1
-          className="
-            font-sans
-            text-[24px]
-            font-bold
-            leading-[36px]
-            text-[#ECF3F2]
-          "
-        >
+        <h1 className="font-sans text-[24px] font-bold leading-[36px] text-[#ECF3F2]">
           이명과 가까운 음역을 찾았어요
         </h1>
 
@@ -1788,32 +1953,26 @@ const handlePreviousStep =
           </span>
         </p>
 
-        <div
-          className="
-            mt-5
-            rounded-[1rem]
-            border
-            border-[#1D5B49]
-            bg-[#102821]
-            p-4
-          "
-        >
+        <div className="mt-5 rounded-[1rem] border border-[#1D5B49] bg-[#102821] p-4">
           <div className="flex h-[7rem] items-center justify-center gap-1">
             {[
-              32, 44, 56, 46, 38,
-              52, 60, 44, 34, 50,
-              58, 42, 54,
+              32, 44, 56, 46,
+              38, 52, 60, 44,
+              34, 50, 58, 42,
+              54,
             ].map(
-              (height, index) => (
+              (
+                height,
+                index,
+              ) => (
                 <span
-                  key={index}
-                  className="
-                    w-1
-                    rounded-full
-                    bg-[#60CEA7]
-                  "
+                  key={
+                    index
+                  }
+                  className="w-1 rounded-full bg-[#60CEA7]"
                   style={{
-                    height: `${height}px`,
+                    height:
+                      `${height}px`,
                   }}
                 />
               ),
@@ -1824,12 +1983,14 @@ const handlePreviousStep =
             추정 범위{" "}
             {Math.round(
               matchSession
-                ?.lower_bound ?? 0,
+                ?.lower_bound ??
+                0,
             ).toLocaleString()}
             Hz -{" "}
             {Math.round(
               matchSession
-                ?.upper_bound ?? 0,
+                ?.upper_bound ??
+                0,
             ).toLocaleString()}
             Hz
           </p>
@@ -1851,31 +2012,20 @@ const handlePreviousStep =
       <div className="mt-auto pt-10">
         <button
           type="button"
-          onClick={handleResultNext}
-          className="
-            h-14
-            w-full
-            rounded-[0.75rem]
-            bg-[#60CEA7]
-            text-[0.875rem]
-            font-bold
-            text-[#07100D]
-          "
+          onClick={
+            handleResultNext
+          }
+          className="h-14 w-full rounded-[0.75rem] bg-[#60CEA7] text-[0.875rem] font-bold text-[#07100D]"
         >
           다음
         </button>
 
         <button
           type="button"
-          onClick={handleRestart}
-          className="
-            mt-3
-            h-11
-            w-full
-            text-[0.8125rem]
-            font-medium
-            text-text-tertiary
-          "
+          onClick={
+            handleRestart
+          }
+          className="mt-3 h-11 w-full text-[0.8125rem] font-medium text-text-tertiary"
         >
           다시 측정하기
         </button>
@@ -1893,25 +2043,12 @@ function ProgressSection({
 }: ProgressSectionProps) {
   return (
     <div className="pt-5">
-      <div
-        className="
-          h-[3px]
-          w-full
-          overflow-hidden
-          rounded-full
-          bg-[#294247]
-        "
-      >
+      <div className="h-[3px] w-full overflow-hidden rounded-full bg-[#294247]">
         <div
-          className="
-            h-full
-            rounded-full
-            bg-[#60CEA7]
-            transition-[width]
-            duration-300
-          "
+          className="h-full rounded-full bg-[#60CEA7] transition-[width] duration-300"
           style={{
-            width: `${width}%`,
+            width:
+              `${width}%`,
           }}
         />
       </div>

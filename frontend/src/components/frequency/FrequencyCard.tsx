@@ -1,4 +1,6 @@
-import type { FrequencyOptionId } from "../../mock/frequencyData";
+import type {
+  FrequencyOptionId,
+} from "../../mock/frequencyData";
 
 interface FrequencyCardProps {
   label: FrequencyOptionId;
@@ -11,7 +13,8 @@ interface FrequencyCardProps {
 }
 
 const WAVE_HEIGHTS = [
-  28, 46, 60, 42, 54, 34, 48, 30, 44, 24, 38, 52, 32,
+  28, 46, 60, 42, 54, 34, 48,
+  30, 44, 24, 38, 52, 32,
 ];
 
 function FrequencyCard({
@@ -26,8 +29,12 @@ function FrequencyCard({
   return (
     <article
       className={`
-        min-w-0 flex-1 rounded-[1rem] border p-3
+        min-w-0
+        flex-1
+        rounded-[1rem]
+        border
         bg-[#111d21]
+        p-3
         ${
           selected
             ? "border-[#60CEA7]"
@@ -39,15 +46,28 @@ function FrequencyCard({
       <div className="flex items-center justify-between">
         <span
           className="
-            flex h-8 w-8 items-center justify-center
-            rounded-full bg-[#16252a]
-            text-[0.75rem] font-semibold text-text-secondary
+            flex
+            h-8
+            w-8
+            items-center
+            justify-center
+            rounded-full
+            bg-[#16252a]
+            text-[0.75rem]
+            font-semibold
+            text-text-secondary
           "
         >
           {label}
         </span>
 
-        <span className="text-[0.75rem] font-semibold text-[#60CEA7]">
+        <span
+          className="
+            text-[0.75rem]
+            font-semibold
+            text-[#60CEA7]
+          "
+        >
           {frequency.toLocaleString()}Hz
         </span>
       </div>
@@ -55,8 +75,15 @@ function FrequencyCard({
       {/* 파형 영역 */}
       <div
         className={`
-          mt-4 flex h-[6.5rem] items-center justify-center
-          gap-[0.1875rem] rounded-[0.75rem] px-3
+          mt-4
+          flex
+          h-[6.5rem]
+          items-center
+          justify-center
+          gap-[0.1875rem]
+          rounded-[0.75rem]
+          px-3
+          transition-colors
           ${
             playing
               ? "bg-[#173A34]"
@@ -65,13 +92,45 @@ function FrequencyCard({
         `}
         aria-hidden="true"
       >
-        {WAVE_HEIGHTS.map((height, index) => (
-          <span
-            key={`${label}-${index}`}
-            className="w-[0.1875rem] rounded-full bg-[#60CEA7]"
-            style={{ height: `${height}px` }}
-          />
-        ))}
+        {WAVE_HEIGHTS.map(
+          (
+            height,
+            index,
+          ) => (
+            <span
+              key={`${label}-${index}`}
+              className={`
+                w-[0.1875rem]
+                shrink-0
+                origin-center
+                rounded-full
+                bg-[#60CEA7]
+                ${
+                  playing
+                    ? "animate-[soundWave_0.8s_ease-in-out_infinite_alternate]"
+                    : ""
+                }
+              `}
+              style={{
+                height: `${height}px`,
+
+                animationDelay:
+                  playing
+                    ? `${index * 55}ms`
+                    : undefined,
+
+                animationDuration:
+                  playing
+                    ? `${
+                        520 +
+                        (index % 5) *
+                          90
+                      }ms`
+                    : undefined,
+              }}
+            />
+          ),
+        )}
       </div>
 
       {/* 재생 버튼 */}
@@ -79,8 +138,14 @@ function FrequencyCard({
         type="button"
         onClick={onPlay}
         className={`
-          mt-2 flex w-full items-center justify-center
-          gap-1 py-1 text-[0.6875rem]
+          mt-2
+          flex
+          w-full
+          items-center
+          justify-center
+          gap-1
+          py-1
+          text-[0.6875rem]
           ${
             playing
               ? "text-[#60CEA7]"
@@ -88,8 +153,15 @@ function FrequencyCard({
           }
         `}
       >
-        <span aria-hidden="true">▶</span>
-        <span>{playing ? "재생중" : "들어보기"}</span>
+        <span aria-hidden="true">
+          {playing ? "Ⅱ" : "▶"}
+        </span>
+
+        <span>
+          {playing
+            ? "재생중"
+            : "들어보기"}
+        </span>
       </button>
 
       {/* 선택 버튼 */}
@@ -97,8 +169,13 @@ function FrequencyCard({
         type="button"
         onClick={onSelect}
         className={`
-          mt-2 h-10 w-full rounded-[0.625rem]
-          border text-[0.75rem] font-medium
+          mt-2
+          h-10
+          w-full
+          rounded-[0.625rem]
+          border
+          text-[0.75rem]
+          font-medium
           ${
             selected
               ? "border-[#2D4548] bg-[#173A34] text-[#60CEA7]"
@@ -108,7 +185,9 @@ function FrequencyCard({
           }
         `}
       >
-        {selected ? "선택됨" : "선택"}
+        {selected
+          ? "선택됨"
+          : "선택"}
       </button>
     </article>
   );

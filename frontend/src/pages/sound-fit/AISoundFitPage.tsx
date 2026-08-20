@@ -1,10 +1,14 @@
-import { useEffect, useState, } from "react";
-import { useNavigate, } from "react-router-dom";
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  useNavigate,
+} from "react-router-dom";
 
 import SoundFitOptionCard from "../../components/sound-fit/SoundFitOptionCard";
 
-import soundFitIntroWave from "../../assets/icons/sound-fit-intro-wave.svg";
-import soundFitProfileWave from "../../assets/icons/sound-fit-profile-wave.svg";
 import {
   getSoundFitProfile,
   goToPreviousSoundFitStep,
@@ -13,17 +17,24 @@ import {
   type SoundFitProfile,
   type SoundFitSession,
 } from "../../api/soundFit";
-import { playSoundFitPreview, stopSoundFitAudio, } from "../../audio/soundFitAudio";
 
+import {
+  playSoundFitPreview,
+  stopSoundFitAudio,
+} from "../../audio/soundFitAudio";
 
 import rainSound from "../../assets/audio/nature/rain.mp3";
 import streamAudio from "../../assets/audio/nature/stream.mp3";
 import oceanAudio from "../../assets/audio/nature/ocean.mp3";
 import airAudio from "../../assets/audio/nature/air.mp3";
 
-import { getSoundSession, } from "../../api/sound";
+import {
+  getSoundSession,
+} from "../../api/sound";
 
-import { getUserUuid, } from "../../utils/userStorage";
+import {
+  getUserUuid,
+} from "../../utils/userStorage";
 
 type Screen =
   | "intro"
@@ -34,6 +45,110 @@ type SelectedOption =
   | "A"
   | "B"
   | null;
+
+const TEXTURE_LABEL = {
+  soft: "부드러운 질감",
+  balanced: "균형 있는 질감",
+  clear: "선명한 질감",
+};
+
+const MIX_LABEL = {
+  low: "자연음 중심",
+  medium: "균형",
+  high: "노이즈 중심",
+};
+
+/*
+ * 시작 화면 큰 파형
+ */
+const INTRO_WAVE_HEIGHTS = [
+  38, 42, 40, 34, 26,
+  20, 18, 22, 30, 38,
+  42, 40, 34, 26, 20,
+  18, 22, 30, 38, 42,
+  40, 34, 26, 20, 18,
+  22, 30, 38, 42, 40,
+  34, 26, 20, 18, 22,
+  30, 38, 42,
+];
+
+/*
+ * 결과 카드 우측 파형
+ */
+const PROFILE_WAVE_HEIGHTS = [
+  24, 36, 44, 32,
+  22, 30, 40, 28,
+  20, 34, 42, 26,
+];
+
+/*
+ * 파형 공통 컴포넌트
+ */
+interface WaveBarsProps {
+  heights: number[];
+  playing?: boolean;
+  barWidth?: string;
+  gap?: string;
+}
+
+function WaveBars({
+  heights,
+  playing = false,
+  barWidth = "w-[4px]",
+  gap = "gap-[4px]",
+}: WaveBarsProps) {
+  return (
+    <div
+      className={`
+        flex
+        items-center
+        justify-center
+        ${gap}
+      `}
+      aria-hidden="true"
+    >
+      {heights.map(
+        (
+          height,
+          index,
+        ) => (
+          <span
+            key={index}
+            className={`
+              ${barWidth}
+              shrink-0
+              origin-center
+              rounded-full
+              bg-[#61DBB8]
+              ${
+                playing
+                  ? "animate-[soundWave_0.8s_ease-in-out_infinite_alternate]"
+                  : ""
+              }
+            `}
+            style={{
+              height: `${height}px`,
+
+              animationDelay:
+                playing
+                  ? `${index * 45}ms`
+                  : undefined,
+
+              animationDuration:
+                playing
+                  ? `${
+                      540 +
+                      (index % 5) *
+                        90
+                    }ms`
+                  : undefined,
+            }}
+          />
+        ),
+      )}
+    </div>
+  );
+}
 
 function BackIcon() {
   return (
@@ -54,20 +169,6 @@ function BackIcon() {
     </svg>
   );
 }
-
-const TEXTURE_LABEL = {
-  soft: "부드러운 질감",
-  balanced: "균형 있는 질감",
-  clear: "선명한 질감",
-};
-
-const MIX_LABEL = {
-  low: "자연음 중심",
-  medium: "균형",
-  high: "노이즈 중심",
-};
-
-
 
 function AISoundFitPage() {
   const navigate =
@@ -105,19 +206,21 @@ function AISoundFitPage() {
       null,
     );
 
-    const [
+  const [
     roundOneSelection,
     setRoundOneSelection,
-    ] =
+  ] =
     useState<SelectedOption>(
-        null,
+      null,
     );
 
-    const [
+  const [
     visibleRound,
     setVisibleRound,
-    ] =
-    useState<1 | 2>(1);
+  ] =
+    useState<1 | 2>(
+      1,
+    );
 
   const [
     playingOption,
@@ -139,130 +242,135 @@ function AISoundFitPage() {
   ] =
     useState("");
 
-    const [
+  const [
     currentNatureAudio,
     setCurrentNatureAudio,
-    ] = useState<string | null>(
-    null,
+  ] =
+    useState<string | null>(
+      null,
     );
 
-    useEffect(() => {
+  /*
+   * =========================
+   * 현재 자연음 조회
+   * =========================
+   */
+  useEffect(() => {
     const loadCurrentNatureSound =
-        async () => {
+      async () => {
         const natureAudioMap:
-            Record<string, string> = {
+          Record<string, string> = {
             rain: rainSound,
-            stream: streamAudio,
-            ocean: oceanAudio,
-            air: airAudio,
-            };
+            stream:
+              streamAudio,
+            ocean:
+              oceanAudio,
+            air:
+              airAudio,
+          };
 
         /*
-        * 1순위:
-        * 사용자가 직접 선택한 자연음
-        */
+         * 1순위
+         * 사용자가 직접 선택한 자연음
+         */
         const savedNature =
-            sessionStorage.getItem(
+          sessionStorage.getItem(
             "somni-selected-nature-sound",
-            );
+          );
 
         if (
-            savedNature &&
-            natureAudioMap[savedNature]
+          savedNature &&
+          natureAudioMap[
+            savedNature
+          ]
         ) {
-            console.log(
-            "Sound Fit 자연음:",
-            savedNature,
-            );
-
-            setCurrentNatureAudio(
+          setCurrentNatureAudio(
             natureAudioMap[
-                savedNature
+              savedNature
             ],
-            );
+          );
 
-            return;
+          return;
         }
 
         /*
-        * 2순위:
-        * 기존 SoundSession에서 조회
-        */
+         * 2순위
+         * 현재 SoundSession
+         */
         const uuid =
-            getUserUuid();
+          getUserUuid();
 
         const sessionId =
-            sessionStorage.getItem(
+          sessionStorage.getItem(
             "somni-current-sound-session-id",
-            );
+          );
 
         if (
-            !uuid ||
-            !sessionId
+          !uuid ||
+          !sessionId
         ) {
-            console.warn(
+          console.warn(
             "현재 자연음 정보를 찾을 수 없습니다.",
-            );
+          );
 
-            return;
+          return;
         }
 
         try {
-            const soundSession =
+          const soundSession =
             await getSoundSession(
-                uuid,
-                sessionId,
+              uuid,
+              sessionId,
             );
 
-            const params =
+          const params =
             soundSession.final_params ??
             soundSession.generated_params;
 
-            const backgroundSource =
+          const backgroundSource =
             params?.sources?.find(
-                (source) =>
+              (source) =>
                 source.role ===
-                    "ambient" ||
+                  "ambient" ||
                 source.type ===
-                    "background",
+                  "background",
             );
 
-            const background =
-            backgroundSource?.asset_tag;
+          const background =
+            backgroundSource
+              ?.asset_tag;
 
-            console.log(
-            "SoundSession 자연음:",
-            background,
-            );
-
-            if (
+          if (
             background &&
             natureAudioMap[
-                background
+              background
             ]
-            ) {
+          ) {
             setCurrentNatureAudio(
-                natureAudioMap[
+              natureAudioMap[
                 background
-                ],
+              ],
             );
-            }
+          }
         } catch (error) {
-            console.error(
+          console.error(
             "현재 자연음 조회 실패",
             error,
-            );
+          );
         }
-        };
+      };
 
     void loadCurrentNatureSound();
-    }, []);
+  }, []);
 
-    useEffect(() => {
+  /*
+   * 페이지 이탈 시 정리
+   */
+  useEffect(() => {
     return () => {
-        stopSoundFitAudio();
+      stopSoundFitAudio();
     };
-    }, []);    
+  }, []);
 
   /*
    * =========================
@@ -282,15 +390,22 @@ function AISoundFitPage() {
       }
 
       try {
-        setIsLoading(true);
-        setErrorMessage("");
+        setIsLoading(
+          true,
+        );
+
+        setErrorMessage(
+          "",
+        );
 
         const data =
           await startSoundFit(
             uuid,
           );
 
-        setSession(data);
+        setSession(
+          data,
+        );
 
         setSelectedOption(
           null,
@@ -300,7 +415,10 @@ function AISoundFitPage() {
           null,
         );
 
-        setVisibleRound(1);
+        setVisibleRound(
+          1,
+        );
+
         setScreen(
           "compare",
         );
@@ -314,88 +432,86 @@ function AISoundFitPage() {
           "Sound Fit을 시작하지 못했어요.",
         );
       } finally {
-        setIsLoading(false);
+        setIsLoading(
+          false,
+        );
       }
     };
 
   /*
    * =========================
-   * 들어보기
-   *
-   * 지금은 UI 상태만 변경.
-   * 다음 단계에서 실제 Audio 연결.
+   * A/B 들어보기
    * =========================
    */
-    const handlePlay = async (
-    option: "A" | "B",
+  const handlePlay =
+    async (
+      option:
+        "A" | "B",
     ) => {
-    /*
-    * 같은 카드 다시 누름
-    * → 정지
-    */
-    if (
-        playingOption === option
-    ) {
+      if (
+        playingOption ===
+        option
+      ) {
         stopSoundFitAudio();
 
         setPlayingOption(
-        null,
+          null,
         );
 
         return;
-    }
+      }
 
-    /*
-    * 다른 카드 재생 시
-    * 기존 재생 정지
-    */
-    stopSoundFitAudio();
+      stopSoundFitAudio();
 
-    try {
+      try {
         setPlayingOption(
-        option,
+          option,
         );
 
         const axis =
-        visibleRound === 1
+          visibleRound === 1
             ? "texture"
             : "layer_mix";
 
-        if (!currentNatureAudio) {
-        console.error(
+        if (
+          !currentNatureAudio
+        ) {
+          console.error(
             "현재 자연음을 찾지 못했어요.",
-        );
+          );
 
-        setErrorMessage(
+          setErrorMessage(
             "비교에 사용할 자연음을 찾지 못했어요.",
-        );
+          );
 
-        setPlayingOption(null);
-        return;
+          setPlayingOption(
+            null,
+          );
+
+          return;
         }
 
-        /*
-        * 자연음이 정상적으로 있으면
-        * 기존 오류 메시지 제거 후 재생
-        */
-        setErrorMessage("");
+        setErrorMessage(
+          "",
+        );
 
         await playSoundFitPreview(
-        currentNatureAudio,
-        axis,
-        option,
+          currentNatureAudio,
+          axis,
+          option,
         );
-    } catch (error) {
+      } catch (error) {
         console.error(
-        "Sound Fit 미리듣기 실패",
-        error,
+          "Sound Fit 미리듣기 실패",
+          error,
         );
 
         setPlayingOption(
-        null,
+          null,
         );
-    }
+      }
     };
+
   /*
    * =========================
    * A/B 선택 제출
@@ -410,19 +526,29 @@ function AISoundFitPage() {
       ) {
         return;
       }
-    stopSoundFitAudio();
-    setPlayingOption(null);
+
+      stopSoundFitAudio();
+
+      setPlayingOption(
+        null,
+      );
 
       try {
-        setIsLoading(true);
-        setErrorMessage("");
+        setIsLoading(
+          true,
+        );
+
+        setErrorMessage(
+          "",
+        );
 
         if (
-        session.round_number === 1
+          session.round_number ===
+          1
         ) {
-        setRoundOneSelection(
+          setRoundOneSelection(
             selectedOption,
-        );
+          );
         }
 
         const next =
@@ -431,9 +557,14 @@ function AISoundFitPage() {
             selectedOption,
           );
 
-        setSession(next);
+        setSession(
+          next,
+        );
+
         if (!next.done) {
-            setVisibleRound(2);
+          setVisibleRound(
+            2,
+          );
         }
 
         setSelectedOption(
@@ -444,9 +575,6 @@ function AISoundFitPage() {
           null,
         );
 
-        /*
-         * 2/2 완료
-         */
         if (next.done) {
           const uuid =
             getUserUuid();
@@ -478,7 +606,9 @@ function AISoundFitPage() {
           "선택을 저장하지 못했어요.",
         );
       } finally {
-        setIsLoading(false);
+        setIsLoading(
+          false,
+        );
       }
     };
 
@@ -489,7 +619,8 @@ function AISoundFitPage() {
    */
   const handleRestart =
     async () => {
-        stopSoundFitAudio();
+      stopSoundFitAudio();
+
       setProfile(null);
       setSession(null);
 
@@ -505,164 +636,170 @@ function AISoundFitPage() {
     };
 
   /*
-   * =========================
    * 카드 설명
-   * =========================
    */
-    const getDescription = (
-    option: "A" | "B",
+  const getDescription =
+    (
+      option:
+        "A" | "B",
     ) => {
-    if (
-        visibleRound === 1
-    ) {
-        return option === "A"
-        ? "더 부드럽고 둥글게"
-        : "조금 더 또렷하게";
-    }
+      if (
+        visibleRound ===
+        1
+      ) {
+        return option ===
+          "A"
+          ? "더 부드럽고 둥글게"
+          : "조금 더 또렷하게";
+      }
 
-    return option === "A"
+      return option ===
+        "A"
         ? "자연음 위주"
         : "노이즈 위주";
     };
 
   /*
    * =========================
-   * 이전 화면
+   * 이전
    * =========================
    */
-  const handleBack = async () => {
-    stopSoundFitAudio();
-    setPlayingOption(null);
-    setErrorMessage("");
+  const handleBack =
+    async () => {
+      stopSoundFitAudio();
 
-    /*
-    * 2/2 → 1/2
-    *
-    * 프론트 화면뿐 아니라
-    * 백엔드 SoundFitSession도
-    * 이전 라운드로 rollback
-    */
-    if (
-      screen === "compare" &&
-      visibleRound === 2 &&
-      session
-    ) {
-      try {
-        setIsLoading(true);
+      setPlayingOption(
+        null,
+      );
 
-        const previousSession =
-          await goToPreviousSoundFitStep(
-            session.id,
+      setErrorMessage(
+        "",
+      );
+
+      if (
+        screen ===
+          "compare" &&
+        visibleRound ===
+          2 &&
+        session
+      ) {
+        try {
+          setIsLoading(
+            true,
           );
 
-        setSession(
-          previousSession,
-        );
+          const previousSession =
+            await goToPreviousSoundFitStep(
+              session.id,
+            );
 
-        setVisibleRound(1);
+          setSession(
+            previousSession,
+          );
 
-        /*
-        * 이전에 1단계에서 골랐던
-        * A/B를 다시 표시
-        */
-        setSelectedOption(
-          roundOneSelection,
-        );
-      } catch (error) {
-        console.error(
-          "Sound Fit 이전 단계 이동 실패",
-          error,
-        );
+          setVisibleRound(
+            1,
+          );
 
-        setErrorMessage(
-          "이전 단계로 돌아가지 못했어요.",
-        );
-      } finally {
-        setIsLoading(false);
+          setSelectedOption(
+            roundOneSelection,
+          );
+        } catch (error) {
+          console.error(
+            "Sound Fit 이전 단계 이동 실패",
+            error,
+          );
+
+          setErrorMessage(
+            "이전 단계로 돌아가지 못했어요.",
+          );
+        } finally {
+          setIsLoading(
+            false,
+          );
+        }
+
+        return;
       }
 
-      return;
-    }
-
-    /*
-    * 결과 화면 → 2/2
-    *
-    * 백엔드의 done=true도 취소하고
-    * 마지막 layer_mix 라운드로 복귀
-    */
-    if (
-      screen === "result" &&
-      session
-    ) {
-      try {
-        setIsLoading(true);
-
-        const previousSession =
-          await goToPreviousSoundFitStep(
-            session.id,
+      if (
+        screen ===
+          "result" &&
+        session
+      ) {
+        try {
+          setIsLoading(
+            true,
           );
 
-        setSession(
-          previousSession,
-        );
+          const previousSession =
+            await goToPreviousSoundFitStep(
+              session.id,
+            );
 
-        setScreen(
-          "compare",
-        );
+          setSession(
+            previousSession,
+          );
 
-        setVisibleRound(2);
+          setScreen(
+            "compare",
+          );
 
+          setVisibleRound(
+            2,
+          );
+
+          setSelectedOption(
+            null,
+          );
+        } catch (error) {
+          console.error(
+            "Sound Fit 결과 이전 이동 실패",
+            error,
+          );
+
+          setErrorMessage(
+            "이전 단계로 돌아가지 못했어요.",
+          );
+        } finally {
+          setIsLoading(
+            false,
+          );
+        }
+
+        return;
+      }
+
+      if (
+        screen ===
+          "compare" &&
+        visibleRound ===
+          1
+      ) {
         setSelectedOption(
           null,
         );
-      } catch (error) {
-        console.error(
-          "Sound Fit 결과 이전 이동 실패",
-          error,
+
+        setScreen(
+          "intro",
         );
 
-        setErrorMessage(
-          "이전 단계로 돌아가지 못했어요.",
-        );
-      } finally {
-        setIsLoading(false);
+        return;
       }
-
-      return;
-    }
-
-    /*
-    * 1/2 → 시작 화면
-    *
-    * 아직 선택 제출 전이므로
-    * backend previous API 호출 필요 없음
-    */
-    if (
-      screen === "compare" &&
-      visibleRound === 1
-    ) {
-      setSelectedOption(
-        null,
-      );
 
       setScreen(
         "intro",
       );
-
-      return;
-    }
-
-    setScreen(
-      "intro",
-    );
-  };
+    };
 
   /*
-   * =====================================
+   * =========================
    * INTRO
-   * =====================================
+   * =========================
    */
-  if (screen === "intro") {
+  if (
+    screen === "intro"
+  ) {
     return (
       <div
         className="
@@ -674,7 +811,6 @@ function AISoundFitPage() {
           pb-[40px]
         "
       >
-        {/* 자체 헤더 */}
         <header
           className="
             flex
@@ -689,7 +825,6 @@ function AISoundFitPage() {
               font-sans
               text-[20px]
               font-bold
-              leading-normal
               text-[#F0F7FA]
             "
           >
@@ -704,7 +839,6 @@ function AISoundFitPage() {
             flex-col
           "
         >
-          {/* 상단 콘텐츠 */}
           <section className="pt-[58px]">
             <h2
               className="
@@ -725,7 +859,6 @@ function AISoundFitPage() {
                 mt-[6px]
                 font-sans
                 text-[13px]
-                font-normal
                 leading-[20px]
                 text-[#8DA2A6]
               "
@@ -736,7 +869,6 @@ function AISoundFitPage() {
               나에게 딱 맞게 조절해요.
             </p>
 
-            {/* 안내 카드 */}
             <div
               className="
                 mt-[30px]
@@ -752,38 +884,40 @@ function AISoundFitPage() {
             >
               <p
                 className="
-                  font-sans
                   text-[12px]
                   font-bold
-                  leading-normal
                   text-[#61DBB8]
                 "
               >
                 약 1분 · 2번 비교
               </p>
 
-              <img
-                src={
-                  soundFitIntroWave
-                }
-                alt=""
-                aria-hidden="true"
+              {/* 기존 SVG 대신 실제 파형 */}
+              <div
                 className="
-                  mt-[24px]
-                  h-[54px]
+                  mt-[22px]
+                  flex
+                  h-[58px]
                   w-full
-                  object-contain
+                  items-center
+                  justify-center
+                  overflow-hidden
                 "
-              />
+              >
+                <WaveBars
+                  heights={
+                    INTRO_WAVE_HEIGHTS
+                  }
+                  barWidth="w-[4px]"
+                  gap="gap-[4px]"
+                />
+              </div>
 
               <p
                 className="
-                  mt-[12px]
+                  mt-[10px]
                   text-center
-                  font-sans
                   text-[11px]
-                  font-normal
-                  leading-normal
                   text-[#809EA8]
                 "
               >
@@ -792,25 +926,13 @@ function AISoundFitPage() {
             </div>
 
             {errorMessage && (
-              <p
-                className="
-                  mt-3
-                  text-[12px]
-                  text-[#F09292]
-                "
-              >
+              <p className="mt-3 text-[12px] text-[#F09292]">
                 {errorMessage}
               </p>
             )}
           </section>
 
-          {/* 하단 버튼 */}
-          <div
-            className="
-              mt-auto
-              pt-10
-            "
-          >
+          <div className="mt-auto pt-10">
             <button
               type="button"
               disabled={
@@ -824,10 +946,8 @@ function AISoundFitPage() {
                 w-full
                 rounded-[14px]
                 bg-[#61DBB8]
-                font-sans
                 text-[14px]
                 font-bold
-                leading-normal
                 text-[#07100D]
               "
             >
@@ -842,12 +962,13 @@ function AISoundFitPage() {
   }
 
   /*
-   * =====================================
+   * =========================
    * RESULT
-   * =====================================
+   * =========================
    */
   if (
-    screen === "result" &&
+    screen ===
+      "result" &&
     profile
   ) {
     return (
@@ -861,7 +982,6 @@ function AISoundFitPage() {
           pb-[40px]
         "
       >
-        {/* 자체 헤더 */}
         <header
           className="
             relative
@@ -893,10 +1013,8 @@ function AISoundFitPage() {
 
           <h1
             className="
-              font-sans
               text-[20px]
               font-bold
-              leading-normal
               text-[#F0F7FA]
             "
           >
@@ -904,7 +1022,6 @@ function AISoundFitPage() {
           </h1>
         </header>
 
-        {/* 진행률 100% */}
         <ProgressSection
           width={100}
         />
@@ -919,7 +1036,6 @@ function AISoundFitPage() {
           <section className="pt-[61px]">
             <h2
               className="
-                font-sans
                 text-[24px]
                 font-bold
                 leading-[36px]
@@ -932,10 +1048,7 @@ function AISoundFitPage() {
             <p
               className="
                 mt-[2px]
-                font-sans
                 text-[13px]
-                font-normal
-                leading-normal
                 text-[#809EA8]
               "
             >
@@ -943,82 +1056,86 @@ function AISoundFitPage() {
               마이페이지에서도 확인할 수 있어요.
             </p>
 
-            {/* Sound Profile 카드 */}
             <div
-            className="
+              className="
                 relative
                 mt-[40px]
                 h-[125px]
                 w-full
+                overflow-hidden
                 rounded-[20px]
                 border
                 border-[#2B8E78]
                 bg-[#12382E]
                 px-[16px]
                 pt-[16px]
-            "
+              "
             >
-            <p
+              <p
                 className="
-                font-['Noto_Sans_KR']
-                text-[11px]
-                font-bold
-                leading-normal
-                text-[#61DBB8]
+                  text-[11px]
+                  font-bold
+                  text-[#61DBB8]
                 "
-            >
+              >
                 My Sound Profile
-            </p>
+              </p>
 
-            <p
+              <p
                 className="
-                mt-[10px]
-                font-['Noto_Sans_KR']
-                text-[18px]
-                font-bold
-                leading-normal
-                text-[#F0F7FA]
+                  mt-[10px]
+                  text-[18px]
+                  font-bold
+                  text-[#F0F7FA]
                 "
-            >
-                {TEXTURE_LABEL[profile.texture]}
-            </p>
+              >
+                {
+                  TEXTURE_LABEL[
+                    profile.texture
+                  ]
+                }
+              </p>
 
-            <p
+              <p
                 className="
-                mt-[8px]
-                font-['Noto_Sans_KR']
-                text-[18px]
-                font-bold
-                leading-normal
-                text-[#F0F7FA]
+                  mt-[8px]
+                  text-[18px]
+                  font-bold
+                  text-[#F0F7FA]
                 "
-            >
-                {MIX_LABEL[profile.layer_mix]}
-            </p>
+              >
+                {
+                  MIX_LABEL[
+                    profile.layer_mix
+                  ]
+                }
+              </p>
 
-            <img
-                src={soundFitProfileWave}
-                alt=""
-                aria-hidden="true"
+              {/* 기존 SVG 대신 막대 파형 */}
+              <div
                 className="
-                absolute
-                right-[16px]
-                top-[39px]
-                h-[70px]
-                w-[100px]
+                  absolute
+                  right-[16px]
+                  top-[37px]
+                  flex
+                  h-[70px]
+                  w-[108px]
+                  items-center
+                  justify-center
                 "
-            />
+              >
+                <WaveBars
+                  heights={
+                    PROFILE_WAVE_HEIGHTS
+                  }
+                  barWidth="w-[3px]"
+                  gap="gap-[3px]"
+                />
+              </div>
             </div>
-
           </section>
 
-          {/* 결과 버튼도 무조건 하단 */}
-          <div
-            className="
-              mt-auto
-              pt-10
-            "
-          >
+          <div className="mt-auto pt-10">
             <button
               type="button"
               onClick={() => {
@@ -1027,19 +1144,20 @@ function AISoundFitPage() {
                   "true",
                 );
 
-                navigate("/", {
-                  replace: true,
-                });
+                navigate(
+                  "/",
+                  {
+                    replace: true,
+                  },
+                );
               }}
               className="
                 h-[54px]
                 w-full
                 rounded-[14px]
                 bg-[#61DBB8]
-                font-sans
                 text-[14px]
                 font-bold
-                leading-normal
                 text-[#07100D]
               "
             >
@@ -1055,10 +1173,8 @@ function AISoundFitPage() {
                 mt-[18px]
                 w-full
                 text-center
-                font-sans
                 text-[13px]
                 font-medium
-                leading-normal
                 text-[#87CBE6]
               "
             >
@@ -1071,11 +1187,9 @@ function AISoundFitPage() {
   }
 
   /*
-   * =====================================
+   * =========================
    * COMPARE
-   * 1/2 Texture
-   * 2/2 Layer Mix
-   * =====================================
+   * =========================
    */
   return (
     <div
@@ -1088,7 +1202,6 @@ function AISoundFitPage() {
         pb-[40px]
       "
     >
-      {/* 자체 헤더 */}
       <header
         className="
           relative
@@ -1120,10 +1233,8 @@ function AISoundFitPage() {
 
         <h1
           className="
-            font-sans
             text-[20px]
             font-bold
-            leading-normal
             text-[#F0F7FA]
           "
         >
@@ -1131,14 +1242,14 @@ function AISoundFitPage() {
         </h1>
       </header>
 
-      {/* 진행바 */}
-        <ProgressSection
+      <ProgressSection
         width={
-            visibleRound === 1
+          visibleRound ===
+          1
             ? 33.33
             : 66.67
         }
-        />
+      />
 
       <main
         className="
@@ -1147,14 +1258,11 @@ function AISoundFitPage() {
           flex-col
         "
       >
-        {/* 기존 음역매칭 화면과 동일하게 위에서 시작 */}
         <section className="pt-16">
           <p
             className="
-              font-sans
               text-[12px]
               font-semibold
-              leading-normal
               text-[#809EA8]
             "
           >
@@ -1164,7 +1272,6 @@ function AISoundFitPage() {
           <h2
             className="
               mt-2
-              font-sans
               text-[20px]
               font-bold
               leading-[28px]
@@ -1174,14 +1281,7 @@ function AISoundFitPage() {
             더 편안한 소리를 골라주세요.
           </h2>
 
-          {/* A/B 카드 */}
-          <div
-            className="
-              mt-10
-              flex
-              gap-3
-            "
-          >
+          <div className="mt-10 flex gap-3">
             <SoundFitOptionCard
               label="A"
               description={
@@ -1207,7 +1307,9 @@ function AISoundFitPage() {
                 );
               }}
               onPlay={() =>
-                handlePlay("A")
+                void handlePlay(
+                  "A",
+                )
               }
             />
 
@@ -1236,31 +1338,21 @@ function AISoundFitPage() {
                 );
               }}
               onPlay={() =>
-                handlePlay("B")
+                void handlePlay(
+                  "B",
+                )
               }
             />
           </div>
 
           {errorMessage && (
-            <p
-              className="
-                mt-3
-                text-[12px]
-                text-[#F09292]
-              "
-            >
+            <p className="mt-3 text-[12px] text-[#F09292]">
               {errorMessage}
             </p>
           )}
         </section>
 
-        {/* 계속 버튼은 항상 화면 하단 */}
-        <div
-          className="
-            mt-auto
-            pt-10
-          "
-        >
+        <div className="mt-auto pt-10">
           <button
             type="button"
             disabled={
@@ -1274,21 +1366,13 @@ function AISoundFitPage() {
               h-[54px]
               w-full
               rounded-[14px]
-              font-sans
               text-[14px]
               font-bold
-              leading-normal
               ${
                 selectedOption &&
                 !isLoading
-                  ? `
-                    bg-[#61DBB8]
-                    text-[#07100D]
-                  `
-                  : `
-                    bg-[#1F4047]
-                    text-[#0D1719]
-                  `
+                  ? "bg-[#61DBB8] text-[#07100D]"
+                  : "bg-[#1F4047] text-[#0D1719]"
               }
             `}
           >
@@ -1302,9 +1386,6 @@ function AISoundFitPage() {
   );
 }
 
-/*
- * FrequencyPage와 동일한 형태의 진행바
- */
 interface ProgressSectionProps {
   width: number;
 }
@@ -1332,7 +1413,8 @@ function ProgressSection({
             duration-300
           "
           style={{
-            width: `${width}%`,
+            width:
+              `${width}%`,
           }}
         />
       </div>
