@@ -1,3 +1,7 @@
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ??
+  "http://127.0.0.1:8000";
+
 export interface StateSnapshot {
   tinnitus_center_hz: number | null;
   tinnitus_freq_min_hz: number | null;
@@ -99,7 +103,8 @@ export interface InterventionDecision {
 
   decided_at: string;
 }
-export interface CreateInterventionDecisionRequest {
+
+export interface InterventionDecisionPayload {
   tinnitus_discomfort: number;
   anxiety: number;
   stress: boolean;
@@ -107,39 +112,40 @@ export interface CreateInterventionDecisionRequest {
   caffeine?: boolean;
 }
 
-export async function createInterventionDecision(
-  uuid: string,
-  data: CreateInterventionDecisionRequest,
-): Promise<InterventionDecision> {
-  const response = await fetch(
-    `/api/personalization/${uuid}/decision/`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    },
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      "오늘의 루틴을 생성하지 못했어요.",
-    );
-  }
-
-  return response.json();
-}
 export async function getLatestInterventionDecision(
   uuid: string,
 ): Promise<InterventionDecision> {
   const response = await fetch(
-    `/api/personalization/${uuid}/decision/latest/`,
+    `${API_BASE_URL}/api/personalization/${uuid}/decision/latest/`,
   );
 
   if (!response.ok) {
     throw new Error(
       "오늘의 루틴을 불러오지 못했어요.",
+    );
+  }
+
+  return response.json();
+}
+
+export async function createInterventionDecision(
+  uuid: string,
+  payload: InterventionDecisionPayload,
+): Promise<InterventionDecision> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/personalization/${uuid}/decision/`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      "오늘의 루틴을 준비하지 못했어요.",
     );
   }
 
