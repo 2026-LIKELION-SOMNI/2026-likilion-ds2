@@ -424,8 +424,6 @@ function HomePage() {
     const isLatest = () =>
       sequence === loadSequenceRef.current;
 
-    setErrorMessage(null);
-
     try {
       const profile =
         await ensureAnonymousUser();
@@ -516,16 +514,25 @@ function HomePage() {
   }, []);
 
   useEffect(() => {
-    loadHome();
-  }, [loadHome]);
+    const timeoutId =
+      window.setTimeout(() => {
+        void loadHome();
+      }, 0);
 
+    return () => {
+      window.clearTimeout(
+        timeoutId,
+      );
+    };
+  }, [loadHome]);
+  
   useEffect(() => {
     const handleVisible = () => {
       if (
         document.visibilityState ===
         "visible"
       ) {
-        loadHome();
+        void loadHome();
       }
     };
 
@@ -652,8 +659,21 @@ function HomePage() {
         )
       : null;
 
+  /*
+  * 회복 세션이 끝난 뒤에는
+  * 기존 체크인을 이미 사용한 것으로 처리한다.
+  *
+  * 백엔드에는 오늘 체크인이 남아 있어도
+  * 홈에서는 다시 "오늘 상태 기록하기" 화면을 보여준다.
+  */
+  const isCheckinConsumed =
+    sessionStorage.getItem(
+      "somni-checkin-consumed",
+    ) === "true";
+
   const hasCheckedIn =
-    summary?.has_checked_in_today ?? false;
+    (summary?.has_checked_in_today ?? false) &&
+    !isCheckinConsumed;
 
   const hasPendingEvaluation =
     pendingCount !== null
@@ -1134,85 +1154,6 @@ function HomePage() {
                 </Button>
               </div>
             </>
-          )}
-
-          {summary?.comfortable_sound
-            ?.session_id && (
-            <div className="mt-[28px]">
-              <h2
-                className="
-                  text-[14px]
-                  font-bold
-                  text-[#ECF3F2]
-                "
-              >
-                편안했던 사운드
-              </h2>
-
-              <div className="mt-[16px]">
-                <SectionCard>
-                  <p
-                    className="
-                      text-[14px]
-                      font-bold
-                      text-[#F0F7FA]
-                    "
-                  >
-                    {summary.comfortable_sound
-                      .sound_summary ??
-                      "저장된 사운드"}
-                  </p>
-
-                  {summary.comfortable_sound
-                    .evaluated_at && (
-                    <p
-                      className="
-                        mt-[8px]
-                        text-[11px]
-                        leading-[18px]
-                        text-[#809EA8]
-                      "
-                    >
-                      {new Date(
-                        summary.comfortable_sound.evaluated_at,
-                      ).toLocaleDateString(
-                        "ko-KR",
-                        {
-                          month: "long",
-                          day: "numeric",
-                        },
-                      )}{" "}
-                      평가에서 &quot;편안했어요&quot;로 저장
-                    </p>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      navigate("/my/sounds")
-                    }
-                    className="
-                      mt-[14px]
-                      flex
-                      w-full
-                      items-center
-                      justify-between
-                      border-t
-                      border-[#24464E]
-                      pt-[14px]
-                      text-[12px]
-                      font-medium
-                      text-[#7CCDE4]
-                    "
-                  >
-                    다시 듣기
-                    <span aria-hidden="true">
-                      ›
-                    </span>
-                  </button>
-                </SectionCard>
-              </div>
-            </div>
           )}
         </>
       )}
