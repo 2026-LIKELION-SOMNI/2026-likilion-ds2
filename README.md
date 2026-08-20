@@ -1,62 +1,77 @@
-# 2026-likilion-ds2
+## Contributors
+<hr>
 
-## 🔄 협업 프로세스
+<div align="center">
 
-이슈 생성 → `develop` 브랜치에서 본인 작업 브랜치 생성 → 기능 구현 및 자체 테스트 → `작업 브랜치`에서 `develop` 브랜치로 PR → 리뷰어가 Merge 테스트 및 코드 리뷰 → `develop`에 Merge 
+<table align="center">
+  <tr>
+    <th align="center"><b>정여진</b><br><a href="https://github.com/yejn1402">@yejn1402</a></th>
+    <th align="center"><b>김서연</b><br><a href="https://github.com/naeuun">@naeuun</a></th>
+    <th align="center"><b>유수현</b><br><a href="https://github.com/Yoo-Su-Hyeon">@Yoo-Su-Hyeon</a></th>
+    <th align="center"><b>김예빈</b><br><a href="https://github.com/y2bnn">@y2bnn</a></th>
+    <th align="center"><b>양수빈</b><br><a href="https://github.com/chubin925">@chubin925</a></th>
+  </tr>
+  <tr>
+    <td align="center">PM</td>
+    <td align="center">BE</td>
+    <td align="center">BE</td>
+    <td align="center">FE</td>
+    <td align="center">FE</td>
+  </tr>
+  <tr>
+    <td align="center"><code>구상 및 기획</code><br><code>UI/UX 디자인</code></td>
+    <td align="center"><code>온보딩</code><br><code>이명 프로필 / 음역 매칭</code><br><code>사운드 피팅 알고리즘</code><br><code>데일리 체크인</code><br><code>마이페이지</code><br><code>데이터 관리 / 초기화</code></td>
+    <td align="center"><code>사용자 식별 (UUID)</code><br><code>사운드 생성 및 재생</code><br><code>케어 루틴</code><br><code>피드백 수집</code><br><code>개인화 가중치 학습</code><br><code>상태 변화 추이 / 통계</code><br><code>OpenAI 기반 AI 분석 리포트</code></td>
+    <td align="center"><code>음역 매칭 및 AI Sound Fit 로직 연동</code><br><code>Web Audio API 기반 개인화 사운드·회복 세션 구현</code><br><code>사용자 데이터 관리</code></td>
+    <td align="center"><code>데일리 체크인</code><br><code>CBT 기반 이완 활동</code><br><code>세션 결과 평가</code></td>
+  </tr>
+</table>
 
-> 💡 **최초 로컬 작업 시**  
-> `git fetch` → `git switch develop` 명령어로 브랜치 이동 후 작업을 시작합니다.
+</div>
 
+
+## Tech Stack
 ---
 
-## 🌿 Branch 규칙
+📌 **기획/디자인**  
+<img src="https://img.shields.io/badge/Figma-F24E1E?style=for-the-badge&logo=figma&logoColor=white"> <img src="https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white">
 
-> 💡 **평소 기능 개발에는 `main` 브랜치를 사용하지 않습니다.**
-> 
-> * 모든 기능 개발은 **`develop`** 브랜치를 기준으로 진행합니다.
-> * 작업 브랜치는 `develop`에서 생성하고, PR 역시 `develop`을 대상으로 생성합니다.
-> * 배포할 때만 `develop`에서 `main`으로 PR을 생성하여 Merge합니다.
+📌 **백엔드**  
+<img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white"> <img src="https://img.shields.io/badge/Django-092E20?style=for-the-badge&logo=django&logoColor=white"> <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white">
 
+📌 **프론트엔드**  
+<img src="https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black"> <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white"> <img src="https://img.shields.io/badge/Tailwind%20CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white"> <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white">
+
+📌 **서버**  
+<img src="https://img.shields.io/badge/GitHub%20Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white"> <img src="https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white"> <img src="https://img.shields.io/badge/Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white">
+
+
+## Project Structure
 ---
 
-## 🔀 Merge 규칙
-
-* `main`, `develop` 브랜치에 **직접 Push 금지!**
-* 모든 작업은 **Pull Request**를 통해 Merge
-* 기능 개발 PR은 `develop` 브랜치를 대상으로 생성
-* `develop` → `main` Pull Request는 배포 시에만 생성
-
-### 📌 Merge 절차
-
-1. Pull Request를 생성하고 팀 채팅방에 알리기
-2. 리뷰어는 Merge 테스트 진행 (PR 내용이 정상 작동하는지 확인)
-3. 충돌(Conflict) 발생 시, PR 작성자가 충돌 해결 후 다시 Push
-4. 문제가 없으면 GitHub에서 **`Merge`** 버튼을 눌러 `develop` 브랜치에 Merge
-5. Merge 완료 후 작업 브랜치 삭제
-
----
-
-## 📂 브랜치 구조 및 역할
-
-* **`main`**: 실제 배포에 사용하는 안정 브랜치 (평상시에는 사용하지 않으며 무조건 `develop` 기준)
-* **`develop`**: 개발한 기능을 통합하고 테스트하는 메인 브랜치
-* **`feat/*`, `fix/*` 등**: Issue 단위로 작업하는 개인/기능 브랜치
-
----
-
-## 🛠️ 브랜치 생성 및 삭제
-
-### 브랜치 생성
-* GitHub에서 Issue 생성 후 `Create branch` 버튼을 클릭하면 Default branch(`develop`)를 기준으로 작업 브랜치가 생성됩니다.
-
-### 브랜치 삭제
-* Merge가 완료된 작업 브랜치는 **리뷰어**가 삭제합니다.  
-  *(GitHub Pull Request 화면 하단의 `Delete branch` 버튼 활용)*
-
----
-
-## 🔍 Code Review
-
-PR 생성 시 **CodeRabbit AI**가 자동으로 코드 리뷰를 수행합니다. 
-* 리뷰 코멘트를 확인하고 필요한 경우 수정 사항을 반영한 뒤 머지합니다.
-* 추가 리뷰가 필요한 경우 `@coderabbitai`를 멘션하여 요청할 수 있습니다.
+```text
+hackathon/
+├── backend/                  
+│   ├── apps/                 
+│   │   ├── accounts/         # 사용자 식별 및 계정 관리
+│   │   ├── onboarding/       # 온보딩 및 초기 안전 문항
+│   │   ├── tinnitus/         # 이명 프로필 등록 및 음역 매칭
+│   │   ├── sound/            # 노치 필터 사운드 생성 및 관리
+│   │   ├── soundfit/         # 사운드 피팅 알고리즘
+│   │   ├── checkin/          # 데일리 불쾌도·긴장도 체크인
+│   │   ├── relaxtion/        # 케어 루틴 (호흡/주의전환)
+│   │   ├── feedback/         # 케어 결과 피드백 수집
+│   │   ├── personalization/  # 개인화 가중치 학습
+│   │   ├── data/             # 건강 데이터 및 초기화 관리
+│   │   ├── mypage/           # 마이페이지 및 설정
+│   │   └── home/             # 메인 홈 데이터
+│   ├── config/               
+│   ├── manage.py
+│   └── requirements.txt
+│
+└── frontend/                 
+    ├── public/               
+    ├── src/                  
+    ├── index.html            
+    ├── package.json          
+    └── vite.config.ts        
