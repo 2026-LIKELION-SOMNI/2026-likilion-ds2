@@ -6,7 +6,7 @@
 <table align="center">
   <tr>
     <th align="center"><b>정여진</b><br><a href="https://github.com/yejn1402">@yejn1402</a></th>
-    <th align="center"><b>김서연</b><br><a href="https://github.com/naeuun">@naeuun</a></th>
+    <th align="center"><b>김서연</b><br><a href="https://github.com/kseooy">@kseooy</a></th>
     <th align="center"><b>유수현</b><br><a href="https://github.com/Yoo-Su-Hyeon">@Yoo-Su-Hyeon</a></th>
     <th align="center"><b>김예빈</b><br><a href="https://github.com/y2bnn">@y2bnn</a></th>
     <th align="center"><b>양수빈</b><br><a href="https://github.com/chubin925">@chubin925</a></th>
