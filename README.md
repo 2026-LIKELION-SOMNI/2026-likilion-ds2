@@ -27,8 +27,8 @@ Somni는 사용자의 **이명 특성, 사운드 취향, 오늘의 상태, 이�
 
 ### 🌐 Somni 서비스
 
-[서비스 바로가기](https://likelion-somni.site/)
-
+[![Service](https://img.shields.io/badge/Somni-서비스_바로가기-5ED6C0?style=for-the-badge)](https://likelion-somni.site/)
+[![Demo](https://img.shields.io/badge/YouTube-시연_영상-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtube.com/shorts/OO5CVEKZNuw?feature=share)
 </div>
 
 ---
