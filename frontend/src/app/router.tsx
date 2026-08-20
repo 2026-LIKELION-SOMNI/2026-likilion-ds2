@@ -2,10 +2,8 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import MainLayout from "../layouts/MainLayout";
 import OnboardingLayout from "../layouts/OnboardingLayout";
-
-import StartPage from "../pages/onboarding/StartPage";
+import { RootPage, OnboardingStartPage, } from "./OnboardingRouteGuard";
 import SafetyGuidePage from "../pages/onboarding/SafetyGuidePage";
-import HomePage from "../pages/home/HomePage";
 import CheckInPage from "../pages/check-in/CheckInPage";
 import FeedbackPage from "../pages/feedback/FeedbackPage";
 import FrequencyPage from "../pages/frequency/FrequencyPage";
@@ -28,27 +26,28 @@ import RoutineReadyPage from "../pages/routine/RoutineReadyPage";
 import MixingPointPage from "../pages/sound-setup/MixingPointPage";
 import MySoundsPage from "../pages/my/MySoundsPage";
 
+
 const router = createBrowserRouter([
   {
     element: <OnboardingLayout />,
     children: [
       {
         path: "/onboarding",
-        element: <StartPage />,
+        element: <OnboardingStartPage />,
       },
       {
         path: "/onboarding/safety",
         element: <SafetyGuidePage />,
       },
     ],
-  },
+  }, 
 
   {
     element: <MainLayout />,
     children: [
       {
         path: "/",
-        element: <HomePage />,
+        element: <RootPage />,
       },
       {
         path: "/check-in",
@@ -101,6 +100,10 @@ const router = createBrowserRouter([
       {
         path: "/my/notifications",
         element: <NotificationSettingsPage />,
+      },
+      {
+        path: "/my/safety",
+        element: <SafetyGuidePage />,
       },
       {
         path: "/my/sound-profile",

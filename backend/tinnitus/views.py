@@ -224,13 +224,13 @@ class MatchingAbandonView(APIView):
 
 
 # 혼합점 저장 view
+# 혼합점 저장 view
 class MatchingMixingPointView(APIView):
 
     def post(self, request, session_id):
         session = get_object_or_404(
             PitchMatchSession,
             pk=session_id,
-            done=False,
             abandoned=False,
             octave_selection__isnull=False,
         )
@@ -243,22 +243,34 @@ class MatchingMixingPointView(APIView):
         )
 
         session.mixing_point_gain = (
-            serializer.validated_data["mixing_point_gain"]
-        )
-
-        # 혼합점까지 입력돼야 최종 완료
-        session.done = True
-        session.completed_at = timezone.now()
-
-        session.save(
-            update_fields=[
-                "mixing_point_gain",
-                "done",
-                "completed_at",
+            serializer.validated_data[
+                "mixing_point_gain"
             ]
         )
 
+        update_fields = [
+            "mixing_point_gain",
+        ]
+
+        # 최초 저장일 때만 완료 처리
+        if not session.done:
+            session.done = True
+            session.completed_at = timezone.now()
+
+            update_fields.extend(
+                [
+                    "done",
+                    "completed_at",
+                ]
+            )
+
+        session.save(
+            update_fields=update_fields
+        )
+
         return Response(
-            PitchMatchSessionSerializer(session).data,
+            PitchMatchSessionSerializer(
+                session
+            ).data,
             status=status.HTTP_200_OK,
         )

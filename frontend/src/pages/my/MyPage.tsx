@@ -127,6 +127,14 @@ function MyPage() {
         );
 
         sessionStorage.removeItem(
+          "somni-recovery-existing-session-id",
+        );
+
+        sessionStorage.removeItem(
+          "somni-pitch-match-session",
+        );
+
+        sessionStorage.removeItem(
           "somni-selected-nature-sound",
         );
 
@@ -140,6 +148,10 @@ function MyPage() {
 
         sessionStorage.removeItem(
           "somni-sound-setup-completed",
+        );
+
+        sessionStorage.removeItem(
+          "somni-personal-sound-pending",
         );
 
         setShowDeleteModal(
@@ -702,9 +714,19 @@ function MyPage() {
 
           <div className="h-px w-full bg-[#1F3D45]" />
 
-          {/* 서비스 안내·안전 - 아직 이동 X */}
+          {/* 서비스 안내·안전 */}
           <button
             type="button"
+            onClick={() =>
+              navigate(
+                "/my/safety",
+                {
+                  state: {
+                    from: "mypage",
+                  },
+                },
+              )
+            }
             className="
               flex
               w-full

@@ -1,5 +1,4 @@
-import { useNavigate } from "react-router-dom";
-
+import { useLocation, useNavigate, } from "react-router-dom";
 import Button from "../../components/common/Button";
 
 const TOGETHER_ITEMS = [
@@ -10,6 +9,10 @@ const TOGETHER_ITEMS = [
 
 function SafetyGuidePage() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const fromMyPage =
+    location.state?.from === "mypage";
 
   return (
     <div
@@ -152,7 +155,19 @@ function SafetyGuidePage() {
       </section>
 
       <div className="mt-auto">
-        <Button onClick={() => navigate("/frequency")}>계속</Button>
+        <Button
+            onClick={() =>
+              navigate(
+                fromMyPage
+                  ? "/my"
+                  : "/frequency",
+              )
+            }
+          >
+            {fromMyPage
+              ? "확인하기"
+              : "계속"}
+          </Button>
       </div>
     </div>
   );

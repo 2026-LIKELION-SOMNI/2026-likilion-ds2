@@ -99,7 +99,37 @@ export interface InterventionDecision {
 
   decided_at: string;
 }
+export interface CreateInterventionDecisionRequest {
+  tinnitus_discomfort: number;
+  anxiety: number;
+  stress: boolean;
+  fatigue?: number | null;
+  caffeine?: boolean;
+}
 
+export async function createInterventionDecision(
+  uuid: string,
+  data: CreateInterventionDecisionRequest,
+): Promise<InterventionDecision> {
+  const response = await fetch(
+    `/api/personalization/${uuid}/decision/`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      "오늘의 루틴을 생성하지 못했어요.",
+    );
+  }
+
+  return response.json();
+}
 export async function getLatestInterventionDecision(
   uuid: string,
 ): Promise<InterventionDecision> {
