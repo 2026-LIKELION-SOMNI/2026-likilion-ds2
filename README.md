@@ -22,7 +22,7 @@
     <td align="center"><font size="2"><code>구상 및 기획</code><br><code>UI/UX 디자인</code></font></td>
     <td align="center"><font size="2"><code>온보딩</code><br><code>이명 프로필</code><br><code>음역 매칭</code><br><code>AI Sound Fit 알고리즘</code><br><code>데일리 체크인</code><br><code>마이페이지</code><br><code>데이터 관리/초기화</code></font></td>
     <td align="center"><font size="2"><code>사용자 식별 (UUID)</code><br><code>사운드 생성/재생</code><br><code>케어 루틴</code><br><code>개인화 가중치 학습</code><br><code>상태 변화 추이/통계</code><br><code>AI 분석 리포트 (OpenAI)</code></font></td>
-    <td align="center"><font size="2"><code>음역 매칭</code><br><code>AI Sound Fit</code><br><code>Web Audio API 사운드 세션</code><br><code>사용자 데이터 관리</code></font></td>
+    <td align="center"><font size="2"><code>음역 매칭 및 AI Sound Fit 로직 연동</code><br><code>Web Audio API 기반 개인화 사운드·회복 세션 구현</code><br><code>사용자 데이터 관리</code><br><code>마이페이지</code><br><code>배포</code></font></td>
     <td align="center"><font size="2"><code>데일리 체크인</code><br><code>CBT 기반 이완 활동</code><br><code>세션 결과 평가</code></font></td>
   </tr>
 </table>
@@ -61,7 +61,7 @@ hackathon/
 │   │   ├── checkin/          # 데일리 불쾌도·긴장도 체크인
 │   │   ├── relaxtion/        # 케어 루틴 (호흡/주의전환)
 │   │   ├── feedback/         # 케어 결과 피드백 수집
-│   │   ├── personalization/  # 개인화 가중치 학습
+│   │   ├── personalization/ # 개인화 가중치 학습
 │   │   ├── data/             # 건강 데이터 및 초기화 관리
 │   │   ├── mypage/           # 마이페이지 및 설정
 │   │   └── home/             # 메인 홈 데이터
@@ -70,8 +70,8 @@ hackathon/
 │   └── requirements.txt
 │
 └── frontend/                 
-    ├── public/              
+    ├── public/               
     ├── src/                  
     ├── index.html          
-    ├── package.json     
-    └── vite.config.ts      
+    ├── package.json      
+    └── vite.config.ts

@@ -188,28 +188,6 @@ function AiReportSection({
   );
 }
 
-function toDateKey(value: string) {
-  const parsed = new Date(value);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-
-  return parsed.toDateString();
-}
-
-function countEvaluationsBeforeToday(
-  evaluations: { for_date: string }[],
-) {
-  const today = new Date().toDateString();
-
-  return evaluations.filter((evaluation) => {
-    const key = toDateKey(evaluation.for_date);
-
-    return key !== null && key !== today;
-  }).length;
-}
-
 function isDecisionOlderThanCheckin(
   decidedAt: string | null,
   checkin: CheckinRecord | null,
@@ -404,6 +382,9 @@ function HomePage() {
   const [soundMinutes, setSoundMinutes] =
     useState<number | null>(null);
 
+  const [hasDecision, setHasDecision] =
+    useState(false);
+
   const [aiReport, setAiReport] =
     useState<AiReport | null>(null);
 
@@ -499,13 +480,12 @@ function HomePage() {
           ?.duration_minutes ?? null,
       );
 
+      setHasDecision(decision !== null);
       setAiReport(toAiReport(decision));
 
       setPendingCount(
         pendingEvaluations
-          ? countEvaluationsBeforeToday(
-              pendingEvaluations,
-            )
+          ? pendingEvaluations.length
           : null,
       );
 
@@ -1243,9 +1223,11 @@ function HomePage() {
           emptyDescription={
             !isSetupDone
               ? "개인화를 다시 시작하고 AI 분석 리포트를 만나보세요."
-              : summary?.is_new_user
-                ? "첫 루틴을 시작하고 AI 분석 리포트를 만나보세요."
-                : "오늘 루틴을 시작하면 AI 분석 리포트를 만나볼 수 있어요."
+              : hasDecision
+                ? "이번 루틴은 분석 리포트를 준비하지 못했어요."
+                : summary?.is_new_user
+                  ? "첫 루틴을 시작하고 AI 분석 리포트를 만나보세요."
+                  : "오늘 루틴을 시작하면 AI 분석 리포트를 만나볼 수 있어요."
           }
         />
       )}

@@ -10,6 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # .env 파일 로드
 load_dotenv(BASE_DIR / '.env')
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # 🚨 apps 폴더를 파이썬 검색 경로에 추가
 sys.path.insert(0, str(BASE_DIR / 'apps'))
