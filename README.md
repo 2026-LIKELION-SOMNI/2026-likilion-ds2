@@ -384,7 +384,6 @@ Somni를 통해 만들어지는 수면 전 상태와 회복 반응 데이터는
 </td>
 
 <td align="center">
-<sub>홈</sub><br>
 <sub>온보딩</sub><br>
 <sub>이명 프로필</sub><br>
 <sub>음역 매칭</sub><br>
@@ -413,6 +412,7 @@ Somni를 통해 만들어지는 수면 전 상태와 회복 반응 데이터는
 
 <td align="center">
 <sub>온보딩</sub><br>
+<sub>홈</sub><br>
 <sub>데일리 체크인</sub><br>
 <sub>CBT 기반 이완 활동</sub><br>
 <sub>세션 결과 평가</sub>
