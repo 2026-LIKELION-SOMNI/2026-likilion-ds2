@@ -140,3 +140,17 @@
     transform: scaleY(var(--somni-wave-min, 0.35));
   }
 }
+
+@keyframes soundWave {
+  0% {
+    transform: scaleY(0.55);
+  }
+
+  50% {
+    transform: scaleY(1.08);
+  }
+
+  100% {
+    transform: scaleY(0.75);
+  }
+}
