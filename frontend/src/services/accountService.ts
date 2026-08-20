@@ -128,5 +128,9 @@ export function ensureAnonymousUser() {
     }
   })();
 
+  ensureUserPromise.catch(() => {
+    ensureUserPromise = null;
+  });
+
   return ensureUserPromise;
 }

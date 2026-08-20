@@ -1,0 +1,41 @@
+name: Deploy Backend to Gabia Cloud
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            set -e
+            cd ~/2026-likilion-ds2
+            git pull origin main
+
+            cd backend
+            source myvenv/bin/activate
+            pip install -r requirements.txt
+
+            python manage.py migrate --noinput
+            python manage.py collectstatic --noinput
+
+            # .env 변경도 반영되도록 반드시 stop 후 재시작 (reload는 env 갱신 안 됨)
+            if [ -f /tmp/project-master.pid ]; then
+              uwsgi --stop /tmp/project-master.pid || true
+              sleep 2
+            fi
+            uwsgi --ini uwsgi.ini
+
+            echo "배포 완료: $(date)"
