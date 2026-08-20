@@ -112,6 +112,23 @@ class InterventionDecision(models.Model):
         ),
     )
 
+    #AI 분석 리포트
+    ai_display_tags = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            "AI 분석 리포트에서 사용자에게 보여줄 태그 목록. "
+            "예: ['강한 노이즈 불편', '파도 선호', '피로']"
+        ),
+    )
+
+    ai_display_summary = models.TextField(
+        blank=True,
+        help_text=(
+            "AI가 생성한 사용자 노출용 자연어 설명."
+        ),
+    )
+
     # 실제 실행된 사운드 세션 연결
     sound_session = models.ForeignKey(
         "sound.SoundSession",

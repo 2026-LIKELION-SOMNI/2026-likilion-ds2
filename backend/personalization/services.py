@@ -3,6 +3,13 @@ from dataclasses import dataclass, field
 from typing import Optional
 from django.apps import apps
 from .models import InterventionDecision, UserPersonalizationProfile
+import json
+
+from django.conf import settings
+from openai import OpenAI
+
+import logging
+logger = logging.getLogger(__name__) #ai 호출 실패 시 사용
 
 # 공통 상수
 
@@ -1101,11 +1108,26 @@ def decide_and_record_intervention(
         state=state,
     )
 
-    return record_decision(
+    saved_decision = record_decision(
         user=user,
         state=state,
         decision=decision,
     )
+
+    ai_result = generate_ai_report(saved_decision)
+
+    if ai_result:
+        saved_decision.ai_display_tags = ai_result["tags"]
+        saved_decision.ai_display_summary = ai_result["summary"]
+
+        saved_decision.save(
+            update_fields=[
+                "ai_display_tags",
+                "ai_display_summary",
+            ]
+        )
+
+    return saved_decision
 
 # 실제 sound / relaxtion 세션 연결
 def attach_sessions(
@@ -1637,3 +1659,156 @@ def refresh_user_personalization_profile(
     )
 
     return profile
+
+
+
+# AI
+_ai_client = None
+
+
+def _get_ai_client():
+    global _ai_client
+
+    if _ai_client is None:
+        _ai_client = OpenAI(
+            api_key=settings.OPENAI_API_KEY
+        )
+
+    return _ai_client
+
+AI_REPORT_SYSTEM_PROMPT = """
+너는 Somni 이명·수면 웰니스 앱의 개인화 결과를
+사용자에게 쉽게 설명하는 역할이야.
+
+입력된 상태와 이미 결정된 추천 결과만 사용해
+tags와 summary를 작성해.
+
+규칙:
+- 추천을 새로 만들거나 입력에 없는 내용을 추측하지 말 것
+- 1~5 척도에서 4~5는 높은 수준으로 표현할 것
+- Hz, masking_ratio, mixing_point_gain 등 기술 수치는 노출하지 말 것
+- missing_data_sources 등 내부 데이터 부족 정보는 설명하지 말 것
+- 내부 코드명과 설정값은 쉬운 한국어로 표현할 것
+- 의학적 진단·치료·처방처럼 표현하지 말 것
+- duration_minutes는 사운드 재생시간이며 이완 활동 시간으로 해석하지 말 것
+
+tags:
+- 2~3개
+- 이번 개인화에 영향을 준 핵심 상태나 선호만 짧게 작성
+
+summary:
+- 반드시 정확히 두 문장 이하로 구성할 것
+- 1문장: 중요한 상태나 선호 설명
+- 2문장: 그에 따라 사운드와 이완 활동을 어떻게 구성했는지 설명
+- 자연스럽고 친근한 한국어로 작성
+"""
+
+def generate_ai_report(
+    decision: "InterventionDecision",
+) -> dict | None:
+
+    state = decision.state_snapshot or {}
+    sound = decision.sound_strategy or {}
+
+    payload = {
+        "current_state": {
+            "tinnitus_discomfort": state.get(
+                "tinnitus_discomfort"
+            ),
+            "anxiety": state.get(
+                "anxiety"
+            ),
+            "stress": state.get(
+                "stress"
+            ),
+            "fatigue": state.get(
+                "fatigue"
+            ),
+            "caffeine": state.get(
+                "caffeine"
+            ),
+        },
+
+        "sound_preference": {
+            "texture": state.get(
+                "soundfit_texture"
+            ),
+            "layer_mix": state.get(
+                "soundfit_layer_mix"
+            ),
+        },
+
+        "selected_intervention": {
+            "intervention_type": (
+                decision.intervention_type
+            ),
+            "background": sound.get(
+                "background"
+            ),
+            "modulation_intensity": sound.get(
+                "modulation_intensity"
+            ),
+            "duration_minutes": sound.get(
+                "duration_minutes"
+            ),
+            "relaxation_activity_type": (
+                decision.relaxation_activity_type
+            ),
+        },
+    }
+
+    client = _get_ai_client()
+
+    try:
+        response = client.responses.create(
+            model="gpt-5-mini",
+            instructions=AI_REPORT_SYSTEM_PROMPT,
+            input=json.dumps(
+                payload,
+                ensure_ascii=False,
+                default=str,
+            ),
+            text={
+                "format": {
+                    "type": "json_schema",
+                    "name": "ai_report",
+                    "strict": True,
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "tags": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "minItems": 2,
+                                "maxItems": 3,
+                            },
+                            "summary": {
+                                "type": "string"
+                            },
+                        },
+                        "required": [
+                            "tags",
+                            "summary",
+                        ],
+                        "additionalProperties": False,
+                    },
+                }
+            },
+        )
+
+        parsed = json.loads(
+            response.output_text
+        )
+
+        return {
+            "tags": parsed["tags"],
+            "summary": parsed["summary"],
+        }
+
+    except Exception:
+        logger.exception(
+            "AI 분석 리포트 생성 실패"
+        )
+        return None
