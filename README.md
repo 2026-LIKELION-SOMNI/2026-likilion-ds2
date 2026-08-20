@@ -5,11 +5,37 @@
 <div align="center">
 <table>
 <tr>
-<th align="center" width="20%"><b>정여진</b><br><a href="https://github.com/yejn1402">@yejn1402</a></th>
-<th align="center" width="20%"><b>김서연</b><br><a href="https://github.com/kseooy">@kseooy</a></th>
-<th align="center" width="20%"><b>유수현</b><br><a href="https://github.com/Yoo-Su-Hyeon">@Yoo-Su-Hyeon</a></th>
-<th align="center" width="20%"><b>김예빈</b><br><a href="https://github.com/y2bnn">@y2bnn</a></th>
-<th align="center" width="20%"><b>양수빈</b><br><a href="https://github.com/chubin925">@chubin925</a></th>
+
+<th align="center" width="20%">
+<img src="./frontend/src/assets/contributors/yeojin.png" width="100" height="100"><br>
+<b>정여진</b><br>
+<a href="https://github.com/yejn1402">@yejn1402</a>
+</th>
+
+<th align="center" width="20%">
+<img src="./frontend/src/assets/contributors/seoyeon.jpeg" width="100" height="100"><br>
+<b>김서연</b><br>
+<a href="https://github.com/kseooy">@kseooy</a>
+</th>
+
+<th align="center" width="20%">
+<img src="./frontend/src/assets/contributors/suhyeon.png" width="100" height="100"><br>
+<b>유수현</b><br>
+<a href="https://github.com/Yoo-Su-Hyeon">@Yoo-Su-Hyeon</a>
+</th>
+
+<th align="center" width="20%">
+<img src="./frontend/src/assets/contributors/yebin.png" width="100" height="100"><br>
+<b>김예빈</b><br>
+<a href="https://github.com/y2bnn">@y2bnn</a>
+</th>
+
+<th align="center" width="20%">
+<img src="./frontend/src/assets/contributors/subin.jpeg" width="100" height="100"><br>
+<b>양수빈</b><br>
+<a href="https://github.com/chubin925">@chubin925</a>
+</th>
+
 </tr>
 
 <tr>
@@ -21,6 +47,7 @@
 </tr>
 
 <tr>
+
 <td align="center">
 <code>구상 및 기획</code><br>
 <code>UI/UX 디자인</code>
@@ -55,10 +82,12 @@
 
 <td align="center">
 <code>온보딩</code><br>
+<code>홈</code><br>
 <code>데일리 체크인</code><br>
 <code>CBT 기반 이완 활동</code><br>
 <code>세션 결과 평가</code>
 </td>
+
 </tr>
 </table>
 </div>
@@ -117,6 +146,7 @@
     │   ├── api/               # 백엔드 API 요청
     │   ├── app/               # 앱 및 라우터 설정
     │   ├── assets/            # 이미지 · 아이콘 · 오디오
+    │   │   └── contributors/  # 팀원 프로필 이미지
     │   ├── audio/             # Web Audio API 오디오 처리
     │   ├── components/        # 공통 및 기능별 UI 컴포넌트
     │   ├── layouts/           # 공통 페이지 레이아웃
