@@ -429,24 +429,76 @@ function FrequencyPage() {
       try {
         setIsLoading(true);
 
+        /*
+        * 1. 이명 프로필 저장
+        */
         await saveTinnitusProfile(
           selectedTinnitusType,
         );
 
-        setRepresentativeType(
+        /*
+        * 여러 소리가 함께 들리는 경우에만
+        * 대표 소리 선택 화면으로 이동
+        */
+        if (
+          selectedTinnitusType ===
+          "multiple"
+        ) {
+          setRepresentativeType(
+            null,
+          );
+
+          setPlayingTinnitusType(
+            null,
+          );
+
+          setScreen(
+            "representative",
+          );
+
+          return;
+        }
+
+        /*
+        * high / low / wide는
+        * 대표 소리 선택 없이 바로 음역 매칭 시작
+        */
+        sessionStorage.removeItem(
+          "somni-sound-setup-completed",
+        );
+
+        sessionStorage.removeItem(
+          "somni-octave-session",
+        );
+
+        clearPitchMatchSession();
+
+        const session =
+          await startPitchMatching();
+
+        setMatchSession(
+          session,
+        );
+
+        setCurrentStep(
+          session.round_number -
+            1,
+        );
+
+        setSelectedOptionId(
           null,
         );
 
-        setPlayingTinnitusType(
+        setPlayingOptionId(
           null,
         );
 
         setScreen(
-          "representative",
+          "matching",
         );
       } catch (error) {
         console.error(
-          "이명 프로필 저장 실패",
+          "이명 프로필 저장 또는 음역 매칭 시작 실패",
           error,
         );
 
@@ -918,12 +970,29 @@ function FrequencyPage() {
               null,
             );
 
-            setScreen(
-              "representative",
-            );
+            /*
+            * multiple에서 들어왔다면
+            * 대표 소리 선택으로 돌아가고,
+            *
+            * high / low / wide에서 들어왔다면
+            * 첫 화면으로 돌아감
+            */
+            if (
+              selectedTinnitusType ===
+              "multiple"
+            ) {
+              setScreen(
+                "representative",
+              );
+            } else {
+              setScreen(
+                "type",
+              );
+            }
 
             return;
           }
+          
 
           try {
             setIsLoading(
@@ -1093,6 +1162,7 @@ function FrequencyPage() {
         screen,
         navigate,
         matchSession,
+        selectedTinnitusType,
       ],
     );
 
