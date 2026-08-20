@@ -1,10 +1,7 @@
 const KOREAN_LANG = "ko-KR";
 
 export function isSpeechSupported() {
-  return (
-    typeof window !== "undefined" &&
-    "speechSynthesis" in window
-  );
+  return typeof window !== "undefined" && "speechSynthesis" in window;
 }
 
 export function primeSpeech() {
@@ -12,8 +9,7 @@ export function primeSpeech() {
     return;
   }
 
-  const warmup =
-    new SpeechSynthesisUtterance(" ");
+  const warmup = new SpeechSynthesisUtterance(" ");
 
   warmup.lang = KOREAN_LANG;
   warmup.volume = 0;
@@ -22,16 +18,11 @@ export function primeSpeech() {
 }
 
 function pickKoreanVoice() {
-  const voices =
-    window.speechSynthesis.getVoices();
+  const voices = window.speechSynthesis.getVoices();
 
   return (
-    voices.find(
-      (voice) => voice.lang === KOREAN_LANG,
-    ) ??
-    voices.find((voice) =>
-      voice.lang.startsWith("ko"),
-    ) ??
+    voices.find((voice) => voice.name.includes("InJoon Online")) ??
+    voices.find((voice) => voice.lang === KOREAN_LANG) ??
     null
   );
 }
@@ -43,10 +34,7 @@ export function speakGuideLine(text: string) {
 
   window.speechSynthesis.cancel();
 
-  const utterance =
-    new SpeechSynthesisUtterance(
-      text.replace(/\n/g, " "),
-    );
+  const utterance = new SpeechSynthesisUtterance(text.replace(/\n/g, " "));
 
   utterance.lang = KOREAN_LANG;
   utterance.rate = 0.85;
