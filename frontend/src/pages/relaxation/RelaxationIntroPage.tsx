@@ -19,8 +19,7 @@ import { getRelaxationGuide } from "./guideScript";
 import { primeSpeech } from "../../audio/guideSpeech";
 import { getUserUuid } from "../../utils/userStorage";
 
-const NEXT_PATH = "/recovery-session";
-
+const NEXT_PATH = "/recovery-session"
 interface RelaxationIntroLocationState {
   session?: RelaxationSession;
 }
@@ -59,6 +58,9 @@ function requestRecommendationOnce(
 function RelaxationIntroPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [uuid] = useState(
+    () => getUserUuid(),
+  );
 
   const preloadedSession = (
     location.state as
@@ -70,75 +72,76 @@ function RelaxationIntroPage() {
     RelaxationSession | null
   >(preloadedSession ?? null);
 
-  const [isLoading, setIsLoading] = useState(
-    !preloadedSession,
-  );
+  const [isLoading, setIsLoading] =
+    useState(
+      !preloadedSession &&
+        uuid !== null,
+    );
 
   const [isSubmitting, setIsSubmitting] =
     useState(false);
 
   const [errorMessage, setErrorMessage] =
-    useState<string | null>(null);
+    useState<string | null>(
+      uuid
+        ? null
+        : "사용자 정보를 찾을 수 없어요. 앱을 새로고침한 뒤 다시 시도해 주세요.",
+    );
 
   const guide = session
     ? getRelaxationGuide(session.activity_type)
     : null;
 
   useEffect(() => {
-    if (preloadedSession) {
-      return;
-    }
-
-    const uuid = getUserUuid();
-
-    if (!uuid) {
-      setIsLoading(false);
-      setErrorMessage(
-        "사용자 정보를 찾을 수 없어요. 앱을 새로고침한 뒤 다시 시도해 주세요.",
-      );
-
+    if (
+      preloadedSession ||
+      !uuid
+    ) {
       return;
     }
 
     let isMounted = true;
 
-    const loadSession = async () => {
-      try {
-        const created =
-          await requestRecommendationOnce(
-            uuid,
+    const loadSession =
+      async () => {
+        try {
+          const created =
+            await requestRecommendationOnce(
+              uuid,
+            );
+
+          if (!isMounted) {
+            return;
+          }
+
+          setSession(created);
+        } catch (error) {
+          if (!isMounted) {
+            return;
+          }
+
+          setErrorMessage(
+            toErrorMessage(
+              error,
+              "오늘의 수면 준비를 불러오지 못했어요.",
+            ),
           );
-
-        if (!isMounted) {
-          return;
+        } finally {
+          if (isMounted) {
+            setIsLoading(false);
+          }
         }
+      };
 
-        setSession(created);
-      } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
-        setErrorMessage(
-          toErrorMessage(
-            error,
-            "오늘의 수면 준비를 불러오지 못했어요.",
-          ),
-        );
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    loadSession();
+    void loadSession();
 
     return () => {
       isMounted = false;
     };
-  }, [preloadedSession]);
-
+  }, [
+    preloadedSession,
+    uuid,
+  ]);
   useEffect(() => {
     if (!session) {
       return;

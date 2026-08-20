@@ -1021,9 +1021,16 @@ function AISoundFitPage() {
           >
             <button
               type="button"
-              onClick={() =>
-                navigate("/")
-              }
+              onClick={() => {
+                localStorage.setItem(
+                  "somni-onboarding-completed",
+                  "true",
+                );
+
+                navigate("/", {
+                  replace: true,
+                });
+              }}
               className="
                 h-[54px]
                 w-full

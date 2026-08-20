@@ -35,8 +35,7 @@ import rainAudio from "../../assets/audio/nature/rain.mp3";
 import streamAudio from "../../assets/audio/nature/stream.mp3";
 import { getUserUuid } from "../../utils/userStorage";
 
-const NEXT_PATH = "/recovery-session";
-
+const NEXT_PATH = "/recovery-session"
 const TICK_MS = 200;
 
 const NATURE_AUDIO_SOURCES: Record<
@@ -148,7 +147,10 @@ function RelaxationSessionPage() {
     useState<string | null>(null);
 
   const elapsedRef = useRef(elapsedSeconds);
-  elapsedRef.current = elapsedSeconds;
+
+  useEffect(() => {
+    elapsedRef.current = elapsedSeconds;
+  }, [elapsedSeconds]);
 
   const remainingSeconds = Math.max(
     0,
@@ -307,37 +309,6 @@ function RelaxationSessionPage() {
     navigate(NEXT_PATH, { replace: true });
   }, [navigate]);
 
-  const finishSession = useCallback(async () => {
-    if (isFinishingRef.current) {
-      return;
-    }
-
-    isFinishingRef.current = true;
-
-    const uuid = getUserUuid();
-
-    if (!uuid || !session) {
-      leaveToNextStep();
-      return;
-    }
-
-    try {
-      await completeRelaxationSession(
-        uuid,
-        session.id,
-      );
-    } catch (error) {
-      setErrorMessage(
-        toErrorMessage(
-          error,
-          "세션 완료 기록에 실패했어요.",
-        ),
-      );
-    } finally {
-      leaveToNextStep();
-    }
-  }, [leaveToNextStep, session]);
-
   const handleCancel = useCallback(async () => {
     if (isFinishingRef.current) {
       return;
@@ -382,8 +353,59 @@ function RelaxationSessionPage() {
       return;
     }
 
-    finishSession();
-  }, [elapsedSeconds, finishSession, totalSeconds]);
+    if (isFinishingRef.current) {
+      return;
+    }
+
+    isFinishingRef.current = true;
+
+    const uuid = getUserUuid();
+
+    if (!uuid || !session) {
+      navigate(NEXT_PATH, {
+        replace: true,
+      });
+      return;
+    }
+
+    let cancelled = false;
+
+    const completeSession =
+      async () => {
+        try {
+          await completeRelaxationSession(
+            uuid,
+            session.id,
+          );
+        } catch (error) {
+          if (cancelled) {
+            return;
+          }
+
+          console.error(
+            "세션 완료 기록 실패",
+            error,
+          );
+        } finally {
+          if (!cancelled) {
+            navigate(NEXT_PATH, {
+              replace: true,
+            });
+          }
+        }
+      };
+
+    void completeSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    elapsedSeconds,
+    navigate,
+    session,
+    totalSeconds,
+  ]);
 
   const handlePlayToggle = () => {
     const audio = audioRef.current;

@@ -6,7 +6,6 @@ import { getLatestInterventionDecision, type InterventionDecision,
 } from "../../api/personalization";
 
 import { getUserUuid, } from "../../utils/userStorage";
-import { generateTodaySound, } from "../../api/sound";
 
 const RELAXATION_INFO = {
   thought_distancing: {
@@ -169,41 +168,17 @@ function RoutineReadyPage() {
         try {
           setStarting(true);
           setErrorMessage("");
-          const selectedBackground =
-            sessionStorage.getItem(
-              "somni-selected-nature-sound",
-            ) as
-              | "rain"
-              | "stream"
-              | "ocean"
-              | "air"
-              | null;
-            const soundSession =
-              await generateTodaySound(
-                uuid,
-                false,
-                selectedBackground ?? undefined,
-              );
-
-          sessionStorage.setItem(
-            "somni-current-sound-session-id",
-            soundSession.session_id,
-          );
-          sessionStorage.removeItem(
-            "somni-personal-sound-pending",
-          );
-
-          if (
-            decision?.relaxation_activity_type
-          ) {
-            navigate(
-              "/relaxation",
-            );
-            return;
-          }
 
           navigate(
             "/mixing-point",
+            {
+              state: {
+                shouldRelax:
+                  Boolean(
+                    decision?.relaxation_activity_type,
+                  ),
+              },
+            },
           );
         } catch (error) {
           console.error(

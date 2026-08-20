@@ -66,6 +66,7 @@ class PitchMatchSessionSerializer(serializers.ModelSerializer):
             "freq_b",
             "done",
             "octave_test_started",
+            "octave_selection",
             "octave_test",
             "center_frequency",
             "lower_bound",

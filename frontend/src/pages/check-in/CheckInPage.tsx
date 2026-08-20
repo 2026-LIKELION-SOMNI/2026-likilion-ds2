@@ -6,46 +6,99 @@ import NoteField from "../../components/common/NoteField";
 import ScaleSelector from "../../components/common/ScaleSelector";
 import SectionTitle from "../../components/common/SectionTitle";
 import SelectChip from "../../components/common/SelectChip";
+
 import {
   CHECKIN_NOTE_MAX_LENGTH,
   createCheckin,
 } from "../../api/checkin";
-import type { DailyFactor } from "../../api/checkin";
-import { toErrorMessage } from "../../api/client";
-import { getUserUuid } from "../../utils/userStorage";
+
+import type {
+  DailyFactor,
+} from "../../api/checkin";
+
+import {
+  createInterventionDecision,
+} from "../../api/personalization";
+
+import {
+  toErrorMessage,
+} from "../../api/client";
+
+import {
+  getUserUuid,
+} from "../../utils/userStorage";
 
 const FACTOR_OPTIONS: {
   value: DailyFactor;
   label: string;
 }[] = [
-  { value: "caffeine", label: "카페인" },
-  { value: "stress", label: "스트레스" },
-  { value: "fatigue", label: "피로" },
-  { value: "noise_exposure", label: "소음 노출" },
+  {
+    value: "caffeine",
+    label: "카페인",
+  },
+  {
+    value: "stress",
+    label: "스트레스",
+  },
+  {
+    value: "fatigue",
+    label: "피로",
+  },
+  {
+    value: "noise_exposure",
+    label: "소음 노출",
+  },
 ];
 
 function CheckInPage() {
   const navigate = useNavigate();
 
-  const [discomfort, setDiscomfort] = useState<
-    number | null
-  >(null);
-  const [tension, setTension] = useState<
-    number | null
-  >(null);
-  const [factors, setFactors] = useState<
-    DailyFactor[]
-  >([]);
-  const [hasNoFactor, setHasNoFactor] =
-    useState(false);
-  const [note, setNote] = useState("");
-  const [isSaving, setIsSaving] =
-    useState(false);
-  const [errorMessage, setErrorMessage] =
-    useState<string | null>(null);
+  const [
+    discomfort,
+    setDiscomfort,
+  ] = useState<number | null>(
+    null,
+  );
+
+  const [
+    tension,
+    setTension,
+  ] = useState<number | null>(
+    null,
+  );
+
+  const [
+    factors,
+    setFactors,
+  ] = useState<DailyFactor[]>(
+    [],
+  );
+
+  const [
+    hasNoFactor,
+    setHasNoFactor,
+  ] = useState(false);
+
+  const [
+    note,
+    setNote,
+  ] = useState("");
+
+  const [
+    isSaving,
+    setIsSaving,
+  ] = useState(false);
+
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState<string | null>(
+    null,
+  );
 
   const isComplete =
-    discomfort !== null && tension !== null;
+    discomfort !== null &&
+    tension !== null;
 
   const toggleFactor = (
     value: DailyFactor,
@@ -55,54 +108,107 @@ function CheckInPage() {
     setFactors((previous) =>
       previous.includes(value)
         ? previous.filter(
-            (factor) => factor !== value,
+            (factor) =>
+              factor !== value,
           )
-        : [...previous, value],
+        : [
+            ...previous,
+            value,
+          ],
     );
   };
 
-  const toggleNoFactor = () => {
-    setFactors([]);
-    setHasNoFactor((previous) => !previous);
-  };
-
-  const handleSubmit = async () => {
-    if (!isComplete || isSaving) {
-      return;
-    }
-
-    const uuid = getUserUuid();
-
-    if (!uuid) {
-      setErrorMessage(
-        "사용자 정보를 찾을 수 없어요. 앱을 새로고침한 뒤 다시 시도해 주세요.",
+  const toggleNoFactor =
+    () => {
+      setFactors([]);
+      setHasNoFactor(
+        (previous) =>
+          !previous,
       );
-      return;
-    }
+    };
 
-    setIsSaving(true);
-    setErrorMessage(null);
+  const handleSubmit =
+    async () => {
+      if (
+        !isComplete ||
+        isSaving
+      ) {
+        return;
+      }
 
-    try {
-      await createCheckin(uuid, {
-        discomfort,
-        tension,
-        daily_factors: factors,
-        note: note.trim(),
-      });
+      const uuid =
+        getUserUuid();
 
-      navigate("/");
-    } catch (error) {
-      setErrorMessage(
-        toErrorMessage(
-          error,
-          "체크인 저장에 실패했어요. 잠시 후 다시 시도해 주세요.",
-        ),
-      );
-    } finally {
-      setIsSaving(false);
-    }
-  };
+      if (!uuid) {
+        setErrorMessage(
+          "사용자 정보를 찾을 수 없어요. 앱을 새로고침한 뒤 다시 시도해 주세요.",
+        );
+
+        return;
+      }
+
+      setIsSaving(true);
+      setErrorMessage(null);
+
+      try {
+        /*
+         * 1. 오늘 체크인 저장
+         */
+        await createCheckin(
+          uuid,
+          {
+            discomfort,
+            tension,
+            daily_factors:
+              factors,
+            note:
+              note.trim(),
+          },
+        );
+
+        /*
+         * 2. 방금 입력한 상태를 기준으로
+         * 오늘의 개인화 결정 생성
+         */
+        await createInterventionDecision(
+          uuid,
+          {
+            tinnitus_discomfort:
+              discomfort,
+
+            anxiety:
+              tension,
+
+            stress:
+              factors.includes(
+                "stress",
+              ),
+
+            caffeine:
+              factors.includes(
+                "caffeine",
+              ),
+          },
+        );
+
+        /*
+         * 3. 홈으로 이동
+         *
+         * 이후 RoutineReadyPage에서는
+         * latest decision을 정상 조회할 수 있음
+         */
+        navigate("/");
+      } catch (error) {
+        setErrorMessage(
+          toErrorMessage(
+            error,
+            "체크인 저장 또는 오늘의 루틴 생성에 실패했어요. 잠시 후 다시 시도해 주세요.",
+          ),
+        );
+      } finally {
+        setIsSaving(false);
+      }
+    };
 
   return (
     <div
@@ -134,38 +240,58 @@ function CheckInPage() {
           label="이명 불편도"
           hint="1 편안함 · 5 매우 불편함"
           value={discomfort}
-          onChange={setDiscomfort}
+          onChange={
+            setDiscomfort
+          }
         />
 
         <ScaleSelector
           label="불안 정도"
           hint="1 안정됨 · 5 매우 불안함"
           value={tension}
-          onChange={setTension}
+          onChange={
+            setTension
+          }
         />
       </div>
 
       <section className="mt-[1.75rem]">
-        <SectionTitle title="오늘 하루는 어땠나요?" />
+        <SectionTitle
+          title="오늘 하루는 어땠나요?"
+        />
 
         <div className="mt-[0.875rem] flex flex-wrap gap-[0.5rem]">
-          {FACTOR_OPTIONS.map((option) => (
-            <SelectChip
-              key={option.value}
-              label={option.label}
-              isSelected={factors.includes(
-                option.value,
-              )}
-              onClick={() =>
-                toggleFactor(option.value)
-              }
-            />
-          ))}
+          {FACTOR_OPTIONS.map(
+            (option) => (
+              <SelectChip
+                key={
+                  option.value
+                }
+                label={
+                  option.label
+                }
+                isSelected={
+                  factors.includes(
+                    option.value,
+                  )
+                }
+                onClick={() =>
+                  toggleFactor(
+                    option.value,
+                  )
+                }
+              />
+            ),
+          )}
 
           <SelectChip
             label="특별한 요인 없음"
-            isSelected={hasNoFactor}
-            onClick={toggleNoFactor}
+            isSelected={
+              hasNoFactor
+            }
+            onClick={
+              toggleNoFactor
+            }
           />
         </div>
       </section>
@@ -177,7 +303,9 @@ function CheckInPage() {
           placeholder="예) 커피를 늦게 마셨고, 잠들기 전 더 크게 들려요."
           value={note}
           onChange={setNote}
-          maxLength={CHECKIN_NOTE_MAX_LENGTH}
+          maxLength={
+            CHECKIN_NOTE_MAX_LENGTH
+          }
         />
       </div>
 
@@ -199,8 +327,13 @@ function CheckInPage() {
 
       <div className="mt-auto pt-[2rem]">
         <Button
-          disabled={!isComplete || isSaving}
-          onClick={handleSubmit}
+          disabled={
+            !isComplete ||
+            isSaving
+          }
+          onClick={
+            handleSubmit
+          }
         >
           {isSaving
             ? "저장 중..."
