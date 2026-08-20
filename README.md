@@ -51,8 +51,8 @@
 
 ```text
 hackathon/
-├── backend/                  # Django 백엔드
-│   ├── apps/                 # 주요 기능별 앱
+├── backend/                  
+│   ├── apps/                 
 │   │   ├── accounts/         # 사용자 식별 및 계정 관리
 │   │   ├── onboarding/       # 온보딩 및 초기 안전 문항
 │   │   ├── tinnitus/         # 이명 프로필 등록 및 음역 매칭
@@ -65,13 +65,13 @@ hackathon/
 │   │   ├── data/             # 건강 데이터 및 초기화 관리
 │   │   ├── mypage/           # 마이페이지 및 설정
 │   │   └── home/             # 메인 홈 데이터
-│   ├── config/               # Django 프로젝트 설정
+│   ├── config/               
 │   ├── manage.py
 │   └── requirements.txt
 │
-└── frontend/                 # React + TypeScript 프론트엔드
-    ├── public/               # 정적 에셋 (파비콘, 공통 이미지 등)
-    ├── src/                  # 소스 코드 (컴포넌트, 페이지 등)
-    ├── index.html            # 메인 HTML
-    ├── package.json          # 프로젝트 의존성 설정
-    └── vite.config.ts        # Vite 빌드 설정
+└── frontend/                 
+    ├── public/              
+    ├── src/                  
+    ├── index.html          
+    ├── package.json     
+    └── vite.config.ts      
