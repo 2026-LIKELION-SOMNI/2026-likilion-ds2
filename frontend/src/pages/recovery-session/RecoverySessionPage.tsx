@@ -264,11 +264,10 @@ function RecoverySessionPage() {
   };
 
   /*
-   * =========================
-   * 오늘의 사운드 생성
-   * =========================
-   */
-
+  * =========================
+  * 오늘의 사운드 조회 + 자동 재생
+  * =========================
+  */
   useEffect(() => {
     if (
       hasLoadedSoundRef.current
@@ -301,35 +300,50 @@ function RecoverySessionPage() {
             true,
           );
 
-          setSoundError(null);
+          setSoundError(
+            null,
+          );
 
+          /*
+          * MixingPoint에서 이미 오늘 사운드를
+          * 생성했다면 그 세션을 그대로 사용.
+          */
           const existingSessionId =
             sessionStorage.getItem(
               "somni-recovery-existing-session-id",
             );
 
-            const selectedBackground =
-              sessionStorage.getItem(
-                "somni-selected-nature-sound",
-              ) as
-                | "rain"
-                | "stream"
-                | "ocean"
-                | "air"
-                | null;
+          const selectedBackground =
+            sessionStorage.getItem(
+              "somni-selected-nature-sound",
+            ) as
+              | "rain"
+              | "stream"
+              | "ocean"
+              | "air"
+              | null;
 
-            const session =
-              existingSessionId
-                ? await getSoundSession(
-                    uuid,
-                    existingSessionId,
-                  )
-                : await generateTodaySound(
-                    uuid,
-                    false,
-                    selectedBackground ?? undefined,
-                  );
+          /*
+          * 이미 만들어진 세션이 있으면 조회,
+          * 없을 때만 새로 생성.
+          */
+          const session =
+            existingSessionId
+              ? await getSoundSession(
+                  uuid,
+                  existingSessionId,
+                )
+              : await generateTodaySound(
+                  uuid,
+                  false,
+                  selectedBackground ??
+                    undefined,
+                );
 
+          /*
+          * Recovery 진입용 임시 ID는
+          * 한 번 사용한 뒤 제거.
+          */
           if (existingSessionId) {
             sessionStorage.removeItem(
               "somni-recovery-existing-session-id",
@@ -337,37 +351,107 @@ function RecoverySessionPage() {
           }
 
           console.log(
-            "오늘의 사운드 생성 결과:",
+            "오늘의 사운드 결과:",
             session,
           );
 
-          setSoundSession(session);
+          setSoundSession(
+            session,
+          );
 
           sessionStorage.setItem(
             "somni-current-sound-session-id",
             session.session_id,
           );
 
-          
-        if (
-          session.status ===
-          "generation_failed"
-        ) {
-          setScreen(
-            "initial-error",
+          /*
+          * 사운드 생성 자체가 실패한 경우
+          * 기존 실패 화면으로 이동.
+          */
+          if (
+            session.status ===
+            "generation_failed"
+          ) {
+            setScreen(
+              "initial-error",
+            );
+
+            return;
+          }
+
+          localStorage.removeItem(
+            "somni-data-deleted",
           );
 
-          return;
-        }
+          /*
+          * 실제 재생할 파라미터.
+          * final_params가 있으면 우선.
+          */
+          const params =
+            session.final_params ??
+            session.generated_params;
 
-        localStorage.removeItem(
-          "somni-data-deleted",
-        );
+          /*
+          * 로딩 화면 종료.
+          */
+          setScreen(
+            "session",
+          );
 
-        setScreen("session");
+          /*
+          * 정상적으로 준비된 사운드라면
+          * Recovery 화면 진입 즉시 재생.
+          */
+          if (
+            params &&
+            session.status ===
+              "ready"
+          ) {
+            try {
+              await playRecoveryAudio(
+                params,
+              );
+
+              await updateSoundPlayback(
+                uuid,
+                session.session_id,
+                "start",
+              );
+
+              /*
+              * UI도 즉시 재생 상태로 변경.
+              * ▶ 대신 ⏸ 버튼이 보이게 됨.
+              */
+              setHasStarted(
+                true,
+              );
+
+              setPlaying(
+                true,
+              );
+            } catch (error) {
+              console.error(
+                "회복 세션 자동 재생 실패",
+                error,
+              );
+
+              /*
+              * 자동 재생만 실패한 경우
+              * 화면은 정상적으로 띄우고
+              * 사용자가 ▶ 버튼으로 시작할 수 있게 함.
+              */
+              setHasStarted(
+                false,
+              );
+
+              setPlaying(
+                false,
+              );
+            }
+          }
         } catch (error) {
           console.error(
-            "오늘의 사운드 생성 실패",
+            "오늘의 사운드 불러오기 실패",
             error,
           );
 
@@ -376,6 +460,7 @@ function RecoverySessionPage() {
               ? error.message
               : "사운드를 불러오지 못했습니다.",
           );
+
           setScreen(
             "initial-error",
           );
@@ -707,6 +792,15 @@ function RecoverySessionPage() {
             error,
           );
         } finally {
+          /*
+          * 이번 체크인은 회복 세션에서
+          * 이미 사용 완료.
+          */
+          sessionStorage.setItem(
+            "somni-checkin-consumed",
+            "true",
+          );
+
           setScreen(
             "end-complete",
           );
@@ -1064,7 +1158,20 @@ function RecoverySessionPage() {
   const handleEndSession =
     async () => {
       stopRecoveryAudio();
+
       setPlaying(false);
+
+      /*
+      * 이번 체크인은
+      * 이 회복 세션에 사용 완료.
+      *
+      * 이후 홈에서는 다시
+      * 오늘 상태 기록하기를 보여준다.
+      */
+      sessionStorage.setItem(
+        "somni-checkin-consumed",
+        "true",
+      );
 
       if (!soundSession) {
         setScreen(
@@ -3111,7 +3218,18 @@ function RecoverySessionPage() {
             type="button"
             onClick={() => {
               stopRecoveryAudio();
-              navigate("/");
+
+              sessionStorage.setItem(
+                "somni-checkin-consumed",
+                "true",
+              );
+
+              navigate(
+                "/",
+                {
+                  replace: true,
+                },
+              );
             }}
             className="
               h-14

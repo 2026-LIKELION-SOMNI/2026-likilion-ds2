@@ -608,25 +608,37 @@ function SoundPage() {
               "
               aria-label="나만의 사운드 정보 보기"
             >
-              {MAIN_WAVE_HEIGHTS.map(
-                (
-                  height,
-                  index,
-                ) => (
-                  <span
-                    key={index}
-                    className="
-                      min-w-[3px]
-                      flex-1
-                      rounded-full
-                      bg-[#60CEA7]
-                    "
-                    style={{
-                      height: `${height}px`,
-                    }}
-                  />
-                ),
-              )}
+            {MAIN_WAVE_HEIGHTS.map(
+              (
+                height,
+                index,
+              ) => (
+                <span
+                  key={index}
+                  className={`
+                    min-w-[3px]
+                    flex-1
+                    rounded-full
+                    bg-[#60CEA7]
+                    origin-center
+                    ${
+                      playing
+                        ? "animate-[soundWave_0.9s_ease-in-out_infinite_alternate]"
+                        : ""
+                    }
+                  `}
+                  style={{
+                    height: `${height}px`,
+                    animationDelay: playing
+                      ? `${index * 35}ms`
+                      : undefined,
+                    animationDuration: playing
+                      ? `${700 + (index % 5) * 90}ms`
+                      : undefined,
+                  }}
+                />
+              ),
+            )}
             </button>
 
             {/* 실제 개인화 사운드 재생 */}
@@ -735,14 +747,34 @@ function SoundPage() {
                             key={
                               waveIndex
                             }
-                            className="
+                            className={`
                               w-[3px]
                               shrink-0
                               rounded-full
                               bg-[#61DBB8]
-                            "
+                              origin-center
+                              ${
+                                isPlaying
+                                  ? "animate-[soundWave_0.8s_ease-in-out_infinite_alternate]"
+                                  : ""
+                              }
+                            `}
                             style={{
                               height: `${height}px`,
+
+                              animationDelay:
+                                isPlaying
+                                  ? `${waveIndex * 70}ms`
+                                  : undefined,
+
+                              animationDuration:
+                                isPlaying
+                                  ? `${
+                                      550 +
+                                      (waveIndex % 4) *
+                                        110
+                                    }ms`
+                                  : undefined,
                             }}
                           />
                         ),

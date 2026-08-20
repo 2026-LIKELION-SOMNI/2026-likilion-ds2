@@ -22,6 +22,7 @@ import {
   createInterventionDecision,
   getLatestInterventionDecision,
 } from "../../api/personalization";
+import type { InterventionDecision } from "../../api/personalization";
 import { getRelaxationGuide } from "../relaxation/guideScript";
 import { ensureAnonymousUser } from "../../services/accountService";
 import { getUserUuid } from "../../utils/userStorage";
@@ -44,26 +45,147 @@ const SOUND_WAVE_HEIGHTS = [
   24, 30, 20, 16, 26, 32, 22, 18, 28, 24,
 ];
 
-function toDateKey(value: string) {
-  const parsed = new Date(value);
+interface AiReport {
+  tags: string[];
+  summary: string;
+}
 
-  if (Number.isNaN(parsed.getTime())) {
+function toAiReport(
+  decision: InterventionDecision | null,
+): AiReport | null {
+  if (!decision) {
     return null;
   }
 
-  return parsed.toDateString();
+  const tags = Array.isArray(
+    decision.ai_display_tags,
+  )
+    ? decision.ai_display_tags.filter(
+        (tag) => tag.trim().length > 0,
+      )
+    : [];
+
+  const summary = (
+    decision.ai_display_summary ?? ""
+  ).trim();
+
+  if (!summary && tags.length === 0) {
+    return null;
+  }
+
+  return { tags, summary };
 }
 
-function countEvaluationsBeforeToday(
-  evaluations: { for_date: string }[],
-) {
-  const today = new Date().toDateString();
+interface ReportTagProps {
+  label: string;
+}
 
-  return evaluations.filter((evaluation) => {
-    const key = toDateKey(evaluation.for_date);
+function ReportTag({ label }: ReportTagProps) {
+  return (
+    <span
+      className="
+        inline-flex
+        h-[26px]
+        items-center
+        rounded-full
+        border
+        border-[#2B8E78]
+        px-[10px]
+        text-[11px]
+        font-medium
+        text-[#61DBB8]
+      "
+    >
+      {label}
+    </span>
+  );
+}
 
-    return key !== null && key !== today;
-  }).length;
+interface AiReportSectionProps {
+  report: AiReport | null;
+  emptyDescription: string;
+}
+
+function AiReportSection({
+  report,
+  emptyDescription,
+}: AiReportSectionProps) {
+  return (
+    <div className="mt-[28px]">
+      <h2
+        className="
+          text-[14px]
+          font-bold
+          text-[#ECF3F2]
+        "
+      >
+        AI 분석 리포트
+      </h2>
+
+      <div className="mt-[16px]">
+        <SectionCard>
+          {report ? (
+            <>
+              <p
+                className="
+                  text-[13px]
+                  font-bold
+                  leading-normal
+                  text-[#61DBB8]
+                "
+              >
+                어젯밤 Somni는 이렇게 맞췄어요
+              </p>
+
+              {report.tags.length > 0 && (
+                <div
+                  className="
+                    mt-[12px]
+                    flex
+                    flex-wrap
+                    gap-[6px]
+                  "
+                >
+                  {report.tags.map((tag) => (
+                    <ReportTag
+                      key={tag}
+                      label={tag}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {report.summary && (
+                <p
+                  className="
+                    mt-[14px]
+                    whitespace-pre-line
+                    text-[11px]
+                    font-normal
+                    leading-[18px]
+                    text-[#809EA8]
+                  "
+                >
+                  {report.summary}
+                </p>
+              )}
+            </>
+          ) : (
+            <p
+              className="
+                text-[11px]
+                font-normal
+                leading-[18px]
+                text-[#809EA8]
+              "
+            >
+              {emptyDescription}
+            </p>
+          )}
+        </SectionCard>
+      </div>
+    </div>
+  );
 }
 
 function isDecisionOlderThanCheckin(
@@ -260,6 +382,12 @@ function HomePage() {
   const [soundMinutes, setSoundMinutes] =
     useState<number | null>(null);
 
+  const [hasDecision, setHasDecision] =
+    useState(false);
+
+  const [aiReport, setAiReport] =
+    useState<AiReport | null>(null);
+
   const [pendingCount, setPendingCount] =
     useState<number | null>(null);
 
@@ -295,8 +423,6 @@ function HomePage() {
 
     const isLatest = () =>
       sequence === loadSequenceRef.current;
-
-    setErrorMessage(null);
 
     try {
       const profile =
@@ -352,11 +478,12 @@ function HomePage() {
           ?.duration_minutes ?? null,
       );
 
+      setHasDecision(decision !== null);
+      setAiReport(toAiReport(decision));
+
       setPendingCount(
         pendingEvaluations
-          ? countEvaluationsBeforeToday(
-              pendingEvaluations,
-            )
+          ? pendingEvaluations.length
           : null,
       );
 
@@ -387,16 +514,25 @@ function HomePage() {
   }, []);
 
   useEffect(() => {
-    loadHome();
-  }, [loadHome]);
+    const timeoutId =
+      window.setTimeout(() => {
+        void loadHome();
+      }, 0);
 
+    return () => {
+      window.clearTimeout(
+        timeoutId,
+      );
+    };
+  }, [loadHome]);
+  
   useEffect(() => {
     const handleVisible = () => {
       if (
         document.visibilityState ===
         "visible"
       ) {
-        loadHome();
+        void loadHome();
       }
     };
 
@@ -523,8 +659,21 @@ function HomePage() {
         )
       : null;
 
+  /*
+  * 회복 세션이 끝난 뒤에는
+  * 기존 체크인을 이미 사용한 것으로 처리한다.
+  *
+  * 백엔드에는 오늘 체크인이 남아 있어도
+  * 홈에서는 다시 "오늘 상태 기록하기" 화면을 보여준다.
+  */
+  const isCheckinConsumed =
+    sessionStorage.getItem(
+      "somni-checkin-consumed",
+    ) === "true";
+
   const hasCheckedIn =
-    summary?.has_checked_in_today ?? false;
+    (summary?.has_checked_in_today ?? false) &&
+    !isCheckinConsumed;
 
   const hasPendingEvaluation =
     pendingCount !== null
@@ -1006,86 +1155,22 @@ function HomePage() {
               </div>
             </>
           )}
-
-          {summary?.comfortable_sound
-            ?.session_id && (
-            <div className="mt-[28px]">
-              <h2
-                className="
-                  text-[14px]
-                  font-bold
-                  text-[#ECF3F2]
-                "
-              >
-                편안했던 사운드
-              </h2>
-
-              <div className="mt-[16px]">
-                <SectionCard>
-                  <p
-                    className="
-                      text-[14px]
-                      font-bold
-                      text-[#F0F7FA]
-                    "
-                  >
-                    {summary.comfortable_sound
-                      .sound_summary ??
-                      "저장된 사운드"}
-                  </p>
-
-                  {summary.comfortable_sound
-                    .evaluated_at && (
-                    <p
-                      className="
-                        mt-[8px]
-                        text-[11px]
-                        leading-[18px]
-                        text-[#809EA8]
-                      "
-                    >
-                      {new Date(
-                        summary.comfortable_sound.evaluated_at,
-                      ).toLocaleDateString(
-                        "ko-KR",
-                        {
-                          month: "long",
-                          day: "numeric",
-                        },
-                      )}{" "}
-                      평가에서 &quot;편안했어요&quot;로 저장
-                    </p>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      navigate("/my/sounds")
-                    }
-                    className="
-                      mt-[14px]
-                      flex
-                      w-full
-                      items-center
-                      justify-between
-                      border-t
-                      border-[#24464E]
-                      pt-[14px]
-                      text-[12px]
-                      font-medium
-                      text-[#7CCDE4]
-                    "
-                  >
-                    다시 듣기
-                    <span aria-hidden="true">
-                      ›
-                    </span>
-                  </button>
-                </SectionCard>
-              </div>
-            </div>
-          )}
         </>
+      )}
+
+      {!hasLoadFailed && (
+        <AiReportSection
+          report={aiReport}
+          emptyDescription={
+            !isSetupDone
+              ? "개인화를 다시 시작하고 AI 분석 리포트를 만나보세요."
+              : hasDecision
+                ? "이번 루틴은 분석 리포트를 준비하지 못했어요."
+                : summary?.is_new_user
+                  ? "첫 루틴을 시작하고 AI 분석 리포트를 만나보세요."
+                  : "오늘 루틴을 시작하면 AI 분석 리포트를 만나볼 수 있어요."
+          }
+        />
       )}
 
       <BottomNav />

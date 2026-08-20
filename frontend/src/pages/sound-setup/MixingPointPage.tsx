@@ -14,13 +14,18 @@ import {
   setMixingPointGain,
   stopTinnitusAudio,
 } from "../../audio/tinnitusAudio";
-
+import {
+  primeRecoveryAudio,
+} from "../../audio/recoveryAudio";
 import {
   getPitchMatchSession,
+  savePitchMatchSession,
 } from "../../utils/pitchMatchStorage";
 
 import {
+  getMatchingResult,
   saveMixingPoint,
+  type PitchMatchSession,
 } from "../../services/tinnitusService";
 
 const MIXING_WAVE_HEIGHTS = [
@@ -59,8 +64,23 @@ function MixingPointPage() {
         )?.shouldRelax,
       );
 
-  const pitchMatchSession =
-    getPitchMatchSession();
+  /*
+   * 음역 매칭 세션
+   *
+   * sessionStorage에 값이 없는 경우(세션 재진입 등)를 대비해
+   * state로 관리하고, 없으면 서버에서 다시 조회한다.
+   */
+  const [
+    pitchMatchSession,
+    setPitchMatchSession,
+  ] = useState<PitchMatchSession | null>(
+    getPitchMatchSession(),
+  );
+
+  const [
+    isRestoringSession,
+    setIsRestoringSession,
+  ] = useState(false);
 
   const [
     volume,
@@ -86,9 +106,9 @@ function MixingPointPage() {
   const handleStart =
     async () => {
       /*
-       * 저장 요청 중에는
-       * 중복 요청 방지
-       */
+      * 저장 요청 중에는
+      * 중복 요청 방지
+      */
       if (isSaving) {
         return;
       }
@@ -97,7 +117,25 @@ function MixingPointPage() {
         setErrorMessage(
           "음역 매칭 정보를 찾지 못했어요.",
         );
+
         return;
+      }
+
+      /*
+      * 중요:
+      * 사용자가 "시작하기"를 직접 누른 순간
+      * Recovery용 AudioContext를 미리 활성화.
+      *
+      * 나중에 Recovery 페이지에서
+      * 자동재생이 브라우저에 막히는 것을 줄인다.
+      */
+      try {
+        await primeRecoveryAudio();
+      } catch (error) {
+        console.warn(
+          "Recovery 오디오 준비 실패",
+          error,
+        );
       }
 
       try {
@@ -137,11 +175,21 @@ function MixingPointPage() {
           await generateTodaySound(
             uuid,
             false,
-            selectedBackground ?? undefined,
+            selectedBackground ??
+              undefined,
           );
 
         sessionStorage.setItem(
           "somni-current-sound-session-id",
+          soundSession.session_id,
+        );
+
+        /*
+        * RecoverySessionPage가
+        * 방금 생성한 세션을 그대로 사용하게 함.
+        */
+        sessionStorage.setItem(
+          "somni-recovery-existing-session-id",
           soundSession.session_id,
         );
 
@@ -172,16 +220,51 @@ function MixingPointPage() {
           "볼륨 설정을 저장하지 못했어요.",
         );
 
-        /*
-         * 실패한 경우에만
-         * 다시 시도할 수 있도록 해제
-         */
         setIsSaving(false);
       }
     };
 
   /*
    * 페이지 진입 시
+   * sessionStorage에 음역 매칭 정보가 없으면
+   * (세션 재진입, 탭 재시작 등)
+   * 서버에서 최신 완료 결과를 다시 조회해 복원한다.
+   */
+  useEffect(() => {
+    if (pitchMatchSession?.center_frequency) {
+      return;
+    }
+
+    const restoreSession = async () => {
+      try {
+        setIsRestoringSession(true);
+        setErrorMessage("");
+
+        const result = await getMatchingResult();
+
+        setPitchMatchSession(result);
+        savePitchMatchSession(result);
+      } catch (error) {
+        console.error(
+          "음역 매칭 결과 재조회 실패",
+          error,
+        );
+
+        setErrorMessage(
+          "음역 정보를 불러오지 못했어요.",
+        );
+      } finally {
+        setIsRestoringSession(false);
+      }
+    };
+
+    void restoreSession();
+    // 최초 마운트 시 1회만 재조회 시도
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /*
+   * 페이지 진입 시 / 세션 복원 완료 시
    * 현재 기본 볼륨으로 사운드 재생
    */
   useEffect(() => {
@@ -191,10 +274,11 @@ function MixingPointPage() {
           !pitchMatchSession
             ?.center_frequency
         ) {
-          setErrorMessage(
-            "음역 정보를 불러오지 못했어요.",
-          );
-
+          /*
+           * 아직 서버에서 세션을 복원하는 중일 수 있으므로
+           * 여기서는 에러 문구를 세팅하지 않는다.
+           * (복원 실패 시엔 위 useEffect에서 이미 세팅됨)
+           */
           return;
         }
 
@@ -363,7 +447,8 @@ function MixingPointPage() {
               handleVolumeDown
             }
             disabled={
-              isSaving
+              isSaving ||
+              isRestoringSession
             }
             aria-label="볼륨 낮추기"
             className="
@@ -392,7 +477,8 @@ function MixingPointPage() {
             max="100"
             value={volume}
             disabled={
-              isSaving
+              isSaving ||
+              isRestoringSession
             }
             onChange={(
               event,
@@ -420,7 +506,8 @@ function MixingPointPage() {
               handleVolumeUp
             }
             disabled={
-              isSaving
+              isSaving ||
+              isRestoringSession
             }
             aria-label="볼륨 높이기"
             className="
@@ -471,13 +558,20 @@ function MixingPointPage() {
               볼륨을 키워주세요.
             </p>
 
-            {errorMessage && (
-              <p className="mt-3 text-[12px] text-[#F09292]">
-                {
-                  errorMessage
-                }
+            {isRestoringSession && (
+              <p className="mt-3 text-[12px] text-[#809EA8]">
+                음역 정보를 불러오는 중이에요...
               </p>
             )}
+
+            {!isRestoringSession &&
+              errorMessage && (
+                <p className="mt-3 text-[12px] text-[#F09292]">
+                  {
+                    errorMessage
+                  }
+                </p>
+              )}
           </div>
         </div>
       </section>
@@ -488,6 +582,7 @@ function MixingPointPage() {
           type="button"
           disabled={
             isSaving ||
+            isRestoringSession ||
             !pitchMatchSession
           }
           onClick={() => {
@@ -507,7 +602,9 @@ function MixingPointPage() {
         >
           {isSaving
             ? "저장 중..."
-            : "시작하기"}
+            : isRestoringSession
+              ? "불러오는 중..."
+              : "시작하기"}
         </button>
       </div>
     </div>

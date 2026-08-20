@@ -1,4 +1,6 @@
-import type { NatureSound } from "../../mock/natureSoundData";
+import type {
+  NatureSound,
+} from "../../mock/natureSoundData";
 
 interface NatureSoundCardProps {
   sound: NatureSound;
@@ -8,7 +10,9 @@ interface NatureSoundCardProps {
   onPlay: () => void;
 }
 
-const WAVE_HEIGHTS = [18, 28, 24, 34, 22, 30, 18];
+const WAVE_HEIGHTS = [
+  18, 28, 24, 34, 22, 30, 18,
+];
 
 function NatureSoundCard({
   sound,
@@ -20,8 +24,13 @@ function NatureSoundCard({
   return (
     <div
       className={`
-        flex h-[76px] w-full items-center
-        rounded-[12px] border px-3
+        flex
+        h-[76px]
+        w-full
+        items-center
+        rounded-[12px]
+        border
+        px-3
         transition-colors
         ${
           selected
@@ -33,56 +42,130 @@ function NatureSoundCard({
       <button
         type="button"
         onClick={onSelect}
-        className="flex min-w-0 flex-1 items-center text-left"
+        className="
+          flex
+          min-w-0
+          flex-1
+          items-center
+          text-left
+        "
       >
+        {/* 파형 */}
         <div
           className="
-            flex h-[52px] w-[52px] shrink-0
-            items-center justify-center
-            rounded-[10px] bg-[#07171B]
+            flex
+            h-[52px]
+            w-[52px]
+            shrink-0
+            items-center
+            justify-center
+            rounded-[10px]
+            bg-[#07171B]
           "
           aria-hidden="true"
         >
           <div className="flex items-center gap-[3px]">
-            {WAVE_HEIGHTS.map((height, index) => (
-              <span
-                key={`${sound.id}-${index}`}
-                className="w-[3px] rounded-full bg-[#60CEA7]"
-                style={{ height: `${height}px` }}
-              />
-            ))}
+            {WAVE_HEIGHTS.map(
+              (
+                height,
+                index,
+              ) => (
+                <span
+                  key={`${sound.id}-${index}`}
+                  className={`
+                    w-[3px]
+                    shrink-0
+                    origin-center
+                    rounded-full
+                    bg-[#60CEA7]
+                    ${
+                      playing
+                        ? "animate-[soundWave_0.8s_ease-in-out_infinite_alternate]"
+                        : ""
+                    }
+                  `}
+                  style={{
+                    height: `${height}px`,
+
+                    animationDelay:
+                      playing
+                        ? `${index * 70}ms`
+                        : undefined,
+
+                    animationDuration:
+                      playing
+                        ? `${
+                            520 +
+                            (index % 4) *
+                              110
+                          }ms`
+                        : undefined,
+                  }}
+                />
+              ),
+            )}
           </div>
         </div>
 
         <div className="ml-3 min-w-0">
-          <p className="truncate text-[13px] font-semibold text-text-primary">
+          <p
+            className="
+              truncate
+              text-[13px]
+              font-semibold
+              text-text-primary
+            "
+          >
             {sound.title}
           </p>
 
-          <p className="mt-1 truncate text-[10px] text-text-secondary">
+          <p
+            className="
+              mt-1
+              truncate
+              text-[10px]
+              text-text-secondary
+            "
+          >
             {sound.description}
           </p>
         </div>
       </button>
 
+      {/* 재생 */}
       <button
         type="button"
-        aria-label={`${sound.title} ${playing ? "재생 중지" : "재생"}`}
+        aria-label={`${sound.title} ${
+          playing
+            ? "재생 중지"
+            : "재생"
+        }`}
         onClick={onPlay}
         className={`
-          ml-3 flex h-8 w-8 shrink-0
-          items-center justify-center rounded-full
+          ml-3
+          flex
+          h-8
+          w-8
+          shrink-0
+          items-center
+          justify-center
+          rounded-full
           ${
-            playing || selected
+            playing ||
+            selected
               ? "bg-[#60CEA7] text-[#08201A]"
               : "bg-[#0A4939] text-[#071B16]"
           }
         `}
       >
         {playing ? (
-          <span className="text-[11px] font-bold">Ⅱ</span>
+          <span className="text-[11px] font-bold">
+            Ⅱ
+          </span>
         ) : (
-          <span className="ml-[2px] text-[12px]">▶</span>
+          <span className="ml-[2px] text-[12px]">
+            ▶
+          </span>
         )}
       </button>
     </div>
