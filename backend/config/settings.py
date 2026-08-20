@@ -20,7 +20,8 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-)ou!!lg)fr(_9t&$nklpaenq#$
 
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')  # 개발 편의를 위해 전체 허용
+# 📌 ALLOWED_HOSTS: 환경변수 설정이 없으면 백엔드 및 새 프론트 도메인 기본 허용
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'api.likelion-somni.site,likelion-somni.site,1.201.116.178,localhost,127.0.0.1,*').split(',')
 
 
 # Application definition
@@ -36,7 +37,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
 
-    # 🚨 여기에 생성할 앱 이름을 추가해 주시면 됩니다! (예: 'users', 'posts')
     'accounts',
     'onboarding',
     'checkin',
@@ -55,34 +55,44 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
 
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # CommonMiddleware보다 위에 있어야 함
 
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',  # MTV 구조에서 CSRF 보완용 필수!
+    'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# 🚨 익명 이용 서비스라 로그인 세션이 없음 -> DRF 기본 인증(SessionAuthentication)을 끄고
-#    CSRF 체크 없이 API 호출 가능하게 설정 (accounts/onboarding csrf_exempt 데코레이터와 함께 적용)
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [],
     'DEFAULT_PERMISSION_CLASSES': [],
 }
 
-# 로컬 프론트엔드 CORS 허용
-CORS_ALLOWED_ORIGINS = os.getenv(
-    'CORS_ALLOWED_ORIGINS',
-    'http://localhost:5273'
-).split(',')
+# 📌 CORS 설정: 새 Vercel 도메인 및 로컬/기존 Vercel 주소 모두 허용
+default_cors = [
+    'https://likelion-somni.site',
+    'https://www.likelion-somni.site',
+    'http://localhost:5273',
+    'http://localhost:3000',
+    'http://localhost:5173',
+]
+
+if os.getenv('CORS_ALLOWED_ORIGINS'):
+    CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS').split(',')
+else:
+    CORS_ALLOWED_ORIGINS = default_cors
+
+# 쿠키/인증 헤더 전송 허용 (필요 시)
+CORS_ALLOW_CREDENTIALS = True
+
 
 ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],  
+        'DIRS': [], 
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -97,8 +107,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 
-# 🗄️ Database - DATABASE_URL 환경변수로 SQLite/PostgreSQL 분기
-# .env의 DATABASE_URL이 postgres://... 면 PostgreSQL, sqlite:///./test.db 면 SQLite로 자동 연결
 DATABASES = {
     'default': dj_database_url.parse(
         os.getenv('DATABASE_URL', f'sqlite:///{BASE_DIR / "db.sqlite3"}')
@@ -106,7 +114,6 @@ DATABASES = {
 }
 
 
-# Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -123,7 +130,6 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# Internationalization (한국어 및 한국 시간)
 LANGUAGE_CODE = 'ko-kr'
 
 TIME_ZONE = 'Asia/Seoul'
@@ -133,14 +139,11 @@ USE_I18N = True
 USE_TZ = False
 
 
-# Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
-STATICFILES_DIRS = [BASE_DIR / 'static']  # 공통 CSS/JS/이미지 파일 경로
-STATIC_ROOT = BASE_DIR / 'staticfiles'  # 배포 시 collectstatic이 모아줄 경로
+STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# Media files (사용자가 업로드하는 사진/파일)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
