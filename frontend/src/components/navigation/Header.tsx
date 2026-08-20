@@ -451,6 +451,8 @@ function Header() {
             ${
               location.pathname === "/"
                 ? `
+                  mr-auto
+                  pl-2
                   text-[1.125rem]
                   leading-[1.6875rem]
                   text-[#60CEA7]
