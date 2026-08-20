@@ -100,6 +100,11 @@ export interface InterventionDecision {
     | null;
 
   decided_at: string;
+
+  sound_summary: string | null;
+
+  ai_display_tags: string[];
+  ai_display_summary: string;
 }
 
 export interface InterventionDecisionPayload {
