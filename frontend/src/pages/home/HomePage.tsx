@@ -22,6 +22,7 @@ import {
   createInterventionDecision,
   getLatestInterventionDecision,
 } from "../../api/personalization";
+import type { InterventionDecision } from "../../api/personalization";
 import { getRelaxationGuide } from "../relaxation/guideScript";
 import { ensureAnonymousUser } from "../../services/accountService";
 import { getUserUuid } from "../../utils/userStorage";
@@ -44,26 +45,147 @@ const SOUND_WAVE_HEIGHTS = [
   24, 30, 20, 16, 26, 32, 22, 18, 28, 24,
 ];
 
-function toDateKey(value: string) {
-  const parsed = new Date(value);
+interface AiReport {
+  tags: string[];
+  summary: string;
+}
 
-  if (Number.isNaN(parsed.getTime())) {
+function toAiReport(
+  decision: InterventionDecision | null,
+): AiReport | null {
+  if (!decision) {
     return null;
   }
 
-  return parsed.toDateString();
+  const tags = Array.isArray(
+    decision.ai_display_tags,
+  )
+    ? decision.ai_display_tags.filter(
+        (tag) => tag.trim().length > 0,
+      )
+    : [];
+
+  const summary = (
+    decision.ai_display_summary ?? ""
+  ).trim();
+
+  if (!summary && tags.length === 0) {
+    return null;
+  }
+
+  return { tags, summary };
 }
 
-function countEvaluationsBeforeToday(
-  evaluations: { for_date: string }[],
-) {
-  const today = new Date().toDateString();
+interface ReportTagProps {
+  label: string;
+}
 
-  return evaluations.filter((evaluation) => {
-    const key = toDateKey(evaluation.for_date);
+function ReportTag({ label }: ReportTagProps) {
+  return (
+    <span
+      className="
+        inline-flex
+        h-[26px]
+        items-center
+        rounded-full
+        border
+        border-[#2B8E78]
+        px-[10px]
+        text-[11px]
+        font-medium
+        text-[#61DBB8]
+      "
+    >
+      {label}
+    </span>
+  );
+}
 
-    return key !== null && key !== today;
-  }).length;
+interface AiReportSectionProps {
+  report: AiReport | null;
+  emptyDescription: string;
+}
+
+function AiReportSection({
+  report,
+  emptyDescription,
+}: AiReportSectionProps) {
+  return (
+    <div className="mt-[28px]">
+      <h2
+        className="
+          text-[14px]
+          font-bold
+          text-[#ECF3F2]
+        "
+      >
+        AI 분석 리포트
+      </h2>
+
+      <div className="mt-[16px]">
+        <SectionCard>
+          {report ? (
+            <>
+              <p
+                className="
+                  text-[13px]
+                  font-bold
+                  leading-normal
+                  text-[#61DBB8]
+                "
+              >
+                어젯밤 Somni는 이렇게 맞췄어요
+              </p>
+
+              {report.tags.length > 0 && (
+                <div
+                  className="
+                    mt-[12px]
+                    flex
+                    flex-wrap
+                    gap-[6px]
+                  "
+                >
+                  {report.tags.map((tag) => (
+                    <ReportTag
+                      key={tag}
+                      label={tag}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {report.summary && (
+                <p
+                  className="
+                    mt-[14px]
+                    whitespace-pre-line
+                    text-[11px]
+                    font-normal
+                    leading-[18px]
+                    text-[#809EA8]
+                  "
+                >
+                  {report.summary}
+                </p>
+              )}
+            </>
+          ) : (
+            <p
+              className="
+                text-[11px]
+                font-normal
+                leading-[18px]
+                text-[#809EA8]
+              "
+            >
+              {emptyDescription}
+            </p>
+          )}
+        </SectionCard>
+      </div>
+    </div>
+  );
 }
 
 function isDecisionOlderThanCheckin(
@@ -260,6 +382,12 @@ function HomePage() {
   const [soundMinutes, setSoundMinutes] =
     useState<number | null>(null);
 
+  const [hasDecision, setHasDecision] =
+    useState(false);
+
+  const [aiReport, setAiReport] =
+    useState<AiReport | null>(null);
+
   const [pendingCount, setPendingCount] =
     useState<number | null>(null);
 
@@ -352,11 +480,12 @@ function HomePage() {
           ?.duration_minutes ?? null,
       );
 
+      setHasDecision(decision !== null);
+      setAiReport(toAiReport(decision));
+
       setPendingCount(
         pendingEvaluations
-          ? countEvaluationsBeforeToday(
-              pendingEvaluations,
-            )
+          ? pendingEvaluations.length
           : null,
       );
 
@@ -1086,6 +1215,21 @@ function HomePage() {
             </div>
           )}
         </>
+      )}
+
+      {!hasLoadFailed && (
+        <AiReportSection
+          report={aiReport}
+          emptyDescription={
+            !isSetupDone
+              ? "개인화를 다시 시작하고 AI 분석 리포트를 만나보세요."
+              : hasDecision
+                ? "이번 루틴은 분석 리포트를 준비하지 못했어요."
+                : summary?.is_new_user
+                  ? "첫 루틴을 시작하고 AI 분석 리포트를 만나보세요."
+                  : "오늘 루틴을 시작하면 AI 분석 리포트를 만나볼 수 있어요."
+          }
+        />
       )}
 
       <BottomNav />
