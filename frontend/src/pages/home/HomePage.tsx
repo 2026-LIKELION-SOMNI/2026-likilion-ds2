@@ -14,6 +14,7 @@ import type {
   TodayRoutineSummary,
 } from "../../api/home";
 import { getLatestCheckin } from "../../api/checkin";
+import { getPendingEvaluations } from "../../api/feedback";
 import { getMyPageProfileSummary } from "../../api/mypage";
 import {
   createInterventionDecision,
@@ -205,6 +206,9 @@ function HomePage() {
   const [soundMinutes, setSoundMinutes] =
     useState<number | null>(null);
 
+  const [pendingCount, setPendingCount] =
+    useState<number | null>(null);
+
   const [isLoading, setIsLoading] =
     useState(true);
 
@@ -235,6 +239,7 @@ function HomePage() {
         homeSummary,
         profileSummary,
         decision,
+        pendingEvaluations,
       ] = await Promise.all([
         getHomeSummary(uuid),
         getMyPageProfileSummary(uuid).catch(
@@ -243,7 +248,16 @@ function HomePage() {
         getLatestInterventionDecision(
           uuid,
         ).catch(() => null),
+        getPendingEvaluations(uuid).catch(
+          () => null,
+        ),
       ]);
+
+      setPendingCount(
+        pendingEvaluations
+          ? pendingEvaluations.length
+          : null,
+      );
 
       setSummary(homeSummary);
 
@@ -401,6 +415,12 @@ function HomePage() {
   const hasCheckedIn =
     summary?.has_checked_in_today ?? false;
 
+  const hasPendingEvaluation =
+    pendingCount !== null
+      ? pendingCount > 0
+      : (summary?.has_pending_evaluation ??
+        false);
+
   const showRoutine = hasCheckedIn;
 
   const sound = splitSoundSummary(
@@ -533,7 +553,7 @@ function HomePage() {
 
       {isSetupDone && (
         <>
-          {summary?.has_pending_evaluation && (
+          {hasPendingEvaluation && (
             <div className="mt-[24px]">
               <SectionCard tone="accent">
                 <p
