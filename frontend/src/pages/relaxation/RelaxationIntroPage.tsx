@@ -17,6 +17,7 @@ import {
 import type { RelaxationSession } from "../../api/relaxation";
 import { getRelaxationGuide } from "./guideScript";
 import { primeSpeech } from "../../audio/guideSpeech";
+import { primeRecoveryAudio, } from "../../audio/recoveryAudio";
 import { getUserUuid } from "../../utils/userStorage";
 
 const NEXT_PATH = "/recovery-session"
@@ -173,6 +174,19 @@ function RelaxationIntroPage() {
       return;
     }
 
+    /*
+    * 건너뛰기 버튼 클릭 순간
+    * Recovery AudioContext 미리 활성화
+    */
+    try {
+      await primeRecoveryAudio();
+    } catch (error) {
+      console.warn(
+        "Recovery 오디오 준비 실패",
+        error,
+      );
+    }
+
     setIsSubmitting(true);
     setErrorMessage(null);
 
@@ -182,7 +196,12 @@ function RelaxationIntroPage() {
         session.id,
       );
 
-      navigate(NEXT_PATH, { replace: true });
+      navigate(
+        NEXT_PATH,
+        {
+          replace: true,
+        },
+      );
     } catch (error) {
       setErrorMessage(
         toErrorMessage(
@@ -193,42 +212,73 @@ function RelaxationIntroPage() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [isSubmitting, navigate, session]);
+  }, [
+    isSubmitting,
+    navigate,
+    session,
+  ]);
 
-  const handleStart = async () => {
-    const uuid = getUserUuid();
+  const handleStart =
+    async () => {
+      const uuid =
+        getUserUuid();
 
-    if (!uuid || !session || isSubmitting) {
-      return;
-    }
+      if (
+        !uuid ||
+        !session ||
+        isSubmitting
+      ) {
+        return;
+      }
 
-    setIsSubmitting(true);
-    setErrorMessage(null);
+      /*
+      * CBT 시작 버튼 클릭 순간
+      * Recovery AudioContext도 미리 활성화.
+      *
+      * CBT가 끝나고 자동으로 Recovery로
+      * 이동했을 때 자동재생할 수 있게 준비.
+      */
+      try {
+        await primeRecoveryAudio();
+      } catch (error) {
+        console.warn(
+          "Recovery 오디오 준비 실패",
+          error,
+        );
+      }
 
-    primeSpeech();
+      setIsSubmitting(true);
+      setErrorMessage(null);
 
-    try {
-      const started =
-        await startRelaxationSession(
-          uuid,
-          session.id,
+      primeSpeech();
+
+      try {
+        const started =
+          await startRelaxationSession(
+            uuid,
+            session.id,
+          );
+
+        navigate(
+          "/relaxation/session",
+          {
+            replace: true,
+            state: {
+              session: started,
+            },
+          },
+        );
+      } catch (error) {
+        setErrorMessage(
+          toErrorMessage(
+            error,
+            "세션을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.",
+          ),
         );
 
-      navigate("/relaxation/session", {
-        replace: true,
-        state: { session: started },
-      });
-    } catch (error) {
-      setErrorMessage(
-        toErrorMessage(
-          error,
-          "세션을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.",
-        ),
-      );
-
-      setIsSubmitting(false);
-    }
-  };
+        setIsSubmitting(false);
+      }
+    };
 
   useEffect(() => {
     window.dispatchEvent(

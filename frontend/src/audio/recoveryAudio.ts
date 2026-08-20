@@ -14,6 +14,13 @@ let currentNodes: AudioNode[] = [];
 let masterGain: GainNode | null = null;
 
 let isRecoveryAudioPlaying = false;
+/*
+ * 사용자가 버튼을 누른 순간
+ * Recovery에서 사용할 AudioContext를 미리 활성화
+ */
+export async function primeRecoveryAudio() {
+  await resumeAudioContext();
+}
 async function loadAudioBuffer(
   context: AudioContext,
   url: string,

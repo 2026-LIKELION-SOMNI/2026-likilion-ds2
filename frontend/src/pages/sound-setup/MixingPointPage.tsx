@@ -14,7 +14,9 @@ import {
   setMixingPointGain,
   stopTinnitusAudio,
 } from "../../audio/tinnitusAudio";
-
+import {
+  primeRecoveryAudio,
+} from "../../audio/recoveryAudio";
 import {
   getPitchMatchSession,
   savePitchMatchSession,
@@ -104,9 +106,9 @@ function MixingPointPage() {
   const handleStart =
     async () => {
       /*
-       * 저장 요청 중에는
-       * 중복 요청 방지
-       */
+      * 저장 요청 중에는
+      * 중복 요청 방지
+      */
       if (isSaving) {
         return;
       }
@@ -115,7 +117,25 @@ function MixingPointPage() {
         setErrorMessage(
           "음역 매칭 정보를 찾지 못했어요.",
         );
+
         return;
+      }
+
+      /*
+      * 중요:
+      * 사용자가 "시작하기"를 직접 누른 순간
+      * Recovery용 AudioContext를 미리 활성화.
+      *
+      * 나중에 Recovery 페이지에서
+      * 자동재생이 브라우저에 막히는 것을 줄인다.
+      */
+      try {
+        await primeRecoveryAudio();
+      } catch (error) {
+        console.warn(
+          "Recovery 오디오 준비 실패",
+          error,
+        );
       }
 
       try {
@@ -155,11 +175,21 @@ function MixingPointPage() {
           await generateTodaySound(
             uuid,
             false,
-            selectedBackground ?? undefined,
+            selectedBackground ??
+              undefined,
           );
 
         sessionStorage.setItem(
           "somni-current-sound-session-id",
+          soundSession.session_id,
+        );
+
+        /*
+        * RecoverySessionPage가
+        * 방금 생성한 세션을 그대로 사용하게 함.
+        */
+        sessionStorage.setItem(
+          "somni-recovery-existing-session-id",
           soundSession.session_id,
         );
 
@@ -190,10 +220,6 @@ function MixingPointPage() {
           "볼륨 설정을 저장하지 못했어요.",
         );
 
-        /*
-         * 실패한 경우에만
-         * 다시 시도할 수 있도록 해제
-         */
         setIsSaving(false);
       }
     };
