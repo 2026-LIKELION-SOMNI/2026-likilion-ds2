@@ -1,41 +1,38 @@
-name: Deploy Backend to Gabia Cloud
+name: Deploy (systemd-lite)
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - 'backend/**'
-      - '.github/workflows/deploy.yml'
+    branches: [ main ]    # main 브랜치에 push될 때 배포 진행
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy via SSH
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: SSH pull & restart via systemd
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
           script: |
             set -e
-            cd ~/2026-likilion-ds2
+
+            # 1) 깃 저장소 루트에서 최신 코드
+            cd ${{ secrets.REPO_DIR }}
             git pull origin main
 
-            cd backend
-            source myvenv/bin/activate
-            pip install -r requirements.txt
-
-            python manage.py migrate --noinput
-            python manage.py collectstatic --noinput
-
-            # .env 변경도 반영되도록 반드시 stop 후 재시작 (reload는 env 갱신 안 됨)
-            if [ -f /tmp/project-master.pid ]; then
-              uwsgi --stop /tmp/project-master.pid || true
-              sleep 2
+            # 2) 장고 앱 폴더에서 migrate
+            cd ${{ secrets.APP_DIR }}
+            if [ -d "myvenv" ]; then       # 여기선 자신이 쓰는 가상환경 이름을 써주세요
+              source myvenv/bin/activate
+              pip install --upgrade pip
+              if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+              python manage.py migrate --noinput
             fi
-            uwsgi --ini uwsgi.ini
 
-            echo "배포 완료: $(date)"
+            # 3) 서비스 재시작
+            sudo systemctl restart uwsgi
+            sudo nginx -t && sudo systemctl reload nginx || true
