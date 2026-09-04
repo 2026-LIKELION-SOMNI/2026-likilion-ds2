@@ -2,11 +2,12 @@ name: Deploy (systemd-lite)
 
 on:
   push:
-    branches: [ main ]    # main 브랜치에 push될 때 배포 진행
+    branches: [ main ]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -17,22 +18,39 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
+
           script: |
             set -e
 
-            # 1) 깃 저장소 루트에서 최신 코드
+            echo "=== 1. Pull latest code ==="
             cd ${{ secrets.REPO_DIR }}
+            git checkout main
             git pull origin main
 
-            # 2) 장고 앱 폴더에서 migrate
-            cd ${{ secrets.APP_DIR }}
-            if [ -d "myvenv" ]; then       # 여기선 자신이 쓰는 가상환경 이름을 써주세요
-              source myvenv/bin/activate
-              pip install --upgrade pip
-              if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-              python manage.py migrate --noinput
-            fi
+            echo "=== 2. Activate Python 3.10 virtualenv ==="
+            source ${{ secrets.REPO_DIR }}/myvenv/bin/activate
 
-            # 3) 서비스 재시작
+            echo "Python version:"
+            python --version
+
+            echo "Python path:"
+            which python
+
+            echo "=== 3. Install dependencies ==="
+            cd ${{ secrets.APP_DIR }}
+
+            python -m pip install --upgrade pip
+            pip install -r requirements.txt
+
+            echo "=== 4. Django migration ==="
+            python manage.py migrate --noinput
+
+            echo "=== 5. Restart uWSGI ==="
             sudo systemctl restart uwsgi
-            sudo nginx -t && sudo systemctl reload nginx || true
+            sudo systemctl status uwsgi --no-pager
+
+            echo "=== 6. Reload Nginx ==="
+            sudo nginx -t
+            sudo systemctl reload nginx
+
+            echo "=== Deployment complete ==="
