@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://api.likelion-somni.site/api/$1"
+      "destination": "https://likelion-somni.store/api/$1"
     },
     {
       "source": "/(.*)",
